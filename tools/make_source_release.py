@@ -34,7 +34,7 @@ BUILDING = NL.join([
     '5. `tools/build_loader.bat` builds `dwmapi.dll`.',
     '6. `python tools/make_modmanager_release.py` puts the package together. It takes UE4SS v3.0.1 (https://github.com/UE4SS-RE/RE-UE4SS) from `vendor/ue4ss`, and `MordhauWeapons.esp` as `tools/make_items_esp.py` makes it from your own `Skyrim.esm`.',
     '',
-    'Script files (`.ps1`, `.bat`, `.sh`) are stored here with `.txt` added to their names, because download sites quarantine archives that hold script files. Take the `.txt` off to use one (for example `tools/build_loader.bat.txt` -> `tools/build_loader.bat`).',
+    'The same source is at https://github.com/thnokkvi-lang/mordhau-skyrim .',
     '',
     'Nothing of MORDHAU or Skyrim is in this archive, and nothing of either is needed to compile; both games are needed to run and to test.',
     ''])
@@ -66,10 +66,8 @@ with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
                 data = open(p, 'rb').read()
                 if private.search(data) and rel != 'tools/make_source_release.py':   # (this file names the general words it looks for)
                     found.append(rel)
-                # (script types a download site's scanner treats as executables are stored as text: Nexus quarantined the
-                # first source archive, 2026-10-12. BUILDING.md says so.)
-                if rel.lower().endswith(('.ps1', '.bat', '.cmd', '.sh')):
-                    rel += '.txt'
+                # (every file keeps its own name: adding .txt to scripts to get past Nexus's quarantine got the mod hidden
+                # for "disguising file types", 2026-10-15)
                 z.write(p, rel)
                 count += 1
     for rel in loose:
