@@ -1,0 +1,30 @@
+UE4SS (RE-UE4SS) v3.0.1 by the UE4SS-RE team - MIT licence.
+Included unchanged: UE4SS.dll and the Lua mods that ship with it (Mods/ConsoleEnablerMod, Mods/Keybinds,
+Mods/shared/UEHelpers, Mods/shared/jsbProfiler).
+Included with this mod's changes: UE4SS-settings.ini (engine version set to 4.26, the console window off) and
+Mods/mods.txt (only this mod's script and UE4SS's key binds switched on).
+Not UE4SS's but this mod's own: UE4SS_Signatures/GUObjectArray.lua, Mods/PoseStream and the loader dwmapi.dll
+(see MordhauSkyrim.txt).
+https://github.com/UE4SS-RE/RE-UE4SS
+
+MIT License
+
+Copyright (c) 2022 Narknon
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

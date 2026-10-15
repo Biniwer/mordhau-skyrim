@@ -1,0 +1,127 @@
+MORDHAU x SKYRIM - MEASURES TO KEEP THE MOD OUT OF MORDHAU ONLINE PLAY
+Status: 11 October 2026. Items marked [0.1.5] are in the version on Nexus.
+Items marked [next] are built and tested but not yet released.
+
+No measure here is a guarantee. Nobody outside Triternion and Valve knows
+exactly how MORDHAU's anti-cheat judges a script host. These measures are
+there so that nothing of the mod is loaded when MORDHAU is played normally.
+
+
+1. THE MOD ONLY EVER STARTS ITS OWN OFFLINE MORDHAU
+
+- [0.1.5] The Skyrim plugin starts MORDHAU itself, into a local match on
+  the player's PC. It never attaches to a MORDHAU the player started.
+- [0.1.5] That MORDHAU is always started with -insecure, Steam's switch for
+  running a game without VAC.
+- [0.1.5] If a MORDHAU is already running when Skyrim starts, the mod does
+  nothing and waits until the player has closed it.
+- [next]  The plugin looks for another MORDHAU a second time, right before
+  it launches its own. If one has appeared, it takes the loader out again
+  and waits.
+
+
+2. THE LOADER CHECKS THE LAUNCH BEFORE ANYTHING ELSE RUNS
+
+MORDHAU only loads the mod's script if a small loader file (dwmapi.dll) is
+in its folder. The loader is the mod's own.
+
+- [0.1.5] The moment Windows loads it, before the script host is loaded
+  and before the game engine starts, it checks two things by asking Windows
+  directly: -insecure on the command line, and the one-time session key.
+- [0.1.5] If either is missing it loads nothing, renames itself, leaves a
+  note saying why (MordhauSkyrim-closed-MORDHAU.txt) and ends the process
+  with a hard Windows terminate.
+  Measured: process gone after 0.04 to 0.08 seconds.
+
+
+3. THE ONE-TIME SESSION KEY
+
+- [0.1.5] For every start the plugin makes a new random key. Only the
+  MORDHAU process it launches receives it.
+- [0.1.5] The loader requires the key. The script checks it a second time,
+  on its own, against the key file, and requires that file to be less than
+  ten minutes old.
+- A MORDHAU started from Steam, a shortcut or anything else has no key.
+
+
+4. THE LOADER DOES NOT STAY IN MORDHAU'S FOLDER
+
+- [0.1.5] The loader is put into the folder only at the moment the mod's
+  MORDHAU starts.
+- [0.1.5] As soon as it has verified the launch it renames itself to
+  dwmapi.dll.old, which MORDHAU does not load. During a session there is no
+  loadable loader in the folder.
+- [0.1.5] The rename also works when an older copy is read-only or in use
+  (it clears it, or takes the name dwmapi.dll.old1 to .old9).
+- [0.1.5] The plugin deletes every renamed copy when MORDHAU closes or at
+  the next session.
+- After a crash or a killed process, the worst case is that the loader is
+  still there. Then point 2 applies: the next ordinary start is ended at
+  once and nothing loads.
+
+
+5. WHILE THE MOD'S MORDHAU IS RUNNING
+
+- [0.1.5] The script checks whether the game is still a standalone local
+  match, and closes the game if it is not.
+- [next]  That check now runs every frame. The moment it fails, the script
+  stops everything it does in that same frame, signals the plugin, asks for
+  a normal exit and calls the hard exit with no waiting.
+- [next]  The plugin, from outside, ends MORDHAU's process with a hard
+  Windows terminate and waits until it is really gone.
+  Measured: script inert after about 30 ms, process gone after about 1 s.
+- [next]  If the script cannot tell whether the match is offline, it treats
+  that as not offline: it does nothing, and after one second it stops as
+  above. It never assumes "offline".
+- [next]  Stalled-script watchdog. If the script stops reporting, the plugin
+  logs the session as unverified after 5 seconds and ends MORDHAU after 30.
+  A lag spike does not trip it.
+  Measured: frozen for 3 s and for 12 s, the session survived; a silenced
+  script was ended after 31 s.
+- [0.1.5] MORDHAU is tied to Skyrim's process: when Skyrim closes, crashes
+  or is killed, MORDHAU is ended with it.
+- Observed, not designed: the mod's MORDHAU window takes no meaningful input
+  (no menus, no scoreboard), so a player cannot browse to a server from it.
+  The cause is not known.
+
+
+6. WHEN MORDHAU IS STARTED NORMALLY
+
+- [0.1.5] Without the loader, MORDHAU does not load the script host or the
+  script. The script host's files that stay in the folder are not used.
+  Tested: MORDHAU started through Steam with those files present had
+  nothing of the mod loaded, joined an empty online server and stayed
+  connected for a minute without being kicked.
+
+
+7. WHAT THE PLAYER IS TOLD
+
+- [0.1.5] A large red warning at the top of the page: never use this in
+  online MORDHAU play.
+- [0.1.5] A "no guarantee for your MORDHAU account" statement.
+- [0.1.5] Sections "How it keeps MORDHAU online play separate" and "How to
+  check it yourself", on the page and in the readme.
+- [next]  A "What is not verified" paragraph (see below).
+
+
+WHAT IS NOT VERIFIED
+
+- Whether MORDHAU acts on -insecure. The game logs the argument and says
+  nothing more. This was not tested, because testing it means trying to
+  join a protected server with the mod loaded.
+- Whether the engine's "standalone" answer changes for every way a session
+  can go online, and how early in a connection it changes. Deliberately not
+  tested with a real online transition.
+- How MORDHAU's anti-cheat views the script host being loaded in an offline
+  session, and whether it looks at files on disk. Bans can be delayed, so
+  no test can rule one out.
+- Anything on another PC. All tests were on one machine.
+
+
+WHAT THE MOD DOES NOT PREVENT
+
+- A player who deliberately fakes the key and -insecure to run the script
+  online on their own PC.
+- An antivirus program locking the loader so it cannot rename itself. The
+  game is still ended on every start, so nothing loads, but MORDHAU will
+  not start until the file is deleted by hand.

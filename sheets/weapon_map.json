@@ -1,0 +1,229 @@
+{
+ "_about": "Which MORDHAU weapon stands for a Skyrim weapon: by the Skyrim weapon's kind (family, sheets/weapon_families.json) and words in its name (alternatives separated by |). For enemies and for the player. A design choice (lighter Skyrim materials -> lighter / plainer MORDHAU weapons), not from either game's data.",
+ "rows": [
+  {
+   "id": "one_hand_sword_scimitar",
+   "family": "one_hand_sword",
+   "name_contains": "Scimitar",
+   "mordhau_weapon": "Specific/OneHanded/BP_Scimitar",
+   "note": "play-test note, 2026-10-12. First of its family, so a scimitar of any material is one. MORDHAU's Scimitar is 115 cm long (tools/weapon_lengths.py). Its model could not be built before: its parts' names end in a number (SK_Scimitar_Blade_1), which both readers dropped; fixed the same day.",
+   "verified": false
+  },
+  {
+   "id": "one_hand_sword_iron",
+   "family": "one_hand_sword",
+   "name_contains": "Iron",
+   "mordhau_weapon": "Specific/OneHanded/BP_ArmingSword",
+   "note": "play-test note, 2026-10-12. Was the Bastard Sword (the user's choice of 2026-10-08): it is the only MORDHAU weapon given to a one-handed Skyrim family whose other grip is two-handed (bSecondIsTwoHanded, the greatsword's animations) - a Skyrim one-handed sword has no handle for the second hand. Now the Arming Sword: one-handed in both grips, 94 cm. The Bastard Sword stays as its own item, with MORDHAU's model.",
+   "verified": false
+  },
+  {
+   "id": "one_hand_sword_imperial",
+   "family": "one_hand_sword",
+   "name_contains": "Imperial",
+   "mordhau_weapon": "Specific/OneHanded/BP_ArmingSword",
+   "note": "play-test note, 2026-10-12. Was the Bastard Sword (the user's choice of 2026-10-08): it is the only MORDHAU weapon given to a one-handed Skyrim family whose other grip is two-handed (bSecondIsTwoHanded, the greatsword's animations) - a Skyrim one-handed sword has no handle for the second hand. Now the Arming Sword: one-handed in both grips, 94 cm. The Bastard Sword stays as its own item, with MORDHAU's model.",
+   "verified": false
+  },
+  {
+   "id": "one_hand_sword_orcish",
+   "family": "one_hand_sword",
+   "name_contains": "Orcish|Daedric",
+   "mordhau_weapon": "Specific/OneHanded/BP_Falchion",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "one_hand_sword_elven",
+   "family": "one_hand_sword",
+   "name_contains": "Elven",
+   "mordhau_weapon": "Specific/OneHanded/BP_Rapier",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "one_hand_sword_glass",
+   "family": "one_hand_sword",
+   "name_contains": "Glass|Blades|Katana",
+   "mordhau_weapon": "Specific/OneHanded/BP_Rapier",
+   "note": "was the Scimitar together with scimitars, then the Rapier while the Scimitar's model could not be built. Scimitars have their own row now (one_hand_sword_scimitar); these stay the Rapier until the user says otherwise.",
+   "verified": false
+  },
+  {
+   "id": "one_hand_sword_dwarven",
+   "family": "one_hand_sword",
+   "name_contains": "Dwarven|Ebony|Dragonbone|Stalhrim",
+   "mordhau_weapon": "Specific/OneHanded/BP_BastardSword",
+   "note": "play-test note, 2026-10-12, after the Bastard Sword had been taken off all one-handed swords the same day. Dwarven, Ebony, Dragonbone and Stalhrim swords are the Bastard Sword again (its other grip is two-handed); Iron and Imperial stay the Arming Sword (handles too short).",
+   "verified": false
+  },
+  {
+   "id": "one_hand_sword_other",
+   "family": "one_hand_sword",
+   "name_contains": "",
+   "mordhau_weapon": "Specific/OneHanded/BP_ArmingSword",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "one_hand_dagger_iron",
+   "family": "one_hand_dagger",
+   "name_contains": "Iron|Steel",
+   "mordhau_weapon": "Specific/OneHanded/BP_Knife",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "one_hand_dagger_other",
+   "family": "one_hand_dagger",
+   "name_contains": "",
+   "mordhau_weapon": "Specific/OneHanded/BP_Dagger",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "one_hand_axe_iron",
+   "family": "one_hand_axe",
+   "name_contains": "Iron|Hatchet|Woodcutter",
+   "mordhau_weapon": "Specific/OneHanded/BP_HandAxe",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "one_hand_axe_other",
+   "family": "one_hand_axe",
+   "name_contains": "",
+   "mordhau_weapon": "Specific/OneHanded/BP_Axe",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "one_hand_mace_orcish",
+   "family": "one_hand_mace",
+   "name_contains": "Orcish|Ebony|Daedric|Dragonbone",
+   "mordhau_weapon": "Specific/OneHanded/BP_Warhammer",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "one_hand_mace_other",
+   "family": "one_hand_mace",
+   "name_contains": "",
+   "mordhau_weapon": "Specific/OneHanded/BP_Mace",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "two_hand_sword_iron",
+   "family": "two_hand_sword",
+   "name_contains": "Iron|Ancient Nord|Nord Hero",
+   "mordhau_weapon": "Specific/TwoHandedSword/BP_Longsword",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "two_hand_sword_orcish",
+   "family": "two_hand_sword",
+   "name_contains": "Orcish",
+   "mordhau_weapon": "Specific/TwoHandedSword/BP_Messer",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "two_hand_sword_dwarven",
+   "family": "two_hand_sword",
+   "name_contains": "Dwarven",
+   "mordhau_weapon": "Specific/TwoHandedSword/BP_ExecutionerSword",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "two_hand_sword_elven",
+   "family": "two_hand_sword",
+   "name_contains": "Elven|Glass",
+   "mordhau_weapon": "Specific/TwoHandedSword/BP_Estoc",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "two_hand_sword_ebony",
+   "family": "two_hand_sword",
+   "name_contains": "Ebony|Daedric|Dragonbone",
+   "mordhau_weapon": "Specific/TwoHandedSword/BP_Zweihander",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "two_hand_sword_other",
+   "family": "two_hand_sword",
+   "name_contains": "",
+   "mordhau_weapon": "Specific/TwoHandedSword/BP_Greatsword",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "two_hand_axe_orcish",
+   "family": "two_hand_axe",
+   "name_contains": "Orcish",
+   "mordhau_weapon": "Specific/TwoHandedSword/BP_WarAxe",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "two_hand_axe_dwarven",
+   "family": "two_hand_axe",
+   "name_contains": "Dwarven",
+   "mordhau_weapon": "Specific/Polearms/BP_Poleaxe",
+   "note": "play-test note, 2026-10-12. This row was the Poleaxe in the first design and went to the Halberd only because the Poleaxe's model could not be built (numbered part names; fixed). Poleaxe 173 cm against a Skyrim battleaxe's about 150; the Halberd was 210.",
+   "verified": false
+  },
+  {
+   "id": "two_hand_axe_elven",
+   "family": "two_hand_axe",
+   "name_contains": "Elven|Glass",
+   "mordhau_weapon": "Specific/Polearms/BP_Halberd",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "two_hand_axe_ebony",
+   "family": "two_hand_axe",
+   "name_contains": "Ebony|Daedric|Dragonbone",
+   "mordhau_weapon": "Specific/Polearms/BP_Bardiche",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "two_hand_axe_other",
+   "family": "two_hand_axe",
+   "name_contains": "",
+   "mordhau_weapon": "Specific/Polearms/BP_BattleAxe",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "two_hand_hammer_orcish",
+   "family": "two_hand_hammer",
+   "name_contains": "Orcish",
+   "mordhau_weapon": "Specific/TwoHandedBlunt/BP_2Hmace",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "two_hand_hammer_dwarven",
+   "family": "two_hand_hammer",
+   "name_contains": "Dwarven|Elven|Glass",
+   "mordhau_weapon": "Specific/Polearms/BP_Polehammer",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  },
+  {
+   "id": "two_hand_hammer_other",
+   "family": "two_hand_hammer",
+   "name_contains": "",
+   "mordhau_weapon": "Specific/TwoHandedBlunt/BP_Maul",
+   "note": "first matching row of the family wins; an empty name_contains is the family's default",
+   "verified": false
+  }
+ ]
+}

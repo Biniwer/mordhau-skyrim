@@ -1,0 +1,77 @@
+{
+ "_about": "One row per Skyrim twist bone: helper bones along a limb that gauntlets and sleeves are skinned to. They are not in MORDHAU's clip; the plugin sets each from the roll of the bones around it so the mesh is not wrung. owner: bone_map row id the twist bone sits on. toward: bone_map row id the owner points at (gives the limb's axis). mode follow_child: take a share of the roll of `toward` relative to the owner (forearm twists follow the hand). mode counter_parent: undo a share of the owner's roll relative to `relative_to` (upper-arm twists stay with the shoulder). The share is the twist bone's position along the limb, read from Skyrim's rest pose.",
+ "rows": [
+  {
+   "id": "forearm_twist1_r",
+   "skyrim_node": "NPC R ForearmTwist1 [RLt1]",
+   "owner": "forearm_r",
+   "toward": "hand_r",
+   "relative_to": "hand_r",
+   "mode": "follow_child",
+   "verified": false
+  },
+  {
+   "id": "forearm_twist2_r",
+   "skyrim_node": "NPC R ForearmTwist2 [RLt2]",
+   "owner": "forearm_r",
+   "toward": "hand_r",
+   "relative_to": "hand_r",
+   "mode": "follow_child",
+   "verified": false
+  },
+  {
+   "id": "forearm_twist1_l",
+   "skyrim_node": "NPC L ForearmTwist1 [LLt1]",
+   "owner": "forearm_l",
+   "toward": "hand_l",
+   "relative_to": "hand_l",
+   "mode": "follow_child",
+   "verified": false
+  },
+  {
+   "id": "forearm_twist2_l",
+   "skyrim_node": "NPC L ForearmTwist2 [LLt2]",
+   "owner": "forearm_l",
+   "toward": "hand_l",
+   "relative_to": "hand_l",
+   "mode": "follow_child",
+   "verified": false
+  },
+  {
+   "id": "upperarm_twist1_r",
+   "skyrim_node": "NPC R UpperarmTwist1 [RUt1]",
+   "owner": "upperarm_r",
+   "toward": "forearm_r",
+   "relative_to": "clavicle_r",
+   "mode": "counter_parent",
+   "verified": false
+  },
+  {
+   "id": "upperarm_twist2_r",
+   "skyrim_node": "NPC R UpperarmTwist2 [RUt2]",
+   "owner": "upperarm_r",
+   "toward": "forearm_r",
+   "relative_to": "clavicle_r",
+   "mode": "counter_parent",
+   "verified": false
+  },
+  {
+   "id": "upperarm_twist1_l",
+   "skyrim_node": "NPC L UpperarmTwist1 [LUt1]",
+   "owner": "upperarm_l",
+   "toward": "forearm_l",
+   "relative_to": "clavicle_l",
+   "mode": "counter_parent",
+   "verified": false
+  },
+  {
+   "id": "upperarm_twist2_l",
+   "skyrim_node": "NPC L UpperarmTwist2 [LUt2]",
+   "owner": "upperarm_l",
+   "toward": "forearm_l",
+   "relative_to": "clavicle_l",
+   "mode": "counter_parent",
+   "verified": false
+  }
+ ]
+}

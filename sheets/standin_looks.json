@@ -1,0 +1,5 @@
+{
+ "_about": "Side-by-side mode. player: which of the player's own MORDHAU mercenaries is the player's body (read by tools/bake_looks.py for cache/live_config.lua). The outfits everyone else wears are in sheets/looks.json.",
+ "player": "coolhook",
+ "rows": []
+}

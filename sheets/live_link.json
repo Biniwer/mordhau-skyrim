@@ -1,0 +1,314 @@
+{
+ "_about": "Side-by-side mode: everything that crosses between the two games each frame (cache/live_pose.bin written by mordhau_side/PoseStream, cache/live_input.txt written by plugin/src/Link.cpp). Exact byte layouts are in the header comment of mordhau_side/PoseStream/Scripts/main.lua. verified = seen working in the running games.",
+ "rows": [
+  {
+   "id": "transport",
+   "direction": "both",
+   "carries": "cache/live_pose.bin (65536 bytes, MORDHAU -> Skyrim) and cache/live_input.mem (8192 bytes, Skyrim -> MORDHAU): fixed size, never truncated or replaced, kept open by both games. live_input.mem: uint32 sequence, uint32 length, the text line, uint32 sequence again.",
+   "used_for": "shared memory: Skyrim's plugin maps both files (CreateFileMapping / MapViewOfFile) and reads / writes its own memory; MORDHAU's script keeps one Lua file handle on each and writes / reads in place (seek to 0, one write or read). Windows backs the mapping and the handle with the same pages, so nothing is opened, renamed or re-read from disk per frame. A reader takes a block only when the sequence at its start equals the one at its end.",
+   "verified": false
+  },
+  {
+   "id": "pose",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "158 bones x (rotation xyzw, translation xyz), local",
+   "used_for": "the player's body, every pose written (~60/s): body and fingers each time, face and shape bones once a second",
+   "verified": true,
+   "rate": "one pose per MORDHAU frame (MORDHAU runs at 200+ frames a second with its picture blacked out), so every Skyrim frame has a new one. Skyrim shows the newest pose as it is: body, weapon and first-person camera all from the same sample. Only a stand-in whose pose arrives slower than Skyrim draws (an idle one among several) is eased between samples."
+  },
+  {
+   "id": "blade",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "trace start and end, character space cm",
+   "used_for": "swept through Skyrim for characters that have no stand-in",
+   "verified": true
+  },
+  {
+   "id": "stage",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "-1 none, 0 windup, 1 release, 2 recovery; kind 1 attack, 2 parry; seconds in motion; motion class name",
+   "used_for": "release gates the sweep; parry stage 0 stops Skyrim-side hits from unmirrored attackers",
+   "verified": true
+  },
+  {
+   "id": "stamina_health",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "0..100 each",
+   "used_for": "stamina drives Skyrim's stamina bar and the HUD; MORDHAU health is put back every frame (Skyrim owns health)",
+   "verified": true
+  },
+  {
+   "id": "speed",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "right, forward cm/s",
+   "used_for": "Skyrim's SpeedMult follows it (run 251, sprint 451 with the billhook)",
+   "verified": true
+  },
+  {
+   "id": "weapon",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "rotation xyzw + position, character space; has-weapon flag",
+   "used_for": "the held weapon's model rides this; hidden when put away",
+   "verified": true
+  },
+  {
+   "id": "verdicts",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "times the player was hit, damage, by which stand-in; per stand-in: id, times hit by the player, damage, its attack stage",
+   "used_for": "Skyrim applies the hits with its own hit processing",
+   "verified": true
+  },
+  {
+   "id": "camera",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "rotation xyzw + position in character space; first-person flag",
+   "used_for": "first person: MORDHAU's camera is laid onto Skyrim's",
+   "verified": true
+  },
+  {
+   "id": "standin_poses",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "3 x (look number, 158 bones x 7, weapon transform, has-weapon)",
+   "used_for": "enemies drawn as MORDHAU fighters; each body ~20/s",
+   "verified": true,
+   "rate": "a busy stand-in (attacking, parrying, flinching) with every pose; with one stand-in also when idle; with two or three, idle ones take turns"
+  },
+  {
+   "id": "movement",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "forward, right (-1..1), sprint, pitch degrees, first-person flag",
+   "used_for": "MoveForward/MoveRight/Sprint in MORDHAU's controller tick; pitch steers its look value; view switches its camera",
+   "verified": true
+  },
+  {
+   "id": "mouse",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "running sums of mouse movement right/up",
+   "used_for": "RegisterAnglingXInput/YInput: MORDHAU's own attack-angle input",
+   "verified": true
+  },
+  {
+   "id": "actions",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "numbered: Strike, Stab, RightUpperStrike, Parry, Feint, Kick, Jump, Sheathe, Draw",
+   "used_for": "MORDHAU's own request functions",
+   "verified": true
+  },
+  {
+   "id": "standins",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "up to 3 x (form id, right, forward, up cm, yaw deg, attack counter, blocking, velocity right/forward) TEST build 2026-10-12: up to 24 at once (Link::kGhosts / MAX_GHOSTS 24, shared blocks 131072 / 16384 bytes) - asked for as 'unrestricted'; the layout needs a fixed number. Not measured: what this costs MORDHAU and Skyrim per frame.",
+   "used_for": "hostile melee people within 700 units; a bot is held there, attacks and parries with them",
+   "verified": true
+  },
+  {
+   "id": "down",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "\" down:<player 0/1>,<form id>,...\" : who is limp (thrown, knocked down) in Skyrim right now",
+   "used_for": "MORDHAU's own ragdoll fall is started on that character (SetIsRagdollFalling) and kept up until Skyrim's body is up again",
+   "verified": false
+  },
+  {
+   "id": "fallen",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "stage 7 for the player or a stand-in = in MORDHAU's RagdollFallingMotion",
+   "used_for": "knocked down by MORDHAU itself (a kick, a troll): Skyrim throws that body down too (its own push, small force)",
+   "verified": false
+  },
+  {
+   "id": "ranged",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "\" w:<MORDHAU item path>\" while the player has a bow or crossbow out in Skyrim; actions FirePress / FireRelease (the attack button)",
+   "used_for": "MORDHAU's character takes that bow (handed over once), MORDHAU's own draw and release (FirePressed / FireReleased)",
+   "verified": false
+  },
+  {
+   "id": "shot",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "after the camera block, 56 bytes: uint32 shots, float[3] direction (right, forward, up in character space), float speed cm/s, float gravity scale, float[4] damage by armour tier (none, light, medium, heavy), float[4] head bonus",
+   "used_for": "MORDHAU loosed an arrow (its RangedReleaseMotion's projectile, which is then removed there): Skyrim fires the player's own arrow that way at MORDHAU's speed; a hit takes MORDHAU's damage for the target's armour, through sheets/progression.json",
+   "verified": false,
+   "flight": "since 2026-10-08 the arrow is the plugin's own: MORDHAU's arrow / bolt model (props arrow, crossbow_bolt), MORDHAU's speed and gravity from this block, stopped by Skyrim's world or a character. No Skyrim projectile is launched; one Skyrim arrow is still used up per shot."
+  },
+  {
+   "id": "unused_after_shot",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "after the shot block 60 bytes, all zero, not read",
+   "used_for": "nothing since 2026-10-12. These were the bear trap block (28 bytes) and the toolbox / firebomb block (32 bytes); the features were removed and the bytes are kept so that nothing after them moves.",
+   "verified": false
+  },
+  {
+   "id": "player_weapon",
+   "direction": "both",
+   "carries": "Skyrim -> MORDHAU: ' pw:<weapon path>' = the MORDHAU weapon for what the player has equipped in Skyrim (sheets/weapon_map.json); the script hands it to the character when it changes. MORDHAU -> Skyrim: 32 bytes after the builds block = the class name of the weapon the character holds or last held (state block is 408 bytes now).",
+   "used_for": "the player fights with the MORDHAU counterpart of the equipped Skyrim weapon, drawn with that weapon's own model (cache/props/w_<name>); the mercenary's own weapon only when nothing maps",
+   "verified": false
+  },
+  {
+   "id": "walls",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "' wl:<left>,<ahead>,<right>' = distance in cm to something solid in Skyrim at chest height, 45 degrees left, straight ahead and 45 degrees right of where the player faces (0 = nothing within reach)",
+   "used_for": "the script holds three unseen pieces of MORDHAU's own map (the mesh PlankWall01 on a StaticMeshActor) at those places around MORDHAU's character: MORDHAU's blade meets them and stops as on any wall",
+   "verified": false
+  },
+  {
+   "id": "mordhau_render_load",
+   "direction": "MORDHAU only",
+   "carries": "console settings the script applies when it starts streaming: r.ScreenPercentage 25, sg.ShadowQuality 0, sg.PostProcessQuality 0, sg.EffectsQuality 0 (not saved to MORDHAU's own settings; its HUD and menus, which Skyrim shows, stay at full resolution)",
+   "used_for": "MORDHAU's 3D picture is never seen while it runs beside Skyrim, so it is drawn small and plain: measured 24% -> 7% of the graphics card with a 12-bandit crowd, pose rate unchanged (~128 a second)",
+   "verified": true
+  },
+  {
+   "id": "bow_pose",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "428 bytes after the held weapon's class name (state block is 836 bytes now): bone count (0 = no bow in the left hand), 12 x 7 floats = the bow's bones in the bow's own space, int = MORDHAU shows the arrow on the string, 7 floats = the arrow part in the bow's space, 2 x 7 floats = the arrow's two bones",
+   "used_for": "the bow's limbs bend and its string comes back with the draw, and the arrow lies on the string, as in MORDHAU (the bow was drawn rigid, with no arrow)",
+   "verified": false
+  },
+  {
+   "id": "stamina_gain",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "' sg:<n>,<percent>' = the n-th stamina gain Skyrim gave the player (potion, food), in percent of full stamina; the script adds it to the character's Stamina once per n",
+   "used_for": "stamina potions and food work on MORDHAU's stamina",
+   "verified": false
+  },
+  {
+   "id": "shield",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "' sh:1' = the player has a shield on the arm in Skyrim (heavy armour shield -> BP_HeaterShield, else BP_KiteShield is tried second); actions BlockDown / BlockUp = the block button held and let go",
+   "used_for": "MORDHAU's character carries a shield and blocks for as long as the button is held (MORDHAU's held block), not the timed parry",
+   "verified": false
+  },
+  {
+   "id": "stand_ins",
+   "direction": "both",
+   "carries": "five enemies at once fight by MORDHAU's rules (three before): the states of the fourth and fifth (28 bytes each) follow the bow's pose (state block 892 bytes), their poses follow the first three's",
+   "used_for": "crowd fights and battles: more of the enemies around the player are MORDHAU fighters",
+   "verified": false
+  },
+  {
+   "id": "shield_pose",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "32 bytes at the end of the state block (924 bytes now): int = the character carries a shield on the left arm, 7 floats = where the shield is in character space (rotation xyzw, position cm)",
+   "used_for": "MORDHAU's own shield model (cache/props/w_KiteShield) is drawn where MORDHAU's character holds it, in first and third person; Skyrim's own shield model is hidden meanwhile",
+   "verified": false
+  },
+  {
+   "id": "thrown_weapon",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "a thrown weapon is reported in the shot block like an arrow, with its speed sent NEGATIVE (direction, gravity scale and the damage table by armour are the projectile's own)",
+   "used_for": "MORDHAU's weapon throw (its mode key on a weapon without an alternate grip: axe, maul, short spear, mace, dagger ...): the weapon flies in Skyrim as its MORDHAU model, hurts by MORDHAU's damage, and lies where it lands as the Skyrim item",
+   "verified": true
+  },
+  {
+   "id": "standin_shield",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "' gs:<id>,<BP_ShieldClass>' on the input line for every fought character that wears a shield in Skyrim (class by sheets/shield_map.json)",
+   "used_for": "its MORDHAU stand-in is handed that shield and brings it onto the arm, so it blocks and parries with the shield, not the weapon (play-test note, 2026-10-09)",
+   "verified": false
+  },
+  {
+   "id": "thrown_shield",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "a thrown shield (BP_ThrownTargeProjectile / BP_ThrownBucklerProjectile) is reported like a thrown weapon (speed negative) with its gravity scale ALSO negative",
+   "used_for": "the shield flies (its MORDHAU model), not the weapon in the right hand; the Skyrim shield leaves the arm and lies where it lands (play-test note, 2026-10-09)",
+   "verified": false
+  },
+  {
+   "id": "standin_target",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "' gt:<id>,<target id>' on the input line for a fought character whose Skyrim combat target is not the player",
+   "used_for": "its stand-in turns and aims (side and height) at that character's stand-in instead of at the player's character - two of Skyrim's people fighting each other both looked up at the player on higher ground and swung over each other (the user, 2026-10-09)",
+   "verified": false
+  },
+  {
+   "id": "standin_move",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "100 bytes after the shield block of the state block (1024 bytes now): for each of the five stand-ins the Skyrim id (uint32), where it stands relative to the player's character (right, forward, cm), its heading relative to the player's (degrees), and whether it is free (int)",
+   "used_for": "hybrid movement (sheets/builds.json hybrid_movement): a free stand-in's Skyrim character is walked to that place and turned that way",
+   "verified": true
+  },
+  {
+   "id": "hybrid_values",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "' hy:<on>,<engage cm>,<snap cm>' on the input line",
+   "used_for": "the hybrid movement numbers of sheets/builds.json, for the script",
+   "verified": true
+  },
+  {
+   "id": "managed_session",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "Installed by a mod manager (the plugin loaded by SKSE from Data/SKSE/Plugins, MORDHAU's side beside it in Data/SKSE/Plugins/MordhauSkyrim/mordhau): the plugin does what Play-Mashup.ps1 does. It finds MORDHAU through Steam (or MordhauPath in MordhauSkyrim.ini), puts UE4SS and the PoseStream script into MORDHAU's Binaries/Win64 (only missing or older files of its own; someone's own UE4SS is left alone), writes cache_dir.txt, live_options.lua and live_session.txt, copies the loader in as dwmapi.dll, starts MORDHAU windowed with SteamAppId 629760, takes the loader out as soon as MORDHAU has loaded it (or after 25 s), starts MORDHAU again when it closes, and ties MORDHAU to Skyrim's process (a job object: MORDHAU ends when Skyrim ends, however Skyrim ends). Order as with the launcher: MORDHAU at once when the cache exists, else after the plugin has built it. A MORDHAU that is already running is never touched.",
+   "used_for": "one ordinary mod: installed by Vortex / Mod Organizer 2, started with the usual play button, no scripts to run",
+   "settings": {
+    "file": "Data/SKSE/Plugins/MordhauSkyrim.ini",
+    "keys": {
+     "MordhauPath": "",
+     "CacheFolder": "",
+     "MordhauWidth": 1920,
+     "MordhauHeight": 1080,
+     "SimpleEnemies": 0,
+     "StartMordhau": 1
+    }
+   },
+   "verified": true,
+   "verified_with": "copied into Data by hand, Mod Organizer 2.5.2 (virtual folders), Vortex (hardlinks) - 2026-10-10",
+   "mordhau_arguments": "-windowed -ResX=<width> -ResY=<height> -insecure",
+   "insecure": "play-test note, 2026-10-11. The mod's own MORDHAU (started by the plugin, and by Play-Mashup.ps1) is always started with -insecure: declared as not for anti-cheat-protected play. Whether MORDHAU acts on the argument is not verified.",
+   "launch_race": "Another MORDHAU is looked for twice: before anything is done, and again with the loader already in the folder, immediately before the launch. If one has appeared, the loader is taken out again and the launch is put off until it has closed. A MORDHAU that starts in the remaining instant and loads the loader has no session key: the loader ends it and loads nothing."
+  },
+  {
+   "id": "loader_self_removal",
+   "direction": "MORDHAU",
+   "carries": "The script, the moment it runs in a mashup session, renames dwmapi.dll in MORDHAU's Binaries/Win64 to dwmapi.dll.old (a loaded file can be renamed, not deleted). Whoever started the session deletes it later.",
+   "used_for": "the loader never stays loadable after a session's MORDHAU has started, even if Skyrim or the launcher dies in that moment",
+   "verified": false
+  },
+  {
+   "id": "standin_height",
+   "direction": "MORDHAU",
+   "carries": "A free stand-in walks MORDHAU's own ground in MORDHAU's walking mode (its AI's own pace). Its BODY (mesh) is shifted up or down against its capsule - through the character's BaseTranslationOffset, which MORDHAU sets the mesh back to every frame - by (player height + Skyrim's height difference) - its own capsule height, eased, at most 60 cm; a held stand-in has no shift. Back in on 2026-10-10 (\"fix the head being in the chest\") after the rollback; the 'flying' movement mode stays out.",
+   "used_for": "swings meet the stand-in at the height Skyrim shows, without changing how MORDHAU's AI moves it",
+   "verified": true,
+   "verified_how": "2026-10-10 tools/height_test.py, D: copy, Whiterun bridge, 60 samples each: fix on - feet spread 82 cm, pelvis spread 13 cm (std dev 1.7); fix off - feet 96, pelvis 96 (std dev 30). Not yet played by a person."
+  },
+  {
+   "id": "session_key",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "Whoever starts the mod's MORDHAU (the plugin, or Play-Mashup.ps1) makes a random key for that one start, puts it into that MORDHAU's environment as MORDHAU_SKYRIM_SESSION and writes it as the second line of cache/live_session.txt (first line: the time). The script, the moment it loads: no key in its environment, or not the one in the file, or the file older than 10 minutes -> the game is ended at once (os.exit, no asking, no waiting). Every second while running: not a stand-alone local match -> ended. (-insecure is not checked by the script: the command line could not be read from it; it follows from the key, since the only start that has the key always passes -insecure.)",
+   "used_for": "the script can only run in a MORDHAU the mod started itself, offline, with -insecure - never in one started through Steam for online play, even if the loader was left in the folder (before: a normal start within 10 minutes of a mod session passed the first check, and a failed one took seconds to close)",
+   "verified": true,
+   "verified_how": "2026-10-11, D: copy: (1) started by the plugin - key matches, live after 17 s, 0 script errors; (2) loader put into the folder by hand and the game started without a key - the script ended the game at once: the engine's own log closes 2 s after it opened (the process itself was gone from the task list about a minute later)."
+  },
+  {
+   "id": "own_loader",
+   "direction": "MORDHAU",
+   "carries": "The loader put into MORDHAU's Binaries/Win64 as dwmapi.dll for a session's start is the mod's own (loader/, built by tools/build_loader.bat), not UE4SS's stock proxy. The moment Windows loads it into Mordhau-Win64-Shipping.exe - before any script host, before the engine starts - it reads the process's own command line and environment from Windows: unless the command line has -insecure AND the environment has MORDHAU_SKYRIM_SESSION (the one-time key, at least 16 characters), it renames its own file to dwmapi.dll.old (so the next start is clean), leaves a one-line note (MordhauSkyrim-closed-MORDHAU.txt) and ends the process with TerminateProcess - no engine shutdown, UE4SS.dll never loaded. Only when both are there does it load UE4SS.dll - and at that same moment it renames its own file to dwmapi.dll.old as well (play-test note, 2026-10-11), so no loadable loader is in the folder from the first instant of a session; the plugin deletes dwmapi.dll.old when MORDHAU has closed, or at the next session's start. In either case it passes every dwmapi call on to Windows' own dwmapi.dll (all 99 exports, by name or ordinal). In any other program it does nothing but pass calls on.",
+   "used_for": "review note, 2026-10-11: enforce -insecure at the level of the operating system, not by the script alone - the loader itself refuses to load and ends the process with a hard terminate. With the script's exit the process had lingered about a minute.",
+   "verified": true,
+   "verified_how": "2026-10-11, D: copy, tools/loader_test.py: no -insecure and no key / -insecure without key / key without -insecure - process gone after 0.04-0.08 s each, UE4SS never started, loader renamed, note written. Normal session through the plugin: live after 19 s, 0 script errors, only dwmapi.dll.old in the folder during the session. Not verified: on another PC; under an antivirus."
+  },
+  {
+   "id": "offline_stop",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "Every frame the script asks the engine whether the game is still a stand-alone local match. The frame it is not: (1) the script stops everything it does - no input applied, no stand-ins driven, no pose written (PS_stopped); (2) it writes cache/live_stop.txt with the reason; (3) it asks MORDHAU to quit and calls the hard exit with no grace period. The plugin looks for live_stop.txt five times a second: it ends MORDHAU's process with TerminateProcess, waits until the process is really gone and logs how long that took from the signal; then deletes the file. The plugin also deletes a stale live_stop.txt before every start.",
+   "used_for": "the user, 2026-10-11 (pasted review): immediate response when a session stops being offline - before: checked once a second, then a three-second grace period, and the script's own exit left the process around (~1 min seen at start-up).",
+   "verified": true,
+   "verified_how": "2026-10-11, D: copy, mid-fight, PS_testNotAlone forced three times (tools/stop_test.py, timed on the process handle): the script's last pose 31-34 ms after the trigger was handed over; MORDHAU's process gone after 1014 / 792 / 993 ms. Plugin log: signal seen after ~140 ms, process gone 755-989 ms after the signal. A real server join was not used as the trigger.",
+   "unknown_state": "If the engine's answer is not a clear yes (the call fails, or returns anything but true / false) the state is UNKNOWN: the script does nothing that frame (no input applied, no stand-ins driven, no pose written), and after one second of unknown it stops as for 'not offline'. It never assumes offline.",
+   "unverified_boundary": "UNVERIFIED INTEGRATION BOUNDARY (the user, 2026-10-11). The whole runtime check rests on one engine query, KismetSystemLibrary:IsStandalone, asked from the player controller's tick. Verified: the shutdown path once the script believes the state is 'not offline' or 'unknown' (forced by test switches). NOT verified, and deliberately not tested with a real online transition: (a) that every way a session can stop being local - joining by server browser, by Steam invite, by console, hosting a listen server, a seamless or a hard map travel - makes that query answer false or fail; (b) that the script's frame keeps running through such a transition (it is driven by the controller's tick; during a level change there may be no controller, and the outer loop has ended by then); (c) how early in a connection attempt the answer changes - a handshake with a server may precede it. What does not depend on this boundary: the loader's launch check, -insecure on the mod's own MORDHAU, and that MORDHAU's window takes no meaningful input (observed by the user, cause unknown)."
+  },
+  {
+   "id": "script_watchdog",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "The plugin reads the sequence number of cache/live_pose.bin five times a second, on its own thread (independent of Skyrim's frames and loading screens). Armed once the session has been live. No new data: tolerated up to stall_seconds; from unverified_seconds on the session is logged as UNVERIFIED (not as safe) and MORDHAU's window is put back if it was minimised (a minimised MORDHAU stops its frames); at stall_seconds MORDHAU's process is ended from outside (TerminateProcess, waited for) and started again offline like after any exit. Data arriving again before that ends the stall and is logged with its length.",
+   "values": {
+    "unverified_seconds": 5,
+    "stall_seconds": 30
+   },
+   "used_for": "play-test note, 2026-10-11 The explicit unsafe states (not offline, unknown: offline_stop) stay immediate and are the script's own; this is for a script that has stopped reporting at all.",
+   "verified": true,
+   "verified_how": "2026-10-11, D: copy, mid-fight (tools/stall_test.py): whole process frozen 3 s and 12 s - survived, the 12 s one logged UNVERIFIED and 'reports again after 12.0 s', the fight went on; script silenced with the game running - ended by the plugin after 31.2 s (process gone 948 ms after the kill), then restarted. Not tested: a Skyrim loading screen of over 30 s with MORDHAU minimised."
+  }
+ ]
+}

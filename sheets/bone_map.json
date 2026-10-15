@@ -1,0 +1,236 @@
+{
+ "_about": "One row per Skyrim skeleton node driven by a MORDHAU bone. mordhau_bone: name in UMA_Master_Skeleton. dir_skyrim_node / dir_mordhau_bone: the child whose rest position gives this bone's direction in each skeleton; the plugin rotates Skyrim's rest pose so the two directions agree before applying the clip (empty string = no direction, rest poses used as they are). translate: also take position from the clip. first_person: also driven on the 1st-person skeleton. Rows are listed parent before child. layer: upper = driven by attack clips (MORDHAU's strikes are upper-body clips layered over movement); lower = driven by movement clips; attach = left to Skyrim for now.",
+ "rows": [
+  {
+   "id": "pelvis",
+   "skyrim_node": "NPC Pelvis [Pelv]",
+   "mordhau_bone": "Hips",
+   "translate": true,
+   "first_person": false,
+   "verified": false,
+   "dir_skyrim_node": "NPC Spine [Spn0]",
+   "dir_mordhau_bone": "LowerBack",
+   "layer": "lower"
+  },
+  {
+   "id": "spine0",
+   "skyrim_node": "NPC Spine [Spn0]",
+   "mordhau_bone": "LowerBack",
+   "translate": false,
+   "first_person": false,
+   "verified": false,
+   "dir_skyrim_node": "NPC Spine1 [Spn1]",
+   "dir_mordhau_bone": "Spine",
+   "layer": "lower"
+  },
+  {
+   "id": "spine1",
+   "skyrim_node": "NPC Spine1 [Spn1]",
+   "mordhau_bone": "Spine",
+   "translate": false,
+   "first_person": false,
+   "verified": true,
+   "dir_skyrim_node": "NPC Spine2 [Spn2]",
+   "dir_mordhau_bone": "Spine1",
+   "layer": "upper"
+  },
+  {
+   "id": "spine2",
+   "skyrim_node": "NPC Spine2 [Spn2]",
+   "mordhau_bone": "Spine1",
+   "translate": false,
+   "first_person": true,
+   "verified": true,
+   "dir_skyrim_node": "NPC Neck [Neck]",
+   "dir_mordhau_bone": "Neck",
+   "layer": "upper"
+  },
+  {
+   "id": "neck",
+   "skyrim_node": "NPC Neck [Neck]",
+   "mordhau_bone": "Neck",
+   "translate": false,
+   "first_person": false,
+   "verified": true,
+   "dir_skyrim_node": "NPC Head [Head]",
+   "dir_mordhau_bone": "head",
+   "layer": "upper"
+  },
+  {
+   "id": "head",
+   "skyrim_node": "NPC Head [Head]",
+   "mordhau_bone": "Head",
+   "translate": false,
+   "first_person": false,
+   "verified": false,
+   "dir_skyrim_node": "",
+   "dir_mordhau_bone": "",
+   "layer": "upper"
+  },
+  {
+   "id": "clavicle_r",
+   "skyrim_node": "NPC R Clavicle [RClv]",
+   "mordhau_bone": "RightShoulder",
+   "translate": false,
+   "first_person": true,
+   "verified": true,
+   "dir_skyrim_node": "NPC R UpperArm [RUar]",
+   "dir_mordhau_bone": "RightArm",
+   "layer": "upper"
+  },
+  {
+   "id": "upperarm_r",
+   "skyrim_node": "NPC R UpperArm [RUar]",
+   "mordhau_bone": "RightArm",
+   "translate": false,
+   "first_person": true,
+   "verified": true,
+   "dir_skyrim_node": "NPC R Forearm [RLar]",
+   "dir_mordhau_bone": "RightForeArm",
+   "layer": "upper"
+  },
+  {
+   "id": "forearm_r",
+   "skyrim_node": "NPC R Forearm [RLar]",
+   "mordhau_bone": "RightForeArm",
+   "translate": false,
+   "first_person": true,
+   "verified": true,
+   "dir_skyrim_node": "NPC R Hand [RHnd]",
+   "dir_mordhau_bone": "RightHand",
+   "layer": "upper"
+  },
+  {
+   "id": "hand_r",
+   "skyrim_node": "NPC R Hand [RHnd]",
+   "mordhau_bone": "RightHand",
+   "translate": false,
+   "first_person": true,
+   "verified": true,
+   "dir_skyrim_node": "NPC R Finger20 [RF20]",
+   "dir_mordhau_bone": "RightHandFinger03_01",
+   "layer": "upper"
+  },
+  {
+   "id": "clavicle_l",
+   "skyrim_node": "NPC L Clavicle [LClv]",
+   "mordhau_bone": "LeftShoulder",
+   "translate": false,
+   "first_person": true,
+   "verified": true,
+   "dir_skyrim_node": "NPC L UpperArm [LUar]",
+   "dir_mordhau_bone": "LeftArm",
+   "layer": "upper"
+  },
+  {
+   "id": "upperarm_l",
+   "skyrim_node": "NPC L UpperArm [LUar]",
+   "mordhau_bone": "LeftArm",
+   "translate": false,
+   "first_person": true,
+   "verified": true,
+   "dir_skyrim_node": "NPC L Forearm [LLar]",
+   "dir_mordhau_bone": "LeftForeArm",
+   "layer": "upper"
+  },
+  {
+   "id": "forearm_l",
+   "skyrim_node": "NPC L Forearm [LLar]",
+   "mordhau_bone": "LeftForeArm",
+   "translate": false,
+   "first_person": true,
+   "verified": true,
+   "dir_skyrim_node": "NPC L Hand [LHnd]",
+   "dir_mordhau_bone": "LeftHand",
+   "layer": "upper"
+  },
+  {
+   "id": "hand_l",
+   "skyrim_node": "NPC L Hand [LHnd]",
+   "mordhau_bone": "LeftHand",
+   "translate": false,
+   "first_person": true,
+   "verified": true,
+   "dir_skyrim_node": "NPC L Finger20 [LF20]",
+   "dir_mordhau_bone": "LeftHandFinger03_01",
+   "layer": "upper"
+  },
+  {
+   "id": "thigh_r",
+   "skyrim_node": "NPC R Thigh [RThg]",
+   "mordhau_bone": "RightUpLeg",
+   "translate": false,
+   "first_person": false,
+   "verified": false,
+   "dir_skyrim_node": "NPC R Calf [RClf]",
+   "dir_mordhau_bone": "RightLeg",
+   "layer": "lower"
+  },
+  {
+   "id": "calf_r",
+   "skyrim_node": "NPC R Calf [RClf]",
+   "mordhau_bone": "RightLeg",
+   "translate": false,
+   "first_person": false,
+   "verified": false,
+   "dir_skyrim_node": "NPC R Foot [Rft ]",
+   "dir_mordhau_bone": "RightFoot",
+   "layer": "lower"
+  },
+  {
+   "id": "foot_r",
+   "skyrim_node": "NPC R Foot [Rft ]",
+   "mordhau_bone": "RightFoot",
+   "translate": false,
+   "first_person": false,
+   "verified": false,
+   "dir_skyrim_node": "NPC R Toe0 [RToe]",
+   "dir_mordhau_bone": "RightToeBase",
+   "layer": "lower"
+  },
+  {
+   "id": "thigh_l",
+   "skyrim_node": "NPC L Thigh [LThg]",
+   "mordhau_bone": "LeftUpLeg",
+   "translate": false,
+   "first_person": false,
+   "verified": false,
+   "dir_skyrim_node": "NPC L Calf [LClf]",
+   "dir_mordhau_bone": "LeftLeg",
+   "layer": "lower"
+  },
+  {
+   "id": "calf_l",
+   "skyrim_node": "NPC L Calf [LClf]",
+   "mordhau_bone": "LeftLeg",
+   "translate": false,
+   "first_person": false,
+   "verified": false,
+   "dir_skyrim_node": "NPC L Foot [Lft ]",
+   "dir_mordhau_bone": "LeftFoot",
+   "layer": "lower"
+  },
+  {
+   "id": "foot_l",
+   "skyrim_node": "NPC L Foot [Lft ]",
+   "mordhau_bone": "LeftFoot",
+   "translate": false,
+   "first_person": false,
+   "verified": false,
+   "dir_skyrim_node": "NPC L Toe0 [LToe]",
+   "dir_mordhau_bone": "LeftToeBase",
+   "layer": "lower"
+  },
+  {
+   "id": "weapon",
+   "skyrim_node": "WEAPON",
+   "mordhau_bone": "RightWeapon",
+   "translate": false,
+   "first_person": true,
+   "verified": false,
+   "dir_skyrim_node": "",
+   "dir_mordhau_bone": "",
+   "layer": "attach"
+  }
+ ]
+}

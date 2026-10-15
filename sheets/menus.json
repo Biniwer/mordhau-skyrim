@@ -1,0 +1,24 @@
+{
+ "_about": "MORDHAU's voice menu (C) and emote menu (X) are MORDHAU's OWN widgets (BP_VoiceMenu / BP_EmoteMenu, both a BP_ChoiceMenu): the script opens them inside MORDHAU (Show; again = next page), the plugin shows that corner of MORDHAU's window at the same place in Skyrim, and the number keys go to the widget's own Choose. Lines, order, pages, locked emotes and sounds are therefore exactly MORDHAU's; nothing is listed here.",
+ "rows": [
+  {
+   "id": "window_part",
+   "left": 0.0,
+   "right": 0.2,
+   "top": 0.0,
+   "bottom": 0.4,
+   "meaning": "the part of MORDHAU's window that holds the menu (title, up to 9 rows, page line), as fractions of the picture MORDHAU draws",
+   "verified": true
+  },
+  {
+   "id": "open_flag",
+   "meaning": "MORDHAU -> Skyrim: bit 4096 of the camera block's last number is set while either menu is open (widget visibility 3)",
+   "verified": false
+  },
+  {
+   "id": "choose",
+   "meaning": "Skyrim -> MORDHAU: request Choose<n> for number key n while the flag is set; VoiceMenu / EmoteMenu for C / X",
+   "verified": false
+  }
+ ]
+}

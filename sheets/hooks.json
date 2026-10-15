@@ -1,0 +1,109 @@
+{
+ "_about": "One row per place the plugin touches Skyrim. target: the CommonLibSSE-NG symbol or event. address_id: Address Library id for 1.6+/1.7 builds (null until looked up and confirmed in the running game on 1.7.104). Each row becomes one hook class in src/hooks/.",
+ "rows": [
+  {
+   "id": "boot",
+   "purpose": "start as .asi without SKSE: thread, wait for RE::UI, create trampoline, derive data-loaded/new-game/load-game",
+   "target": "DllMain + RE::MenuOpenCloseEvent + RE::TESLoadGameEvent",
+   "kind": "event_sink",
+   "address_id": "n/a",
+   "verified": false
+  },
+  {
+   "id": "input",
+   "purpose": "read mouse delta, attack/block/feint/scroll before the game does; swallow vanilla attack",
+   "target": "BSInputDeviceManager event sink (mouse movement, per-frame tick); the attack button itself is taken in attack_start",
+   "kind": "event_sink+vfunc",
+   "address_id": "n/a",
+   "verified": false
+  },
+  {
+   "id": "attack_start",
+   "purpose": "start a sheet-defined attack on an actor; block vanilla attack start",
+   "target": "AttackBlockHandler::ProcessButton, vtable slot 4 (<= 1.6.x) or 6 (>= 1.7.99, two functions were added before it)",
+   "kind": "vfunc",
+   "address_id": "n/a",
+   "verified": true
+  },
+  {
+   "id": "attack_cancel",
+   "purpose": "feint/morph: stop current attack animation and state",
+   "target": "RE::Actor::NotifyAnimationGraph(attackStop) + AIProcess attack data",
+   "kind": "call",
+   "address_id": "n/a",
+   "verified": false
+  },
+  {
+   "id": "attack_end",
+   "purpose": "detect release ending for miss/combo",
+   "target": "own state machine clock per swing: windup -> release -> recovery",
+   "kind": "own",
+   "address_id": "n/a",
+   "verified": true
+  },
+  {
+   "id": "hit_resolve",
+   "purpose": "decide parry/chamber/flinch/damage before Skyrim applies a melee hit",
+   "target": "RE::HitData::Create (damage by Skyrim's rules, armour included), then the game's own melee hit processing: the function its hit-frame handler calls, trusted only when that call site matches (AE builds); plain Actor::DoDamage otherwise. Parry/chamber/flinch decisions go in front of this later",
+   "kind": "call_hook",
+   "address_id": "call at id 38627 + 0x4A8 -> id 38586 (checked at startup); HitData ids 42832/44001",
+   "verified": true
+  },
+  {
+   "id": "weapon_trace",
+   "purpose": "hit by the weapon's real path during release instead of Skyrim's cone",
+   "target": "per frame in release: blade segment (WEAPON node to the far edge of the weapon model's bounds), swept from the previous frame, against an upright capsule on each nearby actor (ProcessLists high actors)",
+   "kind": "per_frame",
+   "address_id": "n/a",
+   "verified": true
+  },
+  {
+   "id": "pose_override",
+   "purpose": "write retargeted MORDHAU bone transforms after Skyrim's animation update, 1st and 3rd person",
+   "target": "ThirdPersonState::Update (vtable slot 3), after the original: write NiNode local rotations for the mapped bones and twist bones, UpdateDownwardPass from the top driven bone, then refresh the skeleton's BSFlattenedBoneTree (node-backed entries from their nodes, node-less entries such as fingers from their parents). First person not done.",
+   "kind": "call_hook",
+   "address_id": "n/a",
+   "verified": false
+  },
+  {
+   "id": "enemy_ai",
+   "purpose": "choose direction, parry, riposte, feint for humanoid NPCs in combat",
+   "target": "per-frame over ProcessLists high actors in combat",
+   "kind": "per_frame",
+   "address_id": "n/a",
+   "verified": false
+  },
+  {
+   "id": "movement",
+   "purpose": "MORDHAU movement: forward-only sprint with build-up, slower strafe/backpedal, jump stamina cost, turn cap in release",
+   "target": "BGSMovementType run speeds of the humanoid on-foot stances (NPCDefault, NPC1HM, NPC2HM, NPCBow..., NPCSprinting) set from MORDHAU at data load, in memory; the player's SpeedMult corrects to the exact value (one-time measurement per session) and carries the sprint build-up; fJumpHeightMin from MORDHAU's jump velocity and gravity; stamina cost on take-off",
+   "kind": "vfunc+per_frame",
+   "address_id": "n/a",
+   "verified": false
+  },
+  {
+   "id": "hud",
+   "purpose": "draw the HUD and hide Skyrim's bars/crosshair in combat",
+   "target": "D3D11 swap chain Present (BSGraphics::Renderer) + HUDMenu visibility",
+   "kind": "call_hook",
+   "address_id": null,
+   "verified": false
+  },
+  {
+   "id": "mordhau_locate",
+   "purpose": "find the player's MORDHAU install (Steam libraryfolders.vdf, app 629760) and open its paks read-only",
+   "target": "registry HKCU/Software/Valve/Steam + file IO",
+   "kind": "own",
+   "address_id": "n/a",
+   "verified": false
+  },
+  {
+   "id": "no_bash",
+   "purpose": "enemies never shield-bash: MORDHAU has no bash, and a bash staggers the player out of a duel",
+   "target": "every TESCombatStyle: meleeData bashMult, bashRecoilMult, bashAttackMult, bashPowerAttackMult set to 0 once the game's data is loaded (in memory only)",
+   "kind": "data",
+   "address_id": "n/a",
+   "verified": true
+  }
+ ]
+}

@@ -1,0 +1,101 @@
+LIBRARY dwmapi
+EXPORTS
+	DwmpDxGetWindowSharedSurface=f_0 @100
+	DwmpDxUpdateWindowSharedSurface=f_1 @101
+	DwmEnableComposition=f_2 @102
+	f_3 @103 NONAME
+	f_4 @104 NONAME
+	f_5 @105 NONAME
+	f_6 @106 NONAME
+	f_7 @107 NONAME
+	f_8 @108 NONAME
+	f_9 @109 NONAME
+	f_10 @110 NONAME
+	DllCanUnloadNow=f_11 @111
+	f_12 @112 NONAME
+	f_13 @113 NONAME
+	f_14 @114 NONAME
+	DllGetClassObject=f_15 @115
+	DwmAttachMilContent=f_16 @116
+	DwmDefWindowProc=f_17 @117
+	DwmDetachMilContent=f_18 @118
+	DwmEnableBlurBehindWindow=f_19 @119
+	DwmEnableMMCSS=f_20 @120
+	DwmExtendFrameIntoClientArea=f_21 @121
+	DwmFlush=f_22 @122
+	DwmGetColorizationColor=f_23 @123
+	f_24 @124 NONAME
+	DwmGetCompositionTimingInfo=f_25 @125
+	DwmGetGraphicsStreamClient=f_26 @126
+	DwmpGetColorizationParameters=f_27 @127
+	DwmpDxgiIsThreadDesktopComposited=f_28 @128
+	DwmGetGraphicsStreamTransformHint=f_29 @129
+	DwmGetTransportAttributes=f_30 @130
+	DwmpSetColorizationParameters=f_31 @131
+	f_32 @132 NONAME
+	DwmGetUnmetTabRequirements=f_33 @133
+	DwmGetWindowAttribute=f_34 @134
+	DwmpRenderFlick=f_35 @135
+	DwmpAllocateSecurityDescriptor=f_36 @136
+	DwmpFreeSecurityDescriptor=f_37 @137
+	f_38 @138 NONAME
+	f_39 @139 NONAME
+	f_40 @140 NONAME
+	f_41 @141 NONAME
+	f_42 @142 NONAME
+	DwmpEnableDDASupport=f_43 @143
+	f_44 @144 NONAME
+	f_45 @145 NONAME
+	f_46 @146 NONAME
+	f_47 @147 NONAME
+	f_48 @148 NONAME
+	DwmInvalidateIconicBitmaps=f_49 @149
+	f_50 @150 NONAME
+	f_51 @151 NONAME
+	f_52 @152 NONAME
+	f_53 @153 NONAME
+	f_54 @154 NONAME
+	f_55 @155 NONAME
+	DwmTetherTextContact=f_56 @156
+	f_57 @157 NONAME
+	f_58 @158 NONAME
+	f_59 @159 NONAME
+	f_60 @160 NONAME
+	f_61 @161 NONAME
+	f_62 @162 NONAME
+	f_63 @163 NONAME
+	f_64 @164 NONAME
+	f_65 @165 NONAME
+	f_66 @166 NONAME
+	f_67 @167 NONAME
+	f_68 @168 NONAME
+	f_69 @169 NONAME
+	f_70 @170 NONAME
+	f_71 @171 NONAME
+	f_72 @172 NONAME
+	f_73 @173 NONAME
+	f_74 @174 NONAME
+	f_75 @175 NONAME
+	f_76 @176 NONAME
+	f_77 @177 NONAME
+	f_78 @178 NONAME
+	f_79 @179 NONAME
+	f_80 @180 NONAME
+	f_81 @181 NONAME
+	f_82 @182 NONAME
+	DwmpUpdateProxyWindowForCapture=f_83 @183
+	DwmIsCompositionEnabled=f_84 @184
+	DwmModifyPreviousDxFrameDuration=f_85 @185
+	DwmQueryThumbnailSourceSize=f_86 @186
+	DwmRegisterThumbnail=f_87 @187
+	DwmRenderGesture=f_88 @188
+	DwmSetDxFrameDuration=f_89 @189
+	DwmSetIconicLivePreviewBitmap=f_90 @190
+	DwmSetIconicThumbnail=f_91 @191
+	DwmSetPresentParameters=f_92 @192
+	DwmSetWindowAttribute=f_93 @193
+	DwmShowContact=f_94 @194
+	DwmTetherContact=f_95 @195
+	DwmTransitionOwnedWindow=f_96 @196
+	DwmUnregisterThumbnail=f_97 @197
+	DwmUpdateThumbnailProperties=f_98 @198

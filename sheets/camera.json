@@ -1,0 +1,132 @@
+{
+ "_about": "MORDHAU's camera, measured in the running game (tools: a Lua snippet reading PlayerCameraManager at look 0, -30 and +30 degrees in third person), applied to Skyrim's camera while MORDHAU is live. Third person is a boom: camera = pivot - arm_back x view direction + arm_up x view up. value in cm or degrees. verified = seen in the running games.",
+ "rows": [
+  {
+   "id": "fov",
+   "value": 110.0,
+   "unit": "degrees, as both games count it (horizontal at 4:3, wider on a wide screen)",
+   "source": "fallback only: the live value is MORDHAU's camera component FieldOfView, streamed (110 with this player's setting of 101). PlayerCameraManager:GetFOVAngle says 78 and is NOT what is rendered.",
+   "verified": false
+  },
+  {
+   "id": "pivot_up",
+   "value": 115.5,
+   "unit": "cm above the character's feet",
+   "source": "solved from three camera positions",
+   "verified": false
+  },
+  {
+   "id": "pivot_forward",
+   "value": 4.1,
+   "unit": "cm in front of the character",
+   "source": "solved from three camera positions",
+   "verified": false
+  },
+  {
+   "id": "arm_back",
+   "value": 140.0,
+   "unit": "cm behind the pivot along the view",
+   "source": "solved from three camera positions (checked against the third: 0.3 / 2.7 cm off) | 140 on 2026-10-09 (was 104.4, MORDHAU's own boom as measured): play-test note: the third-person camera was not far enough out",
+   "verified": false
+  },
+  {
+   "id": "arm_up",
+   "value": 94.3,
+   "unit": "cm above the pivot, in the camera's own up direction",
+   "source": "solved from three camera positions",
+   "verified": false
+  },
+  {
+   "id": "side",
+   "value": 0.5,
+   "unit": "cm to the right (centred)",
+   "source": "measured",
+   "verified": false
+  },
+  {
+   "id": "pitch_offset",
+   "value": -2.2,
+   "unit": "degrees the camera looks below the character's look direction",
+   "source": "measured; NOT applied (Skyrim's own view direction is kept)",
+   "verified": false
+  },
+  {
+   "id": "fists_forward",
+   "value": "8.0",
+   "unit": "cm",
+   "source": "play-test note, 2026-10-09 - first person, bare hands: MORDHAU's arms are drawn this far further from the camera (Skyrim's view starts farther out than MORDHAU's); 8 chosen",
+   "verified": false
+  },
+  {
+   "id": "first_person_eye",
+   "value": "1.0",
+   "unit": "1 = on",
+   "source": "play-test note, 2026-10-11 (first person, side swings). Measured at the user's own hits: Skyrim's first-person camera is 171-172 cm above the player's feet, MORDHAU's 182-183 cm above its character's. MORDHAU's first-person body is drawn from MORDHAU's camera laid onto Skyrim's, so the blade MORDHAU judges with was 11 cm higher on the enemy than the blade seen: an upper-chest swing was a neck / head hit. While MORDHAU is live and in first person Skyrim's camera is raised to MORDHAU's eye height above the player's feet (never lowered, at most 25 units).",
+   "verified": true,
+   "verified_how": "play-test note, playing, 2026-10-11; log: Skyrim's camera 177-181 cm against MORDHAU's 171-181 at the hits"
+  },
+  {
+   "id": "first_person_body",
+   "value": "1.0",
+   "unit": "1 = on",
+   "source": "play-test note, 2026-10-11. First person is an eye view of the player's own Skyrim body: Skyrim's camera stays in its third-person state (the body is drawn, armour and all, and posed by MORDHAU's first-person animation), the camera is put at the eyes every frame after the body is posed, and the head bone is shrunk to nothing so the camera is not inside the head. Whenever Skyrim goes into its own first person while MORDHAU is live (its view key, the wheel, a save made that way) that is taken as the switch: eye view on / off, camera back to third-person state. 0: first person as before (MORDHAU's own arms drawn from MORDHAU's camera).",
+   "verified": false
+  },
+  {
+   "id": "eye_up",
+   "value": "10.0",
+   "unit": "cm",
+   "source": "eye view: the camera this far above the Skyrim head bone (the bone sits at the base of the skull); chosen, to be tuned by eye",
+   "verified": false
+  },
+  {
+   "id": "eye_forward",
+   "value": "9.0",
+   "unit": "cm",
+   "source": "eye view: ... and this far ahead of it, along the way the camera faces (level); chosen, to be tuned by eye",
+   "verified": false
+  },
+  {
+   "id": "eye_near",
+   "value": "6.0",
+   "unit": "Skyrim units",
+   "source": "eye view: the nearest distance the camera draws at (Skyrim's fNearDistance:Display, 15 as shipped), while the eye view is on; put back when it is off. play-test note, 2026-10-11, left hand on the two-handed grip while looking up - the hand and bracer cut into flat slivers with straight edges: the hand is beside the eyes there, nearer than 15 units along the view. Lower = nearer things drawn whole, but far-off flicker grows; chosen, to be tuned by eye",
+   "verified": false
+  },
+  {
+   "id": "eye_head_hidden",
+   "value": "0.0",
+   "unit": "1 = hidden",
+   "source": "play-test note, 2026-10-12: in scenes the head stayed hidden, and it cast no shadow. 0 = in the eye view the head is left as it is and the camera sits in front of the face (eye_forward_head_shown), so the head is behind the camera and not in the picture: it casts its shadow, and nothing needs putting back when Skyrim takes the camera. May show parts of a helmet or hair that reach forward. 1 = as before: camera inside the head (eye_forward), head bone shrunk to nothing.",
+   "verified": true
+  },
+  {
+   "id": "eye_forward_head_shown",
+   "value": "15.0",
+   "unit": "cm",
+   "source": "see eye_head_hidden: how far ahead of the head bone the camera sits when the head is not hidden (the face is about 10-12 cm ahead of that bone; nearer than eye_near nothing is drawn anyway); chosen, to be tuned by eye",
+   "verified": true
+  },
+  {
+   "id": "eye_forward_looking_down",
+   "value": "14.0",
+   "unit": "cm",
+   "source": "play-test note, 2026-10-12, head shown: looking down the view was inside the body (the chest and its armour reach further forward than the face). The camera goes this much further forward when the view points straight down, in proportion in between (a head tips forward as its owner looks down); nothing is added looking level or up. Chosen, to be tuned by eye. Only with eye_head_hidden 0.",
+   "verified": true
+  },
+  {
+   "id": "eye_head_hidden_looking_down",
+   "value": 0.45,
+   "meaning": "eye view: the head (with helmet and hair) is not drawn while the view looks down more than this (0 level ... 1 straight down). Play-test note 2026-10-15: 'i can see the horns of my helmet when looking down'.",
+   "source": "the user, 2026-10-15; the value by eye",
+   "verified": false
+  },
+  {
+   "id": "eye_lower",
+   "value": "5.0",
+   "unit": "cm",
+   "source": "play-test note, 2026-10-12 (eye view, Riverwood duel): 'i am quite a bit taller than the enemy ... lower me down to eye level with skyrims enemies'. The eye view's camera is set this far lower than the player's own head would have it. 0 until measured: the log line 'eye level:' (every few seconds while someone is fought) gives the player's head and each fought character's head above their own feet. 10 since 2026-10-13 ('just lower the eyes to skyrim eye height'): the eye view stood 180-182 cm above the player's feet (MORDHAU's eye height), Skyrim's own first-person camera 171-172 (see first_person_eye) - 10 cm lower puts it at Skyrim's. Back to 0 the same night ('cancel the camera move'), before it was ever installed. 5 since 2026-10-13 00:25, by eye, in the Riverwood duel ('i am still taller than the guy, lower camera 5 cm').",
+   "verified": false
+  }
+ ]
+}

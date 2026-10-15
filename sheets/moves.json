@@ -1,0 +1,191 @@
+{
+ "_about": "One row per non-attack combat move and rule. window_ms / cost values are MORDHAU's and stay null until read from the player's MORDHAU data. applies_to: who can do it (player, humanoid, creature). hook: row id in hooks.json that implements it. ui: row id in ui.json that shows it.",
+ "rows": [
+  {
+   "id": "parry",
+   "input": "block_press",
+   "window_ms": null,
+   "recovery_ms": null,
+   "stamina_cost": null,
+   "mordhau_clip": "Parry",
+   "result": "negate hit; open riposte window",
+   "applies_to": [
+    "player",
+    "humanoid"
+   ],
+   "hook": "hit_resolve",
+   "ui": "parry_flash",
+   "source": null,
+   "verified": false
+  },
+  {
+   "id": "riposte",
+   "input": "attack_within_riposte_window",
+   "window_ms": null,
+   "recovery_ms": null,
+   "stamina_cost": null,
+   "mordhau_clip": "*_Riposte",
+   "result": "attack skips windup; cannot be feinted; not flinched",
+   "applies_to": [
+    "player",
+    "humanoid"
+   ],
+   "hook": "attack_start",
+   "ui": "swing_arrow",
+   "source": null,
+   "verified": false
+  },
+  {
+   "id": "chamber",
+   "input": "matching_swing_in_window",
+   "window_ms": null,
+   "recovery_ms": null,
+   "stamina_cost": null,
+   "mordhau_clip": "Chambered_*",
+   "result": "negate hit; own attack continues into release",
+   "applies_to": [
+    "player",
+    "humanoid"
+   ],
+   "hook": "hit_resolve",
+   "ui": "parry_flash",
+   "source": null,
+   "verified": false
+  },
+  {
+   "id": "feint",
+   "input": "feint_key_during_windup",
+   "window_ms": null,
+   "recovery_ms": null,
+   "stamina_cost": null,
+   "mordhau_clip": "Feint_*",
+   "result": "cancel attack; lockout before next attack or parry",
+   "applies_to": [
+    "player",
+    "humanoid"
+   ],
+   "hook": "attack_cancel",
+   "ui": "swing_arrow",
+   "source": null,
+   "verified": false
+  },
+  {
+   "id": "morph",
+   "input": "other_attack_during_windup",
+   "window_ms": null,
+   "recovery_ms": null,
+   "stamina_cost": null,
+   "mordhau_clip": null,
+   "result": "strike becomes stab or stab becomes strike",
+   "applies_to": [
+    "player",
+    "humanoid"
+   ],
+   "hook": "attack_cancel",
+   "ui": "swing_arrow",
+   "source": null,
+   "verified": false
+  },
+  {
+   "id": "combo",
+   "input": "attack_during_release",
+   "window_ms": null,
+   "recovery_ms": null,
+   "stamina_cost": null,
+   "mordhau_clip": null,
+   "result": "next attack starts from combo windup, on hit or miss",
+   "applies_to": [
+    "player",
+    "humanoid"
+   ],
+   "hook": "attack_start",
+   "ui": "swing_arrow",
+   "source": null,
+   "verified": false
+  },
+  {
+   "id": "combo_feint_to_parry",
+   "input": "block_during_combo_windup",
+   "window_ms": null,
+   "recovery_ms": null,
+   "stamina_cost": null,
+   "mordhau_clip": "Parry",
+   "result": "cancel queued combo into a parry",
+   "applies_to": [
+    "player",
+    "humanoid"
+   ],
+   "hook": "attack_cancel",
+   "ui": "parry_flash",
+   "source": null,
+   "verified": false
+  },
+  {
+   "id": "miss",
+   "input": "release_ends_without_hit",
+   "window_ms": null,
+   "recovery_ms": null,
+   "stamina_cost": null,
+   "mordhau_clip": null,
+   "result": "stamina cost; recovery unless comboed",
+   "applies_to": [
+    "player",
+    "humanoid"
+   ],
+   "hook": "attack_end",
+   "ui": "stamina_bar",
+   "source": null,
+   "verified": false
+  },
+  {
+   "id": "stamina_out",
+   "input": "stamina_reaches_zero",
+   "window_ms": null,
+   "recovery_ms": null,
+   "stamina_cost": 0,
+   "mordhau_clip": null,
+   "result": "parrying at zero disarms; cannot feint or morph",
+   "applies_to": [
+    "player",
+    "humanoid"
+   ],
+   "hook": "hit_resolve",
+   "ui": "stamina_bar",
+   "source": null,
+   "verified": false
+  },
+  {
+   "id": "flinch",
+   "input": "hit_during_windup",
+   "window_ms": null,
+   "recovery_ms": null,
+   "stamina_cost": 0,
+   "mordhau_clip": null,
+   "result": "attack interrupted",
+   "applies_to": [
+    "player",
+    "humanoid"
+   ],
+   "hook": "hit_resolve",
+   "ui": null,
+   "source": null,
+   "verified": false
+  },
+  {
+   "id": "creature_attack",
+   "input": "vanilla_attack",
+   "window_ms": 0,
+   "recovery_ms": 0,
+   "stamina_cost": 0,
+   "mordhau_clip": null,
+   "result": "keeps Skyrim attack; can be parried, not chambered",
+   "applies_to": [
+    "creature"
+   ],
+   "hook": "hit_resolve",
+   "ui": null,
+   "source": "design",
+   "verified": false
+  }
+ ]
+}

@@ -1,0 +1,69 @@
+{
+ "_about": "One row per Skyrim weapon type. mordhau_weapon: the weapon definition (under Mordhau/Content/Mordhau/Blueprints/Equipment/Weapons/) whose numbers the plugin reads at runtime from the player's own MORDHAU, following parent definitions for values a weapon leaves unset (attack_stats.json says which numbers). clip_set: which rows of clips.json this weapon uses. source_checked: the definition and its values were read on this PC.",
+ "rows": [
+  {
+   "id": "one_hand_sword",
+   "skyrim_weapon_type": "kOneHandSword",
+   "mordhau_weapon": "Specific/OneHanded/BP_ArmingSword",
+   "clip_set": "1H",
+   "source_checked": true,
+   "verified": false
+  },
+  {
+   "id": "one_hand_dagger",
+   "skyrim_weapon_type": "kOneHandDagger",
+   "mordhau_weapon": "Specific/OneHanded/BP_Dagger",
+   "clip_set": "1H",
+   "source_checked": true,
+   "verified": false
+  },
+  {
+   "id": "one_hand_axe",
+   "skyrim_weapon_type": "kOneHandAxe",
+   "mordhau_weapon": "Specific/OneHanded/BP_Axe",
+   "clip_set": "1H",
+   "source_checked": true,
+   "verified": false
+  },
+  {
+   "id": "one_hand_mace",
+   "skyrim_weapon_type": "kOneHandMace",
+   "mordhau_weapon": "Specific/OneHanded/BP_Mace",
+   "clip_set": "1H",
+   "source_checked": true,
+   "verified": false
+  },
+  {
+   "id": "two_hand_sword",
+   "skyrim_weapon_type": "kTwoHandSword",
+   "mordhau_weapon": "Specific/TwoHandedSword/BP_Greatsword",
+   "clip_set": "2HSword",
+   "source_checked": true,
+   "verified": false
+  },
+  {
+   "id": "two_hand_axe",
+   "skyrim_weapon_type": "kTwoHandAxe",
+   "mordhau_weapon": "Specific/Polearms/BP_BattleAxe",
+   "clip_set": "Polearm",
+   "source_checked": true,
+   "verified": false
+  },
+  {
+   "id": "two_hand_hammer",
+   "skyrim_weapon_type": "kTwoHandAxe+WeapTypeWarhammer",
+   "mordhau_weapon": "Specific/TwoHandedBlunt/BP_Maul",
+   "clip_set": "Polearm",
+   "source_checked": true,
+   "verified": false
+  },
+  {
+   "id": "unarmed",
+   "skyrim_weapon_type": "kHandToHandMelee",
+   "mordhau_weapon": "BP_FistsWeapon",
+   "clip_set": "Fists",
+   "source_checked": true,
+   "verified": false
+  }
+ ]
+}

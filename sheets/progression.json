@@ -1,0 +1,119 @@
+{
+ "_about": "Side-by-side mode: how much a MORDHAU-judged melee hit takes off in Skyrim, so that fights follow Skyrim's progression. A hit takes a FRACTION of the target's full health: (1 / hits_to_kill) x quality x level x offence / defence, kept between fraction_min and fraction_max. quality = MORDHAU's damage for that hit / clean_hit (where it landed, its armour, the weapon), kept between quality_min and quality_max. level = (attacker level + level_soften) / (target level + level_soften), kept between level_min and level_max. offence (player only) = the damage Skyrim itself would give this hit (weapon, skill, perks, smithing) / what is ordinary at the player's level (damage_base + damage_per_level per level). defence = full health / what is ordinary at the target's level (player: health_base + health_per_level; others: npc_health_base + npc_health_per_level), and for the player also Skyrim's armour rating (armour_share of Skyrim's own reduction). offence and defence are kept between build_min and build_max. The ordinary-at-level curves are this mod's own choice, to be tuned by play. MORDHAU's weapon balance is kept: which weapon kind hits harder, where the hit lands and what armour it meets is all in MORDHAU's own damage (quality), passed on in proportion. Skyrim's damage only says how good THIS weapon is for its kind (material, smithing) and how skilled its wielder: it is divided by its kind's weight (Skyrim's iron-tier base damage relative to a sword: dagger 4/7, sword 1, war axe 8/7, mace 9/7, greatsword 15/7, battleaxe and warhammer 17/7) before it is compared with the ordinary damage.",
+ "rows": [
+  {
+   "id": "hits_to_kill",
+   "value": 5.0,
+   "meaning": "clean hits that kill an equal: same level, ordinary health, ordinary weapon",
+   "verified": false
+  },
+  {
+   "id": "clean_hit",
+   "value": 40.0,
+   "meaning": "MORDHAU damage (of 100) counted as one clean hit",
+   "verified": false
+  },
+  {
+   "id": "quality_min",
+   "value": 0.2,
+   "meaning": "MORDHAU's weakest hits (a dagger on plate) still count this much; between the limits quality is MORDHAU's own damage, unchanged in proportion",
+   "verified": false
+  },
+  {
+   "id": "quality_max",
+   "value": 3.0,
+   "meaning": "MORDHAU's heaviest hits (a maul to the head) count at most this much",
+   "verified": false
+  },
+  {
+   "id": "level_soften",
+   "value": 8.0,
+   "meaning": "added to both levels before dividing, so level 1 against level 3 is not a threefold gap",
+   "verified": false
+  },
+  {
+   "id": "level_min",
+   "value": 0.4,
+   "meaning": "far below the target in level: hits count at least this much",
+   "verified": false
+  },
+  {
+   "id": "level_max",
+   "value": 2.5,
+   "meaning": "far above the target in level: hits count at most this much",
+   "verified": false
+  },
+  {
+   "id": "damage_base",
+   "value": 10.0,
+   "meaning": "ordinary Skyrim damage of the player's hit at level 1, for a one-handed sword (other weapon kinds are first brought to sword terms, see weapon kinds)",
+   "verified": false
+  },
+  {
+   "id": "damage_per_level",
+   "value": 1.5,
+   "meaning": "and how much it grows per level",
+   "verified": false
+  },
+  {
+   "id": "health_base",
+   "value": 100.0,
+   "meaning": "ordinary full health of the player at level 1",
+   "verified": false
+  },
+  {
+   "id": "health_per_level",
+   "value": 5.0,
+   "meaning": "and per level (every second level-up put into health)",
+   "verified": false
+  },
+  {
+   "id": "npc_health_base",
+   "value": 50.0,
+   "meaning": "ordinary full health of others at level 1",
+   "verified": false
+  },
+  {
+   "id": "npc_health_per_level",
+   "value": 10.0,
+   "meaning": "and per level (measured in the user's game: level 4 townsfolk 75, level 10 commander 122, level 20 guard 252)",
+   "verified": false
+  },
+  {
+   "id": "armour_share",
+   "value": 0.5,
+   "meaning": "how much of Skyrim's armour-rating reduction counts for the player (MORDHAU's own armour already counts in quality)",
+   "verified": false
+  },
+  {
+   "id": "build_min",
+   "value": 0.6,
+   "meaning": "offence and defence never count less than this",
+   "verified": false
+  },
+  {
+   "id": "build_max",
+   "value": 1.8,
+   "meaning": "nor more than this",
+   "verified": false
+  },
+  {
+   "id": "fraction_min",
+   "value": 0.03,
+   "meaning": "a hit always takes at least this share of full health",
+   "verified": false
+  },
+  {
+   "id": "fraction_max",
+   "value": 1.0,
+   "meaning": "and at most this",
+   "verified": false
+  },
+  {
+   "id": "lethal_blow",
+   "value": 100.0,
+   "meaning": "a blow MORDHAU itself rates at this much or more (of 100 health: a maul to the head through any armour) takes ALL of the target's health, as it kills outright in MORDHAU - against a target of a higher level only that level factor's share. For the player's blows and for blows on the player alike.",
+   "verified": false
+  }
+ ]
+}

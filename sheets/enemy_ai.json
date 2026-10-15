@@ -1,0 +1,100 @@
+{
+ "_about": "One row per decision a humanoid enemy makes. chance values are design choices scaled by the NPC's Skyrim combat skill (0-100): chance = base + per_skill * skill, clamped 0..1. uses: row id in moves.json or 'swings' for any swings row. reaction_ms: delay before the NPC can respond, so parries stay beatable.",
+ "rows": [
+  {
+   "id": "pick_direction",
+   "when": "attack starts",
+   "uses": "swings",
+   "base": 1.0,
+   "per_skill": 0.0,
+   "reaction_ms": 0,
+   "note": "random strike direction; stab more often at range",
+   "hook": "enemy_ai",
+   "verified": false
+  },
+  {
+   "id": "try_parry",
+   "when": "incoming attack enters release, facing it",
+   "uses": "parry",
+   "base": 0.15,
+   "per_skill": 0.006,
+   "reaction_ms": 220,
+   "note": "falls to base when out of stamina or in recovery",
+   "hook": "enemy_ai",
+   "verified": false
+  },
+  {
+   "id": "try_riposte",
+   "when": "own parry succeeded",
+   "uses": "riposte",
+   "base": 0.5,
+   "per_skill": 0.005,
+   "reaction_ms": 0,
+   "note": "",
+   "hook": "enemy_ai",
+   "verified": false
+  },
+  {
+   "id": "try_feint",
+   "when": "in windup, target is holding parry",
+   "uses": "feint",
+   "base": 0.0,
+   "per_skill": 0.003,
+   "reaction_ms": 150,
+   "note": "only with stamina above feint cost",
+   "hook": "enemy_ai",
+   "verified": false
+  },
+  {
+   "id": "try_combo",
+   "when": "own attack in release",
+   "uses": "combo",
+   "base": 0.2,
+   "per_skill": 0.004,
+   "reaction_ms": 0,
+   "note": "",
+   "hook": "enemy_ai",
+   "verified": false
+  },
+  {
+   "id": "try_chamber",
+   "when": "incoming strike in chamber window, skill > 60",
+   "uses": "chamber",
+   "base": 0.0,
+   "per_skill": 0.002,
+   "reaction_ms": 250,
+   "note": "",
+   "hook": "enemy_ai",
+   "verified": false
+  },
+  {
+   "id": "standin_skill",
+   "when": "a MORDHAU bot becomes the stand-in of a Skyrim character",
+   "uses": "parry",
+   "base": 0.55,
+   "per_skill": 0.0,
+   "reaction_ms": 0,
+   "note": "MORDHAU hands bots a behaviour profile of its own choosing (seen: BOTBEHAVIOR_Worthless2 - no well-timed parries, up to 0.4 s of timing error; seen in play as poor parrying). The stand-in's profile is overwritten: PerfectParryProbability = base (0.55), ParryTimingVariance 0..0.08 s, ParryTimingRandom 0.04, FallForFeintProbability 0.5, FootworkInsteadOfParryProbability 0.05, RiposteProbability 1, FeintProbability 0.2, MorphProbability 0.15, ChamberProbability 0.3. One level for everyone for now (not yet by the Skyrim character's level). 2026-10-08 02:20: the profile alone did nothing - the bot (profile Worthless2) stood idle or played its yield emote at the player's releases, never a parry. So the script itself asks for the parry: as the player's swing is released within 230 cm of an idle stand-in, it parries with the chance `base` (0.55), and its emotes are cut short.",
+   "hook": "main.lua PS_standin_skill",
+   "verified": false
+  },
+  {
+   "id": "skill_levels",
+   "when": "F8 in game (weapon out or away): a list to pick from; remembered between sessions",
+   "uses": "parry",
+   "base": 3,
+   "per_skill": 0.0,
+   "reaction_ms": 0,
+   "note": "five levels for every stand-in - 1 Peasant: parries 15% of the player's swings, well-timed parry 0.10, feints 0.00, morphs 0.00, hesitates 0.9 s before attacking; 2 Recruit: 35%, 0.30, 0.05, 0.00, 0.6 s; 3 Soldier (default): 55%, 0.55, 0.20, 0.15, 0.4 s; 4 Veteran: 75%, 0.75, 0.35, 0.30, 0.25 s; 5 Duelist: 90%, 0.90, 0.50, 0.45, 0.1 s. Sent as ' ai:<level>'.",
+   "hook": "Combat.cpp ShowAiMenu / main.lua PS_ai_levels",
+   "verified": false
+  }
+ ],
+ "boss_skill": {
+  "_about": "Named (unique) enemies and ones well above the player's level fight above the skill level chosen in the F8 menu (never above 5).",
+  "unique_steps": 1,
+  "levels_above_for_a_step": 8,
+  "max_steps": 2,
+  "verified": false
+ }
+}

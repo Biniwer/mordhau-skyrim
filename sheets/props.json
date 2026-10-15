@@ -1,0 +1,421 @@
+{
+ "_about": "MORDHAU models the plugin draws in Skyrim's world besides the characters: weapons (in the hand, dropped, thrown), arrows and bolts in flight or stuck where they struck, and gore. One row per model, read from the player's own MORDHAU install and prepared into cache/props/<id> by the plugin's own baker (plugin/src/bake). kind: weapon = the default parts of weapon_bp; bolt = an arrow or crossbow bolt; gore = neck and stump pieces and the blood pattern. (Until 2026-10-12 this sheet also held the bear trap, spike wall, archer cover, firebomb and ballista; those were removed from the mod.)",
+ "rows": [
+  {
+   "id": "w_ArmingSword",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_ArmingSword",
+   "verified": false
+  },
+  {
+   "id": "w_Axe",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Axe",
+   "verified": false
+  },
+  {
+   "id": "w_Dagger",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Dagger",
+   "verified": false
+  },
+  {
+   "id": "w_Mace",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Mace",
+   "verified": false
+  },
+  {
+   "id": "w_BattleAxe",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_BattleAxe",
+   "verified": false
+  },
+  {
+   "id": "w_Maul",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Maul",
+   "verified": false
+  },
+  {
+   "id": "w_Greatsword",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Greatsword",
+   "verified": false
+  },
+  {
+   "id": "w_Shortsword",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Shortsword",
+   "verified": false
+  },
+  {
+   "id": "w_Falchion",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Falchion",
+   "verified": false
+  },
+  {
+   "id": "w_Rapier",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Rapier",
+   "verified": false
+  },
+  {
+   "id": "w_BastardSword",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_BastardSword",
+   "verified": false
+  },
+  {
+   "id": "w_Knife",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Knife",
+   "verified": false
+  },
+  {
+   "id": "w_HandAxe",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_HandAxe",
+   "verified": false
+  },
+  {
+   "id": "w_Warhammer",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Warhammer",
+   "verified": false
+  },
+  {
+   "id": "w_Longsword",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Longsword",
+   "verified": false
+  },
+  {
+   "id": "w_Messer",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Messer",
+   "verified": false
+  },
+  {
+   "id": "w_ExecutionerSword",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_ExecutionerSword",
+   "verified": false
+  },
+  {
+   "id": "w_Estoc",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Estoc",
+   "verified": false
+  },
+  {
+   "id": "w_Zweihander",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Zweihander",
+   "verified": false
+  },
+  {
+   "id": "w_WarAxe",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_WarAxe",
+   "verified": false
+  },
+  {
+   "id": "w_Halberd",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Halberd",
+   "verified": false
+  },
+  {
+   "id": "w_Bardiche",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Bardiche",
+   "verified": false
+  },
+  {
+   "id": "w_2Hmace",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_2Hmace",
+   "verified": false
+  },
+  {
+   "id": "w_Polehammer",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Polehammer",
+   "verified": false
+  },
+  {
+   "id": "gore_neck",
+   "kind": "gore",
+   "model": "Mordhau/Assets/Gore/Remake/GoreNeck",
+   "colour_map": "Mordhau/Assets/Gore/Remake/Gore_Albedo",
+   "normal_map": "Mordhau/Assets/Gore/Remake/Gore_Normal",
+   "surface_map": "Mordhau/Assets/Gore/Remake/Gore_RMA",
+   "verified": false
+  },
+  {
+   "id": "gore_stump",
+   "kind": "gore",
+   "model": "Mordhau/Assets/Gore/Remake/Gore1JuttedBone",
+   "colour_map": "Mordhau/Assets/Gore/Remake/Gore_Albedo",
+   "normal_map": "Mordhau/Assets/Gore/Remake/Gore_Normal",
+   "surface_map": "Mordhau/Assets/Gore/Remake/Gore_RMA",
+   "verified": false
+  },
+  {
+   "id": "blood_mask",
+   "kind": "gore",
+   "model": "Mordhau/Assets/Gore/Remake/GoreNeck",
+   "colour_map": "Mordhau/Assets/Environment/MaterialFunctions/T_GrungeScratchBlood",
+   "normal_map": "",
+   "surface_map": "",
+   "note": "only its texture is used: MORDHAU's blood grunge, the pattern of the blood layer on characters and weapons",
+   "verified": false
+  },
+  {
+   "id": "arrow",
+   "kind": "bolt",
+   "model": "Mordhau/Assets/Weapons/Longbow/Arrow/LongbowArrow",
+   "colour_map": "Mordhau/Assets/Weapons/Longbow/Arrow/LongbowArrow_Albedo",
+   "normal_map": "Mordhau/Assets/Weapons/Longbow/Arrow/LongbowArrow_Normal",
+   "surface_map": "",
+   "verified": false
+  },
+  {
+   "id": "crossbow_bolt",
+   "kind": "bolt",
+   "model": "Mordhau/Assets/Weapons/Crossbow/Bolt/Bolt",
+   "colour_map": "Mordhau/Assets/Weapons/Crossbow/Bolt/Bolt_Albedo",
+   "normal_map": "Mordhau/Assets/Weapons/Crossbow/Bolt/Bolt_Normal",
+   "surface_map": "Mordhau/Assets/Weapons/Crossbow/Bolt/Bolt_RMA",
+   "verified": false
+  },
+  {
+   "id": "w_RecurveBow",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_RecurveBow",
+   "verified": false
+  },
+  {
+   "id": "w_Longbow",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Longbow",
+   "verified": false
+  },
+  {
+   "id": "w_Crossbow",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Crossbow",
+   "verified": false
+  },
+  {
+   "id": "w_Billhook",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Billhook",
+   "verified": false
+  },
+  {
+   "id": "w_Spear",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Spear",
+   "verified": false
+  },
+  {
+   "id": "w_KiteShield",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_KiteShield",
+   "verified": false
+  },
+  {
+   "id": "w_BucklerShield",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_BucklerShield",
+   "verified": false
+  },
+  {
+   "id": "w_TargeShield",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_TargeShield",
+   "verified": false
+  },
+  {
+   "id": "w_HeaterShield",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_HeaterShield",
+   "verified": false
+  },
+  {
+   "id": "w_RoundShield",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_RoundShield",
+   "verified": false
+  },
+  {
+   "id": "w_Scimitar",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Scimitar",
+   "verified": false
+  },
+  {
+   "id": "w_Poleaxe",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Poleaxe",
+   "verified": false
+  },
+  {
+   "id": "w_Falx",
+   "kind": "weapon",
+   "model": "",
+   "colour_map": "",
+   "normal_map": "",
+   "surface_map": "",
+   "weapon_bp": "BP_Falx",
+   "verified": false
+  }
+ ]
+}

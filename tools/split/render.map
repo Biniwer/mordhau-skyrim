@@ -1,0 +1,7 @@
+# which file each function of CharacterRender.cpp goes to (functions not named stay in CharacterRender.cpp)
+RenderLight.cpp: PersonOf ReadSceneLight SunReaching BloodOf FillLight
+RenderHud.cpp: HudCaptureLoop UpdateHudTexture DrawHudOnBackBuffer PresentHook EnsurePresentHook DrawHitMarker DrawFallbackBars
+RenderSkeleton.cpp: GetClip RestPose SampleClip Blend AngleBetween SampleRow LoadLocomotion LivePose BuildBones MirrorX BoneNamed PrepareRetarget BuildFromSkyrim PoseSkyrimBody PoseSkyrimBodiesNow
+RenderWeapons.cpp: PlaceWeaponNode PlaceEnemyWeaponsNow PlacePlayerWeaponForFrame TurnFromTo ArmsToMordhauHands PlacePlayerWeaponThirdNow
+RenderOutfits.cpp: LookCount OutfitFor ListArmourMatches LookFor PlayerOutfit
+RenderDraw.cpp: PlaceDroppedPlayerWeapon PlaceSkyrimWeaponInHand PickHandWeaponModel LoadBloodPattern DrawSkyrimWeapon DrawPlayerShield DrawHandWeaponModel ListNearFigures DrawStandInWeapon DrawStandIns DrawOnSkyrimBodies DrawOwnerlessWeapons DrawLooseHeads DrawProps DrawWorldFigures DrawArrowTrails ShowFirstPersonView DrawInFrame

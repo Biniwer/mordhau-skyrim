@@ -1,0 +1,68 @@
+{
+ "_about": "One row per number the parry uses. mordhau_property: property on MORDHAU's parry motion definition (Mordhau/Content/Mordhau/Blueprints/Motions/BP_ParryMotion, per-weapon versions under Motions/ParryMotions inherit it), read at runtime from the player's own MORDHAU; null = MORDHAU's data files hold no such number (it lives in the program), so only the fallback exists. fallback: this mod's own value when MORDHAU has none or is not installed. read_ok: the value was read on this PC.",
+ "rows": [
+  {
+   "id": "parry_window",
+   "mordhau_property": "ParryUpTime",
+   "unit": "s",
+   "meaning": "how long a parry can stop a hit, from the press",
+   "fallback": 0.3,
+   "read_ok": true,
+   "verified": true
+  },
+  {
+   "id": "parry_recovery",
+   "mordhau_property": "ParryRecoveryTime",
+   "unit": "s",
+   "meaning": "time from the press before another parry can start (this mod's reading of the name)",
+   "fallback": 0.65,
+   "read_ok": true,
+   "verified": false
+  },
+  {
+   "id": "parry_miss_recovery",
+   "mordhau_property": "MissParryRecoveryTime",
+   "unit": "s",
+   "meaning": "extra time the parry pose is held after the window closes with nothing parried (this mod's reading of the name)",
+   "fallback": 0.25,
+   "read_ok": true,
+   "verified": false
+  },
+  {
+   "id": "parry_max_angle",
+   "mordhau_property": "MaxParryAngle",
+   "unit": "deg",
+   "meaning": "the attacker must be within this angle of where the defender faces",
+   "fallback": 75.0,
+   "read_ok": true,
+   "verified": false
+  },
+  {
+   "id": "riposte_window",
+   "mordhau_property": null,
+   "unit": "s",
+   "meaning": "after a parry, an attack started within this time is a riposte",
+   "fallback": 0.4,
+   "read_ok": false,
+   "verified": true
+  },
+  {
+   "id": "riposte_windup",
+   "mordhau_property": null,
+   "unit": "s",
+   "meaning": "wind-up of a riposte, replacing the weapon's normal wind-up",
+   "fallback": 0.25,
+   "read_ok": false,
+   "verified": true
+  },
+  {
+   "id": "live_parry_grace",
+   "mordhau_property": "ParryUpTime",
+   "unit": "s",
+   "meaning": "side-by-side mode: a Skyrim-ruled hit this soon after the parry button counts as parried even if MORDHAU's parry motion has not been streamed back yet (the link's delay)",
+   "fallback": 0.3,
+   "read_ok": true,
+   "verified": true
+  }
+ ]
+}

@@ -1,0 +1,115 @@
+{
+ "_about": "One row per number the plugin reads from a MORDHAU weapon definition at runtime. mordhau_property: property name inside the weapon's StrikeAttack / StabAttack block, or on the weapon itself for block_negation. fallback: this mod's own generic value, used when the player has no MORDHAU installed (not MORDHAU's per-weapon numbers; null = not chosen yet). used_by: 'attack' or a row id in moves.json.",
+ "rows": [
+  {
+   "id": "windup",
+   "mordhau_property": "Windup",
+   "unit": "s",
+   "meaning": "time from attack start to release",
+   "fallback": 0.5,
+   "used_by": "attack",
+   "read_ok": true,
+   "verified": true
+  },
+  {
+   "id": "release",
+   "mordhau_property": "Release",
+   "unit": "s",
+   "meaning": "time the weapon can hit",
+   "fallback": 0.45,
+   "used_by": "attack",
+   "read_ok": true,
+   "verified": true
+  },
+  {
+   "id": "combo_windup_add",
+   "mordhau_property": "ComboWindupIncrease",
+   "unit": "s",
+   "meaning": "extra windup when the attack is a combo",
+   "fallback": 0.15,
+   "used_by": "combo",
+   "read_ok": true,
+   "verified": false
+  },
+  {
+   "id": "stamina_drain",
+   "mordhau_property": "StaminaDrain",
+   "unit": "points",
+   "meaning": "stamina the defender loses when parrying this attack",
+   "fallback": 18.0,
+   "used_by": "parry",
+   "read_ok": true,
+   "verified": true
+  },
+  {
+   "id": "miss_stamina",
+   "mordhau_property": "MissStaminaCost",
+   "unit": "points",
+   "meaning": "stamina the attacker loses on a miss",
+   "fallback": 8.0,
+   "used_by": "miss",
+   "read_ok": true,
+   "verified": true
+  },
+  {
+   "id": "miss_recovery",
+   "mordhau_property": "MissRecovery",
+   "unit": "s",
+   "meaning": "recovery after a miss that is not comboed",
+   "fallback": 0.5,
+   "used_by": "miss",
+   "read_ok": true,
+   "verified": true
+  },
+  {
+   "id": "feint_lockout",
+   "mordhau_property": "FeintLockOut",
+   "unit": "s",
+   "meaning": "time after a feint before attacking or parrying again",
+   "fallback": 0.4,
+   "used_by": "feint",
+   "read_ok": true,
+   "verified": false
+  },
+  {
+   "id": "chamber_cost",
+   "mordhau_property": "ChamberCost",
+   "unit": "points",
+   "meaning": "stamina spent to chamber",
+   "fallback": 15.0,
+   "used_by": "chamber",
+   "read_ok": true,
+   "verified": false
+  },
+  {
+   "id": "hit_stamina_reward",
+   "mordhau_property": "HitStaminaReward",
+   "unit": "points",
+   "meaning": "stamina regained on landing a hit",
+   "fallback": 10.0,
+   "used_by": "attack",
+   "read_ok": true,
+   "verified": false
+  },
+  {
+   "id": "block_negation",
+   "mordhau_property": "BlockStaminaNegation",
+   "unit": "points",
+   "meaning": "stamina drain this weapon absorbs when it parries",
+   "fallback": 12.0,
+   "used_by": "parry",
+   "read_ok": true,
+   "verified": true
+  },
+  {
+   "id": "turn_caps",
+   "mordhau_property": "TurnCaps",
+   "unit": "struct",
+   "meaning": "turn-rate limits during release (8-byte struct, layout not decoded yet)",
+   "fallback": null,
+   "used_by": "attack",
+   "read_ok": false,
+   "verified": false
+  }
+ ]
+}

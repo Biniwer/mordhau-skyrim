@@ -1,0 +1,61 @@
+{
+ "_about": "Shield progression: the MORDHAU shield a Skyrim shield becomes, by words in the Skyrim shield's name; the first matching row wins, a row with empty name_contains is the fallback for its armour kind (light / heavy / any). MORDHAU's own numbers for each shield (read from the player's install) are in the notes: stamina taken off a blocked blow's cost, and whether it has the shield wall (held block). play-test note, 2026-10-09.",
+ "rows": [
+  {
+   "id": "round",
+   "name_contains": "Guard|Stormcloak|Nordic|Stalhrim|Dawnguard|Riften|Whiterun|Solitude|Windhelm|Markarth|Falkreath|Winterhold|Pale|Hjaalmarch",
+   "armour": "any",
+   "mordhau_shield": "BP_RoundShield",
+   "note": "the Nords' round shield: shield wall, stamina negation 10, parry window offset 0.10",
+   "verified": false
+  },
+  {
+   "id": "buckler",
+   "name_contains": "Hide|Elven|Glass|Dragonscale|Chitin|Leather",
+   "armour": "any",
+   "mordhau_shield": "BP_BucklerShield",
+   "note": "small and quick, timed parry only (no shield wall), stamina negation 14",
+   "verified": false
+  },
+  {
+   "id": "targe",
+   "name_contains": "Iron|Banded|Bonemold|Falmer",
+   "armour": "any",
+   "mordhau_shield": "BP_TargeShield",
+   "note": "light, timed parry only (no shield wall), stamina negation 13",
+   "verified": false
+  },
+  {
+   "id": "heater",
+   "name_contains": "Steel|Imperial|Dwarven|Orcish|Blades",
+   "armour": "any",
+   "mordhau_shield": "BP_HeaterShield",
+   "note": "the all-rounder: shield wall, stamina negation 13",
+   "verified": false
+  },
+  {
+   "id": "kite",
+   "name_contains": "Ebony|Daedric|Dragonplate|Dragonbone|Spellbreaker|Auriel|Aetherial|Ysgramor|Targe of the Blooded",
+   "armour": "any",
+   "mordhau_shield": "BP_KiteShield",
+   "note": "the largest: shield wall, stamina negation 12",
+   "verified": false
+  },
+  {
+   "id": "light_default",
+   "name_contains": "",
+   "armour": "light",
+   "mordhau_shield": "BP_BucklerShield",
+   "note": "any other light shield",
+   "verified": false
+  },
+  {
+   "id": "heavy_default",
+   "name_contains": "",
+   "armour": "any",
+   "mordhau_shield": "BP_HeaterShield",
+   "note": "any other shield",
+   "verified": false
+  }
+ ]
+}

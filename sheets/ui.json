@@ -1,0 +1,95 @@
+{
+ "_about": "One row per HUD element. All drawn by the plugin with its own shapes and a system font; no MORDHAU art or fonts. anchor: screen position as fractions of width/height. shows: the state it reads. hook: row id in hooks.json.",
+ "rows": [
+  {
+   "id": "health_bar",
+   "anchor": [
+    0.5,
+    0.94
+   ],
+   "size_px": [
+    260,
+    10
+   ],
+   "shows": "player health / max",
+   "style": "thin flat bar, bottom centre",
+   "visible_when": "weapon drawn",
+   "hook": "hud",
+   "verified": false
+  },
+  {
+   "id": "stamina_bar",
+   "anchor": [
+    0.5,
+    0.96
+   ],
+   "size_px": [
+    260,
+    6
+   ],
+   "shows": "player stamina / max; flashes on stamina_out",
+   "style": "thin flat bar under health",
+   "visible_when": "weapon drawn",
+   "hook": "hud",
+   "verified": false
+  },
+  {
+   "id": "crosshair",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "size_px": [
+    4,
+    4
+   ],
+   "shows": "aim point",
+   "style": "single dot",
+   "visible_when": "weapon drawn",
+   "hook": "hud",
+   "verified": false
+  },
+  {
+   "id": "swing_arrow",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "size_px": [
+    28,
+    28
+   ],
+   "shows": "direction the next swing will take (swings.id)",
+   "style": "small tick around the dot at the swing angle",
+   "visible_when": "weapon drawn",
+   "hook": "hud",
+   "verified": false
+  },
+  {
+   "id": "parry_flash",
+   "anchor": [
+    0.5,
+    0.5
+   ],
+   "size_px": [
+    40,
+    40
+   ],
+   "shows": "successful parry or chamber this frame",
+   "style": "brief ring pulse",
+   "visible_when": "on event",
+   "hook": "hud",
+   "verified": false
+  },
+  {
+   "id": "vanilla_hud",
+   "anchor": null,
+   "size_px": null,
+   "shows": "hide Skyrim's crosshair; hide Skyrim's health and stamina bars ONLY while MORDHAU's own bars are drawn (sheets/builds.json mordhau_bars 1) - with those off (the default since 0.1.7) Skyrim's bars are the only ones and stay",
+   "style": "n/a",
+   "visible_when": "weapon drawn",
+   "hook": "hud",
+   "verified": false
+  }
+ ]
+}

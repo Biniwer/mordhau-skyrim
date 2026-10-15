@@ -1,0 +1,255 @@
+{
+ "_about": "MORDHAU weapons as Skyrim items. The plugin makes each at start from the first Skyrim weapon named in skyrim_like (its kind, sounds, perks and Skyrim model), gives it this name, damage, weight and value, and adds it to every levelled list that holds one of the skyrim_like weapons, at the same levels: so they turn up as loot, in shops and in the hands of bandits. Held, such an item IS its MORDHAU weapon (and is drawn as MORDHAU's model). Damage / weight / value are in Skyrim's terms, set here by MORDHAU's ranking of the weapons; not from either game's data. The items have fixed ids (0xFF7E1000 + row number): rows are only ever added at the end.",
+ "rows": [
+  {
+   "id": "zweihander",
+   "name": "Zweihander",
+   "mordhau_weapon": "Specific/TwoHandedSword/BP_Zweihander",
+   "skyrim_like": "Steel Greatsword|Iron Greatsword",
+   "damage": 20,
+   "weight": 20,
+   "value": 260,
+   "verified": false
+  },
+  {
+   "id": "longsword",
+   "name": "Longsword",
+   "mordhau_weapon": "Specific/TwoHandedSword/BP_Longsword",
+   "skyrim_like": "Steel Greatsword|Iron Greatsword",
+   "damage": 17,
+   "weight": 15,
+   "value": 150,
+   "verified": false
+  },
+  {
+   "id": "estoc",
+   "name": "Estoc",
+   "mordhau_weapon": "Specific/TwoHandedSword/BP_Estoc",
+   "skyrim_like": "Steel Greatsword|Iron Greatsword",
+   "damage": 16,
+   "weight": 13,
+   "value": 180,
+   "verified": false
+  },
+  {
+   "id": "messer",
+   "name": "Messer",
+   "mordhau_weapon": "Specific/TwoHandedSword/BP_Messer",
+   "skyrim_like": "Steel Greatsword|Iron Greatsword",
+   "damage": 18,
+   "weight": 16,
+   "value": 170,
+   "verified": false
+  },
+  {
+   "id": "executioners_sword",
+   "name": "Executioner's Sword",
+   "mordhau_weapon": "Specific/TwoHandedSword/BP_ExecutionerSword",
+   "skyrim_like": "Steel Greatsword|Iron Greatsword",
+   "damage": 21,
+   "weight": 19,
+   "value": 280,
+   "verified": false
+  },
+  {
+   "id": "halberd",
+   "name": "Halberd",
+   "mordhau_weapon": "Specific/Polearms/BP_Halberd",
+   "skyrim_like": "Steel Battleaxe|Iron Battleaxe",
+   "damage": 20,
+   "weight": 21,
+   "value": 240,
+   "verified": false
+  },
+  {
+   "id": "bardiche",
+   "name": "Bardiche",
+   "mordhau_weapon": "Specific/Polearms/BP_Bardiche",
+   "skyrim_like": "Steel Battleaxe|Iron Battleaxe",
+   "damage": 21,
+   "weight": 22,
+   "value": 230,
+   "verified": false
+  },
+  {
+   "id": "billhook",
+   "name": "Billhook",
+   "mordhau_weapon": "Specific/Polearms/BP_Billhook",
+   "skyrim_like": "Steel Battleaxe|Iron Battleaxe",
+   "damage": 18,
+   "weight": 17,
+   "value": 140,
+   "verified": false
+  },
+  {
+   "id": "spear",
+   "name": "Spear",
+   "mordhau_weapon": "Specific/Polearms/BP_Spear",
+   "skyrim_like": "Steel Battleaxe|Iron Battleaxe",
+   "damage": 16,
+   "weight": 12,
+   "value": 110,
+   "verified": false
+  },
+  {
+   "id": "battle_axe",
+   "name": "Battle Axe",
+   "mordhau_weapon": "Specific/Polearms/BP_BattleAxe",
+   "skyrim_like": "Steel Battleaxe|Iron Battleaxe",
+   "damage": 19,
+   "weight": 19,
+   "value": 160,
+   "verified": false
+  },
+  {
+   "id": "war_axe",
+   "name": "War Axe",
+   "mordhau_weapon": "Specific/TwoHandedSword/BP_WarAxe",
+   "skyrim_like": "Steel Battleaxe|Iron Battleaxe",
+   "damage": 20,
+   "weight": 18,
+   "value": 190,
+   "verified": false
+  },
+  {
+   "id": "polehammer",
+   "name": "Polehammer",
+   "mordhau_weapon": "Specific/Polearms/BP_Polehammer",
+   "skyrim_like": "Steel Warhammer|Iron Warhammer",
+   "damage": 22,
+   "weight": 24,
+   "value": 250,
+   "verified": false
+  },
+  {
+   "id": "maul",
+   "name": "Maul",
+   "mordhau_weapon": "Specific/TwoHandedBlunt/BP_Maul",
+   "skyrim_like": "Steel Warhammer|Iron Warhammer",
+   "damage": 24,
+   "weight": 28,
+   "value": 220,
+   "verified": false
+  },
+  {
+   "id": "eveningstar",
+   "name": "Eveningstar",
+   "mordhau_weapon": "Specific/TwoHandedBlunt/BP_2Hmace",
+   "skyrim_like": "Steel Warhammer|Iron Warhammer",
+   "damage": 21,
+   "weight": 22,
+   "value": 230,
+   "verified": false
+  },
+  {
+   "id": "arming_sword",
+   "name": "Arming Sword",
+   "mordhau_weapon": "Specific/OneHanded/BP_ArmingSword",
+   "skyrim_like": "Steel Sword|Iron Sword",
+   "damage": 9,
+   "weight": 10,
+   "value": 90,
+   "verified": false
+  },
+  {
+   "id": "bastard_sword",
+   "name": "Bastard Sword",
+   "mordhau_weapon": "Specific/OneHanded/BP_BastardSword",
+   "skyrim_like": "Steel Sword|Iron Sword",
+   "damage": 11,
+   "weight": 13,
+   "value": 160,
+   "verified": false
+  },
+  {
+   "id": "falchion",
+   "name": "Falchion",
+   "mordhau_weapon": "Specific/OneHanded/BP_Falchion",
+   "skyrim_like": "Steel Sword|Iron Sword",
+   "damage": 10,
+   "weight": 11,
+   "value": 110,
+   "verified": false
+  },
+  {
+   "id": "rapier",
+   "name": "Rapier",
+   "mordhau_weapon": "Specific/OneHanded/BP_Rapier",
+   "skyrim_like": "Steel Sword|Iron Sword",
+   "damage": 9,
+   "weight": 8,
+   "value": 170,
+   "verified": false
+  },
+  {
+   "id": "short_sword",
+   "name": "Short Sword",
+   "mordhau_weapon": "Specific/OneHanded/BP_Shortsword",
+   "skyrim_like": "Steel Sword|Iron Sword",
+   "damage": 8,
+   "weight": 8,
+   "value": 60,
+   "verified": false
+  },
+  {
+   "id": "axe",
+   "name": "Axe",
+   "mordhau_weapon": "Specific/OneHanded/BP_Axe",
+   "skyrim_like": "Steel War Axe|Iron War Axe",
+   "damage": 10,
+   "weight": 12,
+   "value": 80,
+   "verified": false
+  },
+  {
+   "id": "hand_axe",
+   "name": "Hand Axe",
+   "mordhau_weapon": "Specific/OneHanded/BP_HandAxe",
+   "skyrim_like": "Steel War Axe|Iron War Axe",
+   "damage": 8,
+   "weight": 9,
+   "value": 50,
+   "verified": false
+  },
+  {
+   "id": "warhammer",
+   "name": "Warhammer",
+   "mordhau_weapon": "Specific/OneHanded/BP_Warhammer",
+   "skyrim_like": "Steel Mace|Iron Mace",
+   "damage": 12,
+   "weight": 15,
+   "value": 130,
+   "verified": false
+  },
+  {
+   "id": "flanged_mace",
+   "name": "Flanged Mace",
+   "mordhau_weapon": "Specific/OneHanded/BP_Mace",
+   "skyrim_like": "Steel Mace|Iron Mace",
+   "damage": 11,
+   "weight": 14,
+   "value": 100,
+   "verified": false
+  },
+  {
+   "id": "rondel_dagger",
+   "name": "Rondel Dagger",
+   "mordhau_weapon": "Specific/OneHanded/BP_Dagger",
+   "skyrim_like": "Steel Dagger|Iron Dagger",
+   "damage": 5,
+   "weight": 2.5,
+   "value": 40,
+   "verified": false
+  },
+  {
+   "id": "falx",
+   "name": "Falx",
+   "mordhau_weapon": "Specific/TwoHandedSword/BP_Falx",
+   "skyrim_like": "Steel Greatsword|Iron Greatsword",
+   "damage": 19,
+   "weight": 17,
+   "value": 200,
+   "verified": false
+  }
+ ]
+}

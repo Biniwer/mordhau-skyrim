@@ -1,0 +1,50 @@
+{
+ "_about": "Demon Horde's weapon blessings (MORDHAU's PackAPunch effects) on enchanted weapons in Skyrim: a glow on the weapon itself (MORDHAU's M_PackAPunch: additive, unlit, its noise texture), sparks and smoke along the weapon (MORDHAU's P_EnchantGlow: emitters FlashBall, FlashBall_Local and Smoke) and a trail behind a swing (MORDHAU's P_WeaponTrailGlow / P_WeaponTrailLinger). Drawn by the plugin from MORDHAU's own textures, read from the player's install into the local cache; nothing changes inside MORDHAU. Which look a weapon gets: the first row whose resist matches one of the weapon's Skyrim enchantment effects (its magic effect's resistance value); an enchanted weapon matching none gets the row with an empty resist. The enchantment's damage stays Skyrim's own. Colours are linear rgb, 0..1. The user, 2026-10-15: 'demon horde has some really nice elemental effects on the weapons can we get that in somehow' ... 'yes do all of em'.",
+ "rows": [
+  {
+   "id": "fire",
+   "resist": "ResistFire",
+   "glow": [1.0, 0.42, 0.08],
+   "spark": [1.0, 0.55, 0.12],
+   "smoke": [0.45, 0.2, 0.08],
+   "trail": [1.0, 0.45, 0.1],
+   "source": "MORDHAU's fire blessing trail (P_BlessingTrailArrowsFire) is orange; colour chosen by eye to match it, not read from the file",
+   "verified": false
+  },
+  {
+   "id": "frost",
+   "resist": "ResistFrost",
+   "glow": [0.35, 0.7, 1.0],
+   "spark": [0.6, 0.85, 1.0],
+   "smoke": [0.25, 0.4, 0.55],
+   "trail": [0.45, 0.8, 1.0],
+   "source": "MORDHAU has no frost blessing: its effect in an icy blue (choice)",
+   "verified": false
+  },
+  {
+   "id": "shock",
+   "resist": "ResistShock",
+   "glow": [0.55, 0.5, 1.0],
+   "spark": [0.85, 0.8, 1.0],
+   "smoke": [0.3, 0.25, 0.55],
+   "trail": [0.65, 0.6, 1.0],
+   "source": "MORDHAU's lightning (P_BeamLightning) is a violet white; colour chosen by eye, not read from the file",
+   "verified": false
+  },
+  {
+   "id": "holy",
+   "resist": "",
+   "glow": [1.0, 0.7, 0.2],
+   "spark": [1.0, 0.65, 0.07],
+   "smoke": [0.42, 0.42, 0.42],
+   "trail": [1.0, 0.78, 0.26],
+   "source": "MORDHAU's own default blessing: sparks P_EnchantGlow FlashBall colour over life (50, 32.4, 3.5) scaled to 1; smoke 0.42 grey; linger trail (10, 8.9, 2.7)..(1, 0.78, 0.26) - read from the files 2026-10-15",
+   "verified": false
+  }
+ ],
+ "textures": [
+  { "id": "noise", "path": "Effects/Textures/HordeSpells/T_Art_Noise_9", "used_by": "M_PackAPunch (the glow on the weapon)" },
+  { "id": "smoke", "path": "Mordhau/Assets/Environment/RiverCastle/Super_Weapons/Particles/Textures/T_Light_Noise1", "used_by": "M_EnchantGlowSmoke (via M_S_Smoke)" },
+  { "id": "trail", "path": "Mordhau/Particles/Blood/T_BloodTrail", "used_by": "M_WeaponTrailGlow_Inst, M_WeaponTrailLinger" }
+ ]
+}

@@ -1,0 +1,127 @@
+{
+ "_about": "One row per attack the player or an enemy can start. angle_deg: mouse-movement direction that selects it, 0 = right, 90 = up, counter-clockwise, as [from, to). move: MORDHAU's attack move; the clip for it depends on the weapon (clips.json, by weapon_families.clip_set + move). pitch_offset_deg: tilt applied to the move's clip for upper/lower strikes (null = not chosen yet, clip plays untilted). skyrim_fallback: Skyrim animation event used when MORDHAU is not installed. null = unfilled; verified = checked in the running game. mordhau_request: side-by-side mode, the MORDHAU input function asked for (Request<name> on its character; names read from MORDHAU's own symbols).",
+ "rows": [
+  {
+   "id": "strike_right",
+   "kind": "strike",
+   "side": "right",
+   "move": "RightStrike",
+   "angle_deg": [
+    -30,
+    30
+   ],
+   "input": "mouse_flick+attack",
+   "pitch_offset_deg": 0,
+   "skyrim_fallback": "attackRight",
+   "chambers_with": "strike_left",
+   "verified": true,
+   "mordhau_request": "RightStrike"
+  },
+  {
+   "id": "strike_right_upper",
+   "kind": "strike",
+   "side": "right",
+   "move": "RightStrike",
+   "angle_deg": [
+    30,
+    90
+   ],
+   "input": "mouse_flick+attack",
+   "pitch_offset_deg": null,
+   "skyrim_fallback": "attackPowerRight",
+   "chambers_with": "strike_left_upper",
+   "verified": false,
+   "mordhau_request": "RightUpperStrike"
+  },
+  {
+   "id": "strike_right_lower",
+   "kind": "strike",
+   "side": "right",
+   "move": "RightStrike",
+   "angle_deg": [
+    -90,
+    -30
+   ],
+   "input": "mouse_flick+attack",
+   "pitch_offset_deg": null,
+   "skyrim_fallback": "attackRight",
+   "chambers_with": "strike_left_lower",
+   "verified": false,
+   "mordhau_request": "RightLowerStrike"
+  },
+  {
+   "id": "strike_left",
+   "kind": "strike",
+   "side": "left",
+   "move": "LeftStrike",
+   "angle_deg": [
+    150,
+    210
+   ],
+   "input": "mouse_flick+attack",
+   "pitch_offset_deg": 0,
+   "skyrim_fallback": "attackLeft",
+   "chambers_with": "strike_right",
+   "verified": true,
+   "mordhau_request": "LeftStrike"
+  },
+  {
+   "id": "strike_left_upper",
+   "kind": "strike",
+   "side": "left",
+   "move": "LeftStrike",
+   "angle_deg": [
+    90,
+    150
+   ],
+   "input": "mouse_flick+attack",
+   "pitch_offset_deg": null,
+   "skyrim_fallback": "attackPowerLeft",
+   "chambers_with": "strike_right_upper",
+   "verified": false,
+   "mordhau_request": "LeftUpperStrike"
+  },
+  {
+   "id": "strike_left_lower",
+   "kind": "strike",
+   "side": "left",
+   "move": "LeftStrike",
+   "angle_deg": [
+    210,
+    270
+   ],
+   "input": "mouse_flick+attack",
+   "pitch_offset_deg": null,
+   "skyrim_fallback": "attackLeft",
+   "chambers_with": "strike_right_lower",
+   "verified": false,
+   "mordhau_request": "LeftLowerStrike"
+  },
+  {
+   "id": "stab_right",
+   "kind": "stab",
+   "side": "right",
+   "move": "RightStab",
+   "angle_deg": null,
+   "input": "scroll_up",
+   "pitch_offset_deg": 0,
+   "skyrim_fallback": "attackPowerForward",
+   "chambers_with": "stab_right",
+   "verified": false,
+   "mordhau_request": "RightStab"
+  },
+  {
+   "id": "stab_left",
+   "kind": "stab",
+   "side": "left",
+   "move": "LeftStab",
+   "angle_deg": null,
+   "input": "combo_only",
+   "pitch_offset_deg": 0,
+   "skyrim_fallback": "attackPowerForward",
+   "chambers_with": "stab_left",
+   "verified": false,
+   "mordhau_request": "LeftStab"
+  }
+ ]
+}

@@ -1,0 +1,157 @@
+{
+ "_about": "Side-by-side mode: Skyrim buttons that send a MORDHAU input beyond what the attack button (Strike: MORDHAU's angle strike, direction from mouse movement) and the block button (Parry: parry, or feint during a windup) already do. device: 0 keyboard, 1 mouse (Skyrim's input device numbers). code: Skyrim button id (mouse: 2 middle, 3 and 4 thumb buttons, 8 wheel up, 9 wheel down). request: action name understood by mordhau_side/PoseStream. Chosen to follow MORDHAU's default bindings where Skyrim leaves the button free. verified = checked in the running games. While the mode is live and a melee weapon is drawn, a bound key or wheel step is NOT passed on to Skyrim (so the wheel does not zoom the camera and Q does not open the favourites). (2026-10-10, play-test note - the keys B, N, M, H and J for the bear trap, spike wall, archer cover, ballista and firebomb are taken out; their code was taken out of the plugin and script on 2026-10-12.)",
+ "rows": [
+  {
+   "id": "stab",
+   "device": 1,
+   "code": 8,
+   "request": "Stab",
+   "mordhau_default": "MouseScrollUp",
+   "verified": true
+  },
+  {
+   "id": "overhead",
+   "device": 1,
+   "code": 9,
+   "request": "RightUpperStrike",
+   "mordhau_default": "MouseScrollDown (this player's own binding)",
+   "verified": true
+  },
+  {
+   "id": "cast_left",
+   "device": 1,
+   "code": 2,
+   "request": "CastLeft",
+   "mordhau_default": "middle mouse (not a MORDHAU key): casts the spell in Skyrim's left hand, by Skyrim's own casting (its charge, magicka, perks and effects), while a one-handed weapon in the right hand fights as MORDHAU's. The right button stays MORDHAU's parry. Without a spell in the left hand the button does nothing. (2026-10-14, the user: 'use middle mouse to cast remove kick from middle mouse' - the kick stays on F.)",
+   "verified": false
+  },
+  {
+   "id": "feint",
+   "device": 1,
+   "code": 3,
+   "request": "Feint",
+   "mordhau_default": "Q (taken by Skyrim's favourites; thumb button here) Only while an attack of the player's is winding up; at any other time the key is Skyrim's own (Q: the favourites / quick menu) - the user, 2026-10-09.",
+   "verified": false
+  },
+  {
+   "id": "feint_q",
+   "device": 0,
+   "code": 16,
+   "request": "Feint",
+   "mordhau_default": "Q, as in MORDHAU (Skyrim's favourites menu does not open on Q while a melee weapon is drawn in this mode) Only while an attack of the player's is winding up; at any other time the key is Skyrim's own (Q: the favourites / quick menu) - the user, 2026-10-09.",
+   "verified": false
+  },
+  {
+   "id": "kick_f",
+   "device": 0,
+   "code": 33,
+   "request": "Kick",
+   "mordhau_default": "F, as in MORDHAU (Skyrim's own use of F - switching between first and third person - moves to P while a melee weapon is drawn)",
+   "verified": false
+  },
+  {
+   "id": "view_p",
+   "device": 0,
+   "code": 25,
+   "request": "ToggleView",
+   "mordhau_default": "P, MORDHAU's own key for it: first / third person (done by Skyrim's camera; nothing is sent to MORDHAU for it)",
+   "verified": false
+  },
+  {
+   "id": "weapon_mode",
+   "device": 0,
+   "code": 19,
+   "request": "WeaponMode",
+   "mordhau_default": "R, MORDHAU's Weapon Mode / Reload: the weapon's other grip. (With the weapon out. Skyrim's own R still brings a put-away weapon out; putting it away is 0, as in MORDHAU.)",
+   "verified": false
+  },
+  {
+   "id": "holster",
+   "device": 0,
+   "code": 11,
+   "request": "Holster",
+   "mordhau_default": "0, MORDHAU's Holster: the weapon is put away, arms by the side (Skyrim sheathes; MORDHAU's character follows with its own holster animation)",
+   "verified": false
+  },
+  {
+   "id": "voice_menu",
+   "device": 0,
+   "code": 46,
+   "request": "VoiceMenu",
+   "mordhau_default": "C, MORDHAU's voice menu: a list, a number key says the line; C again for the next page",
+   "verified": false
+  },
+  {
+   "id": "emote_menu",
+   "device": 0,
+   "code": 45,
+   "request": "EmoteMenu",
+   "mordhau_default": "X, MORDHAU's emote menu: a list, a number key plays the emote; X again for the next page",
+   "verified": false
+  },
+  {
+   "id": "battlecry",
+   "device": 0,
+   "code": 47,
+   "request": "Battlecry",
+   "mordhau_default": "V, MORDHAU's battle cry",
+   "verified": false
+  },
+  {
+   "id": "pick_up",
+   "device": 0,
+   "code": 18,
+   "request": "PickUp",
+   "mordhau_default": "E, MORDHAU's Use: picks the player's own dropped weapon up again - only while it lies on the ground and the player stands at it; otherwise E stays Skyrim's own",
+   "verified": false
+  },
+  {
+   "id": "drop",
+   "device": 0,
+   "code": 34,
+   "request": "Drop",
+   "mordhau_default": "G, MORDHAU's Drop: the weapon in the hand falls to the ground (E at it picks it up again)",
+   "verified": false
+  },
+  {
+   "id": "draw_1",
+   "device": 0,
+   "code": 2,
+   "request": "DrawWeapon",
+   "mordhau_default": "1, MORDHAU's Equip Slot 1: brings the weapon out when it is put away (Skyrim draws; MORDHAU's character follows). R never draws or puts away while MORDHAU is linked - with the weapon away it does nothing.",
+   "verified": false
+  },
+  {
+   "id": "sprint_shift",
+   "device": 0,
+   "code": 42,
+   "request": "Sprint",
+   "mordhau_default": "Left Shift, MORDHAU's Sprint: while MORDHAU is linked the key is handed to Skyrim as its own sprint (Skyrim's default for Shift is the slow walk, its sprint is Left Alt - that still works too). Skyrim's sprint is what MORDHAU's character then follows.",
+   "verified": false
+  },
+  {
+   "id": "ai_menu",
+   "device": 0,
+   "code": 66,
+   "request": "AiMenu",
+   "mordhau_default": "F8 (not a MORDHAU key): the enemy skill menu, a Skyrim message box with five levels",
+   "verified": false
+  },
+  {
+   "id": "crouch_hold",
+   "device": 0,
+   "code": 29,
+   "request": "CrouchHold",
+   "mordhau_default": "Left Ctrl, MORDHAU's Crouch: held = crouched, let go = up (Skyrim's own sneak is a toggle). While MORDHAU is linked, a press only counts for Skyrim when the player is standing, and letting go is handed to Skyrim as the press that ends sneaking. Whatever key Skyrim has for 'Sneak' is used; this row names the default.",
+   "verified": false
+  },
+  {
+   "id": "unarmed",
+   "device": 0,
+   "code": 5,
+   "request": "Unarmed",
+   "mordhau_default": "4, MORDHAU's unarmed slot: the weapon (and shield) are put away and the fists come up; 4 again brings back what was held. Skyrim's own favourites hotkey 4 does not happen while a weapon or the fists are out.",
+   "verified": false
+  }
+ ]
+}

@@ -1,0 +1,21 @@
+MORDHAU x Skyrim ("Mordhau combat passthrough", Nexus Mods, Skyrim Special Edition mod 194747)
+Copyright (C) 2026 spock290
+
+This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public
+License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later
+version.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
+warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+The full text of the licence is in GPL-3.0.txt beside this file.
+
+This covers the mod's own work: MordhauSkyrim.dll (the SKSE plugin), dwmapi.dll (the loader in the mordhau folder),
+Mods/PoseStream/Scripts/main.lua (the MORDHAU script), MordhauWeapons.esp, the design sheets and the tools they are
+built with. The plugin is built on CommonLibSSE-NG (GPL-3.0-or-later with a modding and linking exception, see
+CommonLibSSE-NG.txt) and is conveyed under the same licence and exception.
+
+Source code: the complete corresponding source of this version is offered on the mod's page on Nexus Mods, under
+Files, as "Source code" (https://www.nexusmods.com/skyrimspecialedition/mods/194747?tab=files).
+
+The other parts of the download keep their own licences, each in its own file in this folder.

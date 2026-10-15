@@ -1,0 +1,126 @@
+{
+ "_about": "One row per movement rule. mordhau_property: property on MORDHAU's character movement component (CharMoveComp inside Mordhau/Content/Mordhau/Blueprints/Characters/BP_MordhauCharacter) or, where source says character, on the character definition itself; read at runtime from the player's own MORDHAU. null = MORDHAU's data has no such number; the fallback is then this mod's own choice. fallback: used when MORDHAU has no value or is not installed. Units are MORDHAU's (centimetres, seconds); 1 Skyrim unit = 1.42875 cm. hook: row id in hooks.json.",
+ "rows": [
+  {
+   "id": "base_speed",
+   "rule": "speed over the ground with no sprint, any direction but backward",
+   "mordhau_property": "MaxWalkSpeed",
+   "source": "movement",
+   "unit": "cm/s",
+   "fallback": 300.0,
+   "hook": "movement",
+   "read_ok": true,
+   "verified": true
+  },
+  {
+   "id": "sprint_factor",
+   "rule": "sprint speed as a multiple of base speed; forward only",
+   "mordhau_property": "SprintModifier",
+   "source": "movement",
+   "unit": "ratio",
+   "fallback": 1.8,
+   "hook": "movement",
+   "read_ok": true,
+   "verified": true
+  },
+  {
+   "id": "sprint_buildup",
+   "rule": "time holding sprint to reach full sprint speed",
+   "mordhau_property": "SprintTimeToReachMaxSprint",
+   "source": "movement",
+   "unit": "s",
+   "fallback": 1.0,
+   "hook": "movement",
+   "read_ok": true,
+   "verified": true
+  },
+  {
+   "id": "sprint_max_angle",
+   "rule": "sprint only while moving within this angle of straight ahead",
+   "mordhau_property": null,
+   "source": "movement",
+   "unit": "deg",
+   "fallback": 45.0,
+   "hook": "movement",
+   "read_ok": false,
+   "verified": false
+  },
+  {
+   "id": "backpedal_factor",
+   "rule": "backward speed as a multiple of base speed",
+   "mordhau_property": "BackpedalModifier",
+   "source": "movement",
+   "unit": "ratio",
+   "fallback": 0.8,
+   "hook": "movement",
+   "read_ok": true,
+   "verified": true
+  },
+  {
+   "id": "backpedal_angle",
+   "rule": "moving more than this angle away from straight ahead counts as backward",
+   "mordhau_property": null,
+   "source": "movement",
+   "unit": "deg",
+   "fallback": 120.0,
+   "hook": "movement",
+   "read_ok": false,
+   "verified": false
+  },
+  {
+   "id": "acceleration",
+   "rule": "how fast speed builds from a standstill",
+   "mordhau_property": "WalkAcceleration",
+   "source": "movement",
+   "unit": "cm/s2",
+   "fallback": 1650.0,
+   "hook": "movement",
+   "read_ok": true,
+   "verified": false
+  },
+  {
+   "id": "jump_velocity",
+   "rule": "upward speed at take-off; with gravity_scale it sets the jump height",
+   "mordhau_property": "JumpZVelocity",
+   "source": "movement",
+   "unit": "cm/s",
+   "fallback": 450.0,
+   "hook": "movement",
+   "read_ok": true,
+   "verified": false
+  },
+  {
+   "id": "gravity_scale",
+   "rule": "gravity as a multiple of 980 cm/s2",
+   "mordhau_property": "GravityScale",
+   "source": "movement",
+   "unit": "ratio",
+   "fallback": 1.2,
+   "hook": "movement",
+   "read_ok": true,
+   "verified": false
+  },
+  {
+   "id": "jump_stamina",
+   "rule": "stamina spent per jump",
+   "mordhau_property": "JumpStaminaCost",
+   "source": "character",
+   "unit": "points",
+   "fallback": 10.0,
+   "hook": "movement",
+   "read_ok": true,
+   "verified": false
+  },
+  {
+   "id": "release_turn_cap",
+   "rule": "max turn rate while a swing is in release (per attack: TurnCaps, not decoded yet)",
+   "mordhau_property": null,
+   "source": "movement",
+   "unit": "deg/s",
+   "fallback": null,
+   "hook": "movement",
+   "read_ok": false,
+   "verified": false
+  }
+ ]
+}
