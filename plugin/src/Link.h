@@ -104,7 +104,7 @@ namespace dm::Link
 	{
 		bool          passive = false;  // the stand-in only stands there to be hit (an archer: Skyrim's AI does the shooting)
 		bool          dummy = false;    // ...and stands in for a creature: no body of its own in the player's way (sheets/builds.json creature_standin)
-		int           skillSteps = 0;   // skill levels above the one chosen in the menu (named enemies, far higher level)
+		int           skill10 = 0;      // its skill, tenths of the five levels (10 Peasant .. 50 Duelist): by the level gap (sheets/enemy_ai.json level_skill); 0 = the chosen level
 		std::uint32_t id = 0;
 		float         right = 0.0f, forward = 0.0f, up = 0.0f, yaw = 0.0f;
 		std::uint32_t attacks = 0;

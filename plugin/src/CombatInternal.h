@@ -7,6 +7,8 @@
 #include "Combat.h"
 #include "Link.h"
 #include "Session.h"
+#include "Settings.h"
+#include "SoundMix.h"
 #include "CharacterRender.h"
 #include "Clip.h"
 #include "Pose.h"
@@ -345,6 +347,12 @@ namespace dm::Combat
 		RE::NiAVObject* TorsoNode(RE::Actor* a_actor);
 
 		float Progress(const char* a_id);
+		// a creature (not a person): sheets/builds.json creature_damage_scale, the settings menu's "Damage to creatures"; a person: 1
+		float CreatureScale(RE::Actor* a_target);
+		// the settings menu's "Super kick" (sheets/builds.json super_kick): the kicked one thrown away from the player with
+		// Skyrim's own push (what Unrelenting Force and PushActorAway do), as hard as "Super kick force"; not dragons.
+		// True if thrown.
+		bool SuperKick(RE::Actor* a_player, RE::Actor* a_target);
 
 		float HitFraction(RE::Actor* a_attacker, RE::Actor* a_target, float a_mordhauDamage, float a_skyrimDamage);
 
@@ -583,6 +591,8 @@ namespace dm::Combat
 			std::uint32_t   id = 0;
 			std::uint32_t   attacks = 0;     // rises when the character starts an attack
 			bool            wasAttacking = false;
+			int             swingStage = -1;  // its stand-in's attack stage last frame (Skyrim's swing sound at each release)
+			std::uint32_t   playerHitsSeen = 0;  // MORDHAU's count of hits on the player, last frame (a parry: the swing ended without one)
 			Clock::time_point lastAttack{};  // (a draugr whose attack is thrown back starts the next one a frame later: counted at most every 0.4 s)
 			std::uint32_t   seenHits = 0;    // hits on it already applied
 			bool            hitsKnown = false;
@@ -773,9 +783,12 @@ namespace dm::Combat
 				g_flick.x *= 0.8f;
 				g_flick.y *= 0.8f;
 				for (auto* event = a_event ? *a_event : nullptr; event; event = event->next) {
-					// Crouching as in MORDHAU: hold to crouch. Skyrim's sneak is a toggle, so a press is only let through while
-					// standing, and letting go is turned into the press that stands up again.
-					if (auto* sneak = event->AsButtonEvent(); sneak && Link::Current().live && sneak->QUserEvent() == RE::UserEvents::GetSingleton()->sneak) {
+					// Crouching as in MORDHAU, if the settings menu says so ("Crouch": Hold): hold to crouch. Skyrim's sneak is a toggle,
+					// so a press is only let through while standing, and letting go is turned into the press that stands up again.
+					// (The default is Skyrim's own toggle, untouched - MORDHAU's character follows Skyrim's sneaking either way. A
+					// streamer hammered Ctrl as Skyrim players do: every tap crouched and stood up again at once, "no crouching started".)
+					if (auto* sneak = event->AsButtonEvent(); sneak && Link::Current().live && sneak->QUserEvent() == RE::UserEvents::GetSingleton()->sneak &&
+						Settings::Value("crouch_mode", 0.0f) > 0.5f) {
 						auto* crouchUi = RE::UI::GetSingleton();
 						auto* crouchPlayer = RE::PlayerCharacter::GetSingleton();
 						if (crouchUi && crouchPlayer && !crouchUi->GameIsPaused()) {

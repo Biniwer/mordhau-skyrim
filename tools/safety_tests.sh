@@ -18,7 +18,7 @@ say "== loader"
 python tools/loader_test.py 2>&1 | tee -a "$OUT" | grep -E "process lived|folder clean"
 
 say "== session on 1.7.104 (duel)"
-timeout 600 bash tools/d_test.sh start "duel=1;autotest=3" >> "$OUT" 2>&1 || { say "the test session did not start - see $OUT"; exit 1; }
+timeout 600 bash tools/d_test.sh start "duel=1;autotest=3" >> "$OUT" 2>&1 || { say "the test session did not start - see $OUT"; bash tools/d_test.sh stop >> "$OUT" 2>&1; exit 1; }
 sleep 25
 say "errors so far: $(grep -c '\[error\]' "$LOG"), hits: $(grep -c 'hit:' "$LOG")"
 grep "audio:" "$LOG" | cut -c1-220 | tee -a "$OUT"

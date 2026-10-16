@@ -387,8 +387,8 @@ namespace dm::Link
 				if (g.dummy) {
 					line += std::format(" gd:{}", g.id);
 				}
-				if (g.skillSteps > 0) {
-					line += std::format(" gb:{},{}", g.id, g.skillSteps);  // (a boss: this many skill levels above the chosen one)
+				if (g.skill10 > 0) {
+					line += std::format(" gb:{},{}", g.id, g.skill10);  // (its own skill: the chosen level moved by the level gap)
 				}
 			}
 			line += std::format(" ai:{}", g_aiLevel);

@@ -45,6 +45,8 @@ If anything looks wrong, remove the mod and delete the files listed under "Unins
 - **Decapitations and crushed heads** on killing head hits.
 - **MORDHAU's weapons as Skyrim items**, with MORDHAU's own models in the hand and in the inventory. The inventory models are made on your PC the first time you play and show from the next start of Skyrim.
 - **First and third person, both with your own Skyrim character.** In first person you look out of its eyes: your arms, armour, body and legs are your Skyrim ones, with the hands placed where MORDHAU has them on the weapon.
+- **Enemy skill follows the level gap.** Enemies far above your level fight like duelists, far below like peasants.
+- **In-game settings menu** (with SkyUI and MCM Helper): damage, armour, enemy skill, kicks (including a super kick), your character's MORDHAU voice, a sound mix from only Skyrim's combat sounds to only MORDHAU's, crouch toggle or hold, and more.
 - **Skyrim keeps what it does well.** Archers, spellcasters and creatures stay Skyrim's, and your own magic and bows are untouched.
 
 ## Requirements
@@ -53,6 +55,7 @@ If anything looks wrong, remove the mod and delete the files listed under "Unins
 - MORDHAU, on Steam
 - SKSE for your game version
 - Address Library for SKSE Plugins (Nexus Mods, Skyrim Special Edition mod 32444)
+- Optional, for the in-game settings menu: SkyUI and MCM Helper (both on Nexus Mods). Without them the mod runs with its default settings.
 - Windows 10 or 11, and about 3 GB of free disk space
 - A PC that can run both games at once. As an estimate: 16 GB of RAM, a graphics card with 8 GB, and an SSD.
 - Keyboard and mouse. Controllers are not supported.
@@ -188,6 +191,7 @@ Say what you were doing and attach `MordhauSkyrim.log` (from `Documents\My Games
 - **UE4SS** v3.0.1 by the UE4SS-RE team (MIT): the script host for MORDHAU. `UE4SS.dll` and its own Lua mods are included unchanged; its settings file and mod list carry this mod's settings.
 - **SkyCraft** by chasmlol (MIT): two techniques follow its way of doing them (drawing into Skyrim's frame before post-processing; hits that show the health bar and give kill credit). No file of it is included.
 - **spdlog, {fmt}, DirectXTK, DirectXMath, rapidcsv, xbyak, JSON for Modern C++, SimpleIni, toml11**: libraries the plugin is built with (MIT or BSD-3-Clause).
+- **SkyUI** by the SkyUI team and **MCM Helper** by Exit-9B: the in-game settings menu is built on them (optional, not included; the menu's own script was compiled against their published script headers).
 - **Address Library for SKSE Plugins** by meh321: required, not included.
 - **SKSE** by the SKSE team: required, not included.
 - **MORDHAU** by Triternion and **Skyrim Special Edition** by Bethesda Game Studios: the two games this brings together.

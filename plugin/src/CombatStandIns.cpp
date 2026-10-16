@@ -98,7 +98,7 @@ namespace dm::Combat
 					}
 					g_creatureHitRelease[m.id] = g_releaseNumber;
 					if (kick) {
-						const bool taken = StaggerFrom(actor.get(), a_player, BuildValue("kick_stagger_magnitude"));
+						const bool taken = SuperKick(a_player, actor.get()) || StaggerFrom(actor.get(), a_player, BuildValue("kick_stagger_magnitude"));
 						logger::info("live: MORDHAU says the player's kick hit {}'s stand-in: staggered ({})", actor->GetDisplayFullName(),
 							taken ? "taken" : "not taken: no stagger in its animations, or it is in one already");
 						if (BuildValue("hit_marker") > 0.5f) {
@@ -115,7 +115,7 @@ namespace dm::Combat
 							swing.family = &sheets::kWeaponFamilies[0];
 						}
 						logger::info("live: MORDHAU says the player's {} hit {}'s stand-in ({:.0f} of 100 there): a creature's clean hit", a_link.motion, actor->GetDisplayFullName(), gs.damage);
-						ApplyHit(a_player, actor.get(), swing, std::max(BuildValue("creature_damage_scale"), 0.1f), Progress("clean_hit"));
+						ApplyHit(a_player, actor.get(), swing, 1.0f, Progress("clean_hit") * CreatureScale(actor.get()));
 					}
 				}
 			}
@@ -462,6 +462,17 @@ namespace dm::Combat
 			if (gs.id != m.id) {
 				continue;
 			}
+			// its stand-in's swing begins: Skyrim's own swing sound too (its Skyrim attack animation, which carries one, does not play)
+			if (gs.stage == 1 && m.swingStage != 1 && actor) {
+				SoundMix::PlaySkyrimSwing(actor.get(), false);
+			}
+			// its swing ended while the player held a parry and the player was not hit: parried - Skyrim's block sound, by
+			// what the player parried with (MORDHAU tells only who was hit, not who parried)
+			if (m.swingStage == 1 && gs.stage != 1 && a_link.kind == 2 && a_link.playerHits == m.playerHitsSeen) {
+				SoundMix::PlaySkyrimBlock(a_player);
+			}
+			m.playerHitsSeen = a_link.playerHits;
+			m.swingStage = gs.stage;
 			if (!m.hitsKnown) {
 				m.seenOther = gs.otherHits;
 			} else if (gs.otherHits < m.seenOther) {
@@ -526,6 +537,10 @@ namespace dm::Combat
 				}
 				const bool wasAlive = !actor->IsDead();
 				ApplyHit(a_player, actor.get(), swing, scale, hitDamage);
+				// a kick MORDHAU judged on a stand-in: the settings menu's super kick throws the Skyrim character too
+				if (std::string_view(a_link.motion).find("Kick") != std::string_view::npos || g_lastRelease.find("Kick") != std::string::npos) {
+					SuperKick(a_player, actor.get());
+				}
 				CharacterRender::AddBlood(actor->GetFormID(), 0.22f * scale);  // (sheets/gore.json blood_layer)
 				CharacterRender::AddBlood(0, 0.06f);
 				// MORDHAU's head explosion: the killing blow on the head with a blunt weapon (sheets/gore.json)
@@ -738,14 +753,17 @@ namespace dm::Combat
 			{
 				auto* av = actor->AsActorValueOwner();
 				{
-					// bosses fight better (sheets/enemy_ai.json boss_skill): one step for a named enemy, one per 8 levels above the player, at most two
-					int         steps = 0;
+					// skill by the level gap (sheets/enemy_ai.json level_skill): the level chosen (F8 / the settings menu's "Enemy skill
+					// at equal level") at equal levels, and from there smoothly all the way to Duelist (5) at 19 levels above the
+					// player and to Peasant (1) at 19 below, whatever level is chosen (a level 1 player against a level 20 enemy: the
+					// hardest) - plus one for a named enemy; between 1 and 5, in tenths. (First made as two levels either way: from
+					// Recruit a level 19 marauder came to 3.9 - "he didnt seem much better at dueling".)
 					const auto* base = actor->GetActorBase();
-					if (base && base->IsUnique()) {
-						steps += 1;
-					}
-					steps += std::max(0, (static_cast<int>(actor->GetLevel()) - static_cast<int>(a_player->GetLevel())) / 8);
-					g.skillSteps = std::min(steps, 2);
+					const float chosen = static_cast<float>(g_aiLevel);
+					const float t = std::clamp((static_cast<float>(actor->GetLevel()) - static_cast<float>(a_player->GetLevel())) / 19.0f, -1.0f, 1.0f);
+					const float byGap = Settings::Value("level_skill", 1.0f) > 0.5f ? (t >= 0.0f ? (5.0f - chosen) * t : (chosen - 1.0f) * t) : 0.0f;  // (settings menu "Enemy skill follows the level gap")
+					float       skill = chosen + byGap + (base && base->IsUnique() ? 1.0f : 0.0f);
+					g.skill10 = static_cast<int>(std::lround(std::clamp(skill, 1.0f, 5.0f) * 10.0f));
 				}
 				g.health = std::clamp(av->GetActorValue(RE::ActorValue::kHealth) / std::max(av->GetPermanentActorValue(RE::ActorValue::kHealth), 1.0f), 0.0f, 1.0f) * 100.0f;
 			}

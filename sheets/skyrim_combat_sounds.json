@@ -1,0 +1,629 @@
+{
+ "_about": "Makes sheets/skyrim_combat_sounds.json: Skyrim's own weapon sounds by kind, read from the player's Skyrim.esm and the Made by tools/skyrim_combat_sounds.py from the official files; kinds: hits, swings, blocks, draw.",
+ "rows": [
+  {
+   "file": "Skyrim.esm",
+   "id": "10FD65",
+   "edid": "WPNImpactGenericLoFi",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "10EB77",
+   "edid": "WPNTG06ControlStaffDrawSheatheLPM",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "105D43",
+   "edid": "WPNSwingBlunt1Hand",
+   "kind": "swings"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "101F43",
+   "edid": "WPNLeftHandSheathe",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "101F42",
+   "edid": "WPNLeftHandDraw",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0F69C3",
+   "edid": "WPNImpactBlade2HandVsMetalSkin",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0F69C2",
+   "edid": "WPNImpactBladeVsMetalSkin",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0F600F",
+   "edid": "WPNImpactBlade2HandVsFleshDraugr",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0F600E",
+   "edid": "WPNImpactBladeVsFleshDraugr",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0EA9F8",
+   "edid": "WPNImpactArrowVsFleshPLAYER",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "023581",
+   "edid": "WPNImpactBlunt2HandVsOther",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0E64A7",
+   "edid": "WPNBlockBlunt2HandVsOther",
+   "kind": "blocks"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0E4F11",
+   "edid": "WPNBlunt2HandSheathe",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0E4F10",
+   "edid": "WPNBlunt2HandDraw",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0E4F0E",
+   "edid": "WPNImpactBlunt2HandVsWood",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0E4CAD",
+   "edid": "WPNImpactBlunt2HandVsFlesh",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0E4CAC",
+   "edid": "WPNSwing2Hand",
+   "kind": "swings"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0C52F7",
+   "edid": "WPNImpactCrGiantClubVsFlesh",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0C4E30",
+   "edid": "WPNImpactCrGiantClubVsDirt",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0C1AD1",
+   "edid": "WPNImpactUnarmedVsOther",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0C190D",
+   "edid": "WPNImpactUnarmedVsFlesh",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0C06D1",
+   "edid": "WPNSwingUnarmed",
+   "kind": "swings"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0C06D0",
+   "edid": "WPNUnarmedSheathe",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0C06CF",
+   "edid": "WPNUnarmedDraw",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "097783",
+   "edid": "WPNBlockBlade2HandVsOtherSD",
+   "kind": "blocks"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0949D3",
+   "edid": "WPNImpactBlade2HandVsFleshSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "037D12",
+   "edid": "WPNBashShieldHDEMOCACHESD",
+   "kind": "blocks"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03490E",
+   "edid": "WPNBlade1HandDrawDEMOCACHE03SD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "034904",
+   "edid": "WPNBlade1HandDrawDEMOCACHE02SD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "034903",
+   "edid": "WPNBlade1HandDrawDEMOCACHE01SD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "0605D3",
+   "edid": "WPNAxe2HandSheatheSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "06036A",
+   "edid": "WPNAxe2HandDrawSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "02398A",
+   "edid": "WPNImpactBladeVsIceSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "04D2DE",
+   "edid": "WPNImpactArrowVsShieldHeavySD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "04D2DA",
+   "edid": "WPNImpactArrowVsShieldLightSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03F209",
+   "edid": "WPNSwingBladeAxeSD",
+   "kind": "swings"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03EDDA",
+   "edid": "WPNImpactAxeLargeVsFleshSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03DE2D",
+   "edid": "WPNStaffHandSheatheSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03DE2C",
+   "edid": "WPNStaffHandDrawSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03DE2B",
+   "edid": "WPNMace1HandSheatheSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03DE2A",
+   "edid": "WPNMace1HandDrawSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03DDB8",
+   "edid": "WPNAxe1HandSheatheSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03DDB7",
+   "edid": "WPNAxe1HandDrawSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03D882",
+   "edid": "WPNBowSheatheSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03D78C",
+   "edid": "WPNBowDrawSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03CEDB",
+   "edid": "WPNBlade1HandSmallSheatheSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03CED9",
+   "edid": "WPNBlade1HandSmallDrawSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C8AA",
+   "edid": "WPNBlade2HandSheatheSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C8A9",
+   "edid": "WPNBlade2HandDrawSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C867",
+   "edid": "WPNBlockBowVsOtherSD",
+   "kind": "blocks"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C864",
+   "edid": "WPNBashBowSD",
+   "kind": "blocks"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C861",
+   "edid": "WPNBashAxeSD",
+   "kind": "blocks"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C85E",
+   "edid": "WPNBashBluntSD",
+   "kind": "blocks"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C85A",
+   "edid": "WPNBlockBlunt1HandVsOtherSD",
+   "kind": "blocks"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C856",
+   "edid": "WPNBlockAxeVsOtherSD",
+   "kind": "blocks"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C852",
+   "edid": "WPNImpactArrowVsWoodSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C84E",
+   "edid": "WPNImpactArrowBounceSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C849",
+   "edid": "WPNImpactArrowVsFleshSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C845",
+   "edid": "WPNImpactArrowStickSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C840",
+   "edid": "WPNImpactArrowVsArmorSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C83D",
+   "edid": "WPNImpactAxeVsWoodSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C839",
+   "edid": "WPNImpactAxeVsOtherSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C835",
+   "edid": "WPNImpactAxeVsFleshSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C832",
+   "edid": "WPNImpactAxeVsDirtSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C82D",
+   "edid": "WPNImpactAxeVsArmorSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C82A",
+   "edid": "WPNImpactBluntVsWoodSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C826",
+   "edid": "WPNImpactBluntVsOtherSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C824",
+   "edid": "WPNImpactBluntVsFleshSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C821",
+   "edid": "WPNImpactBluntVsDirtSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C81C",
+   "edid": "WPNImpactBluntVsArmorSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C7DA",
+   "edid": "WPNImpactTrapDartVsOtherSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C7D6",
+   "edid": "WPNImpactTrapDartVsFleshSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C7CA",
+   "edid": "WPNBashShieldHSD",
+   "kind": "blocks"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C7C8",
+   "edid": "WPNBashShieldLSD",
+   "kind": "blocks"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C7C5",
+   "edid": "WPNBashBladeSD",
+   "kind": "blocks"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C7A5",
+   "edid": "WPNImpactBladeVsOtherSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C7A2",
+   "edid": "WPNImpactBladeVsWoodSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C789",
+   "edid": "WPNImpactBladeVsDirtSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C74D",
+   "edid": "WPNImpactBladeVsFleshSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C748",
+   "edid": "WPNImpactBladeVsArmorSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C744",
+   "edid": "WPNBlockShieldHSD",
+   "kind": "blocks"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C740",
+   "edid": "WPNBlockShieldLSD",
+   "kind": "blocks"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C73C",
+   "edid": "WPNBlockBlade1HandVsOtherSD",
+   "kind": "blocks"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C730",
+   "edid": "WPNSwingBladeMediumSD",
+   "kind": "swings"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C72F",
+   "edid": "WPNBlade1HandSheatheSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Skyrim.esm",
+   "id": "03C72E",
+   "edid": "WPNBlade1HandDrawSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Dawnguard.esm",
+   "id": "017ECA",
+   "edid": "WPNCrossbowSheatheSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Dawnguard.esm",
+   "id": "017EC9",
+   "edid": "WPNCrossbowDrawSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Dawnguard.esm",
+   "id": "00D217",
+   "edid": "WPNImpactBoltVsBounce",
+   "kind": "hits"
+  },
+  {
+   "file": "Dawnguard.esm",
+   "id": "00D215",
+   "edid": "WPNImpactBoltVsStick",
+   "kind": "hits"
+  },
+  {
+   "file": "Dawnguard.esm",
+   "id": "00A30B",
+   "edid": "WPNImpactBoltVsFlesh",
+   "kind": "hits"
+  },
+  {
+   "file": "Dawnguard.esm",
+   "id": "00A30A",
+   "edid": "WPNImpactBoltVsFleshPLAYER",
+   "kind": "hits"
+  },
+  {
+   "file": "HearthFires.esm",
+   "id": "014C2B",
+   "edid": "WPNWoodSwordDrawSD",
+   "kind": "draw"
+  },
+  {
+   "file": "HearthFires.esm",
+   "id": "014C2A",
+   "edid": "WPNImpact1HandWoodSwordBluntGeneric",
+   "kind": "hits"
+  },
+  {
+   "file": "HearthFires.esm",
+   "id": "008991",
+   "edid": "WPNWoodSwordSheatheSD",
+   "kind": "draw"
+  },
+  {
+   "file": "HearthFires.esm",
+   "id": "008990",
+   "edid": "WPNSwing1HandWoodSwordSD",
+   "kind": "swings"
+  },
+  {
+   "file": "HearthFires.esm",
+   "id": "00898F",
+   "edid": "WPNImpact1HandWoodSwordvsDummy",
+   "kind": "hits"
+  },
+  {
+   "file": "Dragonborn.esm",
+   "id": "01E29E",
+   "edid": "WPNBlade1HandMiraakSheatheSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Dragonborn.esm",
+   "id": "01E29D",
+   "edid": "WPNBlade1HandMiraakDrawSD",
+   "kind": "draw"
+  },
+  {
+   "file": "Dragonborn.esm",
+   "id": "01E29A",
+   "edid": "WPNImpactBladeMiraakVsMetalSkinSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Dragonborn.esm",
+   "id": "01E299",
+   "edid": "WPNImpactBladeMiraakVsFleshDraugrSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Dragonborn.esm",
+   "id": "01E297",
+   "edid": "WPNImpactBladeMiraakVsFleshSD",
+   "kind": "hits"
+  },
+  {
+   "file": "Dragonborn.esm",
+   "id": "01E293",
+   "edid": "WPNSwingMiraakBlade",
+   "kind": "swings"
+  },
+  {
+   "file": "Dragonborn.esm",
+   "id": "019726",
+   "edid": "WPNImpactSpearVsWood",
+   "kind": "hits"
+  }
+ ]
+}

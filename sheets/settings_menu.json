@@ -1,0 +1,378 @@
+{
+ "_about": "DRAFT for the user's review, nothing built yet. The in-game settings menu (SkyUI MCM through MCM Helper; a hidden quest in MordhauWeapons.esp, its one-line script compiled with the Creation Kit). MCM Helper finds the menu by the plugin's name: the pages are Data/MCM/Config/MordhauWeapons/config.json with the defaults in settings.ini beside it (tools/make_mcm.py makes both from this sheet), and the player's choices are kept in Data/MCM/Settings/MordhauWeapons.ini; the plugin reads them when the menu closes and at each load, and each one replaces the sheet value named in 'acts_on' (the sheet value stays the default). The user, 2026-10-15: 'make a configuration menu using mcm, it needs to adjust damage, armor, what mordhau sounds people want, the characters voice, and any others you would deem fitting'. 'new' = the setting does not exist in the mod yet and has to be added; 'to find out' = how it can be done is not known yet.",
+ "pages": [
+  {
+   "page": "Combat",
+   "rows": [
+    {
+     "id": "damage_dealt",
+     "label": "Damage you deal",
+     "type": "slider",
+     "min": 0.25,
+     "max": 3.0,
+     "step": 0.05,
+     "default": 1.0,
+     "acts_on": "new: multiplies the health fraction the player's MORDHAU-judged hits take (progression.json formula)",
+     "help": "How much health your hits take, on top of the mod's own balance. 1 = unchanged."
+    },
+    {
+     "id": "damage_taken",
+     "label": "Damage you take",
+     "type": "slider",
+     "min": 0.25,
+     "max": 3.0,
+     "step": 0.05,
+     "default": 1.0,
+     "acts_on": "new: multiplies the health fraction hits on the player take",
+     "help": "How much health hits on you take. 1 = unchanged."
+    },
+    {
+     "id": "armour_share",
+     "label": "How much your armour protects",
+     "type": "slider",
+     "min": 0.0,
+     "max": 1.0,
+     "step": 0.05,
+     "default": 0.5,
+     "acts_on": "progression.json armour_share (share of Skyrim's own armour reduction)",
+     "help": "How much of Skyrim's own armour reduction protects you from MORDHAU hits. 0 = armour does nothing, 1 = all of it."
+    },
+    {
+     "id": "hits_to_kill",
+     "label": "Clean hits to kill an equal",
+     "type": "slider",
+     "min": 2,
+     "max": 15,
+     "step": 1,
+     "default": 5,
+     "acts_on": "progression.json hits_to_kill",
+     "help": "Clean hits that kill someone of your level with an ordinary weapon. Fewer = deadlier fights."
+    },
+    {
+     "id": "level_gap",
+     "label": "Level difference matters",
+     "type": "toggle",
+     "default": 1,
+     "acts_on": "off = progression.json level_min and level_max taken as 1",
+     "help": "On: higher-level fighters hit harder and take more hits. Off: level makes no difference."
+    },
+    {
+     "id": "creature_damage_scale",
+     "label": "Damage to creatures",
+     "type": "slider",
+     "min": 0.25,
+     "max": 3.0,
+     "step": 0.05,
+     "default": 1.25,
+     "acts_on": "builds.json creature_damage_scale",
+     "help": "Damage your hits do to creatures (wolves, draugr, trolls...)."
+    },
+    {
+     "id": "kick_creature_damage",
+     "label": "Kick damage to creatures",
+     "type": "slider",
+     "min": 0.0,
+     "max": 1.0,
+     "step": 0.05,
+     "default": 0.25,
+     "acts_on": "builds.json kick_creature_damage",
+     "help": "How much your kick hurts creatures and anyone without a MORDHAU fighter, as a share of a clean weapon hit. 0 = kicks do no damage."
+    },
+    {
+     "id": "super_kick",
+     "label": "Super kick",
+     "type": "toggle",
+     "default": 0,
+     "acts_on": "builds.json super_kick",
+     "help": "Your kick throws whoever it reaches away from you, like Fus Ro Dah. Not dragons."
+    },
+    {
+     "id": "super_kick_force",
+     "label": "Super kick force",
+     "type": "slider",
+     "min": 1,
+     "max": 50,
+     "step": 1,
+     "default": 10,
+     "acts_on": "builds.json super_kick_force",
+     "help": "How hard the super kick throws."
+    },
+    {
+     "id": "enemy_skill",
+     "label": "Enemy skill at equal level",
+     "type": "choice",
+     "choices": [
+      "Peasant",
+      "Recruit",
+      "Soldier",
+      "Veteran",
+      "Duelist"
+     ],
+     "default": 2,
+     "acts_on": "the F8 menu's enemy skill level (CombatStandIns SetAiLevel, cache/ai_level.txt): changed here, it is taken; the last one changed, F8 or this, counts. The user, 2026-10-15: 'also add the f8 menu to the mcm menu'.",
+     "help": "How well enemies of your own level fight: parrying, feinting, how soon they attack. The same choice as the F8 menu in game."
+    },
+    {
+     "id": "level_skill",
+     "label": "Enemy skill follows the level gap",
+     "type": "toggle",
+     "default": 1,
+     "acts_on": "sheets/enemy_ai.json level_skill: on = from the chosen level at equal levels to Duelist at 19 above and Peasant at 19 below, blended between the five levels; off = the chosen level for everyone. Named enemies one level up either way.",
+     "help": "On: enemies 19 or more levels above you fight like duelists, 19 or more below like peasants, at your own level as chosen above, smoothly in between. Off: everyone fights at the level chosen above. Named enemies are one level better either way."
+    }
+   ]
+  },
+  {
+   "page": "MORDHAU sounds",
+   "rows": [
+    {
+     "id": "own_voice_sounds",
+     "label": "Your yells and grunts",
+     "type": "toggle",
+     "default": 1,
+     "acts_on": "the player's CharacterVoiceComponent: off = MORDHAU's muffled switch with the muffled volume at 0 (as the stand-ins are muted); on = the mercenary's own muffled volume back.",
+     "help": "Your character's MORDHAU yells, grunts and pain sounds."
+    },
+    {
+     "id": "standin_voices",
+     "label": "Enemies' MORDHAU voices",
+     "type": "toggle",
+     "default": 0,
+     "acts_on": "builds.json standin_voices; passed to MORDHAU's script (PS_STANDIN_VOICES) with the voice as VoiceSet<n>",
+     "help": "MORDHAU yells and death screams from the people you fight. Off: they only speak as Skyrim has them speak."
+    },
+    {
+     "id": "hit_marker",
+     "label": "Hit sound and marker on creatures",
+     "type": "toggle",
+     "default": 1,
+     "acts_on": "builds.json hit_marker",
+     "help": "MORDHAU's hit sound and marker when you hit a creature."
+    },
+    {
+     "id": "mordhau_background_audio",
+     "label": "Keep MORDHAU audible behind Skyrim",
+     "type": "toggle",
+     "default": 1,
+     "acts_on": "builds.json mordhau_background_audio (read before MORDHAU starts: takes effect at the next start)",
+     "help": "MORDHAU mutes itself while its window is behind Skyrim. On: the mod turns that off for its own session. Takes effect at the next Skyrim start."
+    }
+   ]
+  },
+  {
+   "page": "Sound mix",
+   "rows": [
+    {
+     "id": "sound_style",
+     "label": "Sound style",
+     "type": "choice",
+     "choices": [
+      "Use the sliders below",
+      "Only MORDHAU",
+      "Only Skyrim"
+     ],
+     "default": 0,
+     "acts_on": "new: picks MORDHAU's volume and Skyrim's weapon sounds at once (plugin SoundMix); 'Custom' takes the sliders. The user, 2026-10-15: 'make it very customizable, make it so you can have just pure skyrim sounds or just pure mordhau sounds, and anything inbetween'. 2026-10-15: 'Both in full' (then the default) taken out - the sliders did nothing until 'Custom' was chosen ('i have skyrim parries set to 0 but still hear them'); the sliders always count unless one of the two 'Only' styles is chosen.",
+     "help": "Only MORDHAU: Skyrim's weapon sounds are silent. Only Skyrim: MORDHAU is silent (also its voices). Otherwise the sliders below count."
+    },
+    {
+     "id": "mordhau_volume",
+     "label": "MORDHAU volume",
+     "type": "slider",
+     "min": 0,
+     "max": 100,
+     "step": 5,
+     "default": 100,
+     "acts_on": "MORDHAU's script (main.lua PS_apply_volume), sent as Volume<percent>: GameplayStatics SetSoundMixClassOverride on MORDHAU's GlobalMasterSoundClass through its GlobalMasterSoundMix, in the mod's session only - MORDHAU's saved sound settings are never touched. Tried in the D: test 2026-10-15 (20%: 'mordhau is quieter'). With a sound style other than Custom: the style's own (both / only MORDHAU: 100%, only Skyrim: 0) - plugin SoundMix::MordhauVolume.",
+     "help": "How loud MORDHAU is: its swings, clashes, hits and voices."
+    },
+    {
+     "id": "skyrim_hits",
+     "label": "Skyrim weapon hits",
+     "type": "slider",
+     "min": 0,
+     "max": 100,
+     "step": 5,
+     "default": 100,
+     "acts_on": "Skyrim's own weapon sounds of the kind 'hits' (sheets/skyrim_combat_sounds.json: weapon hits (on flesh, armour, wood, stone)) - each record's static attenuation raised in memory (plugin SoundMix::ApplySkyrim); used with the style Custom.",
+     "help": "How loud Skyrim's own weapon hits (on flesh, armour, wood, stone) are."
+    },
+    {
+     "id": "skyrim_swings",
+     "label": "Skyrim weapon swings",
+     "type": "slider",
+     "min": 0,
+     "max": 100,
+     "step": 5,
+     "default": 100,
+     "acts_on": "Skyrim's own weapon sounds of the kind 'swings' (sheets/skyrim_combat_sounds.json: weapon swings) - each record's static attenuation raised in memory (plugin SoundMix::ApplySkyrim); used with the style Custom.",
+     "help": "How loud Skyrim's own weapon swings are."
+    },
+    {
+     "id": "skyrim_blocks",
+     "label": "Skyrim blocks and bashes",
+     "type": "slider",
+     "min": 0,
+     "max": 100,
+     "step": 5,
+     "default": 100,
+     "acts_on": "Skyrim's own weapon sounds of the kind 'blocks' (sheets/skyrim_combat_sounds.json: blocks and bashes) - each record's static attenuation raised in memory (plugin SoundMix::ApplySkyrim); used with the style Custom.",
+     "help": "How loud Skyrim's own blocks and bashes are."
+    },
+    {
+     "id": "skyrim_draw",
+     "label": "Skyrim drawing and sheathing",
+     "type": "slider",
+     "min": 0,
+     "max": 100,
+     "step": 5,
+     "default": 100,
+     "acts_on": "Skyrim's own weapon sounds of the kind 'draw' (sheets/skyrim_combat_sounds.json: weapon drawing and sheathing sounds) - each record's static attenuation raised in memory (plugin SoundMix::ApplySkyrim); used with the style Custom.",
+     "help": "How loud Skyrim's own weapon drawing and sheathing sounds are."
+    }
+   ]
+  },
+  {
+   "page": "Character voice",
+   "rows": [
+    {
+     "id": "voice",
+     "label": "Your character's voice",
+     "type": "choice",
+     "choices": [
+      "Barbarian",
+      "Commoner",
+      "Cruel",
+      "Cruel (female)",
+      "Eager",
+      "Eastern",
+      "Female French",
+      "Female German",
+      "Female Italian",
+      "Female Slavic",
+      "Foppish",
+      "French",
+      "German",
+      "Irish",
+      "Knight",
+      "Noble (female)",
+      "Nordic",
+      "Northern (female)",
+      "Plain",
+      "Raider",
+      "Slavic",
+      "Southern (female)",
+      "Spanish",
+      "Young"
+     ],
+     "default": 4,
+     "acts_on": "MORDHAU's script (main.lua PS_apply_voice; its list PS_VOICES must be voice_assets, in this order): the player's character's CharacterVoiceComponent.CharacterVoice = /Game/Mordhau/Blueprints/Voices/BP_<asset>. The names shown are MORDHAU's own (each voice's ItemName, read from the game 2026-10-15; '(female)' added where a female voice shares a male one's name). The user, 2026-10-15, on a first entry 'Your mercenary's own': removed - only MORDHAU's voices are listed, Eager first chosen (the default mercenary's voice). Sent with the others as VoiceSet<n>, as the list position + 1.",
+     "help": "Your character's MORDHAU voice, by MORDHAU's own names.",
+     "voice_assets": [
+      "Barbarian",
+      "Englishman",
+      "CruelKnight",
+      "FemaleCruel",
+      "Raziel",
+      "MiddleEastern",
+      "FemaleFrench",
+      "FemaleGerman",
+      "FemaleItalian",
+      "FemaleSlavic",
+      "Reginald",
+      "French",
+      "German",
+      "Irish",
+      "Knight",
+      "FemaleNoble",
+      "Nordic",
+      "FemaleNorthern",
+      "Bernard",
+      "Scot",
+      "Slavic",
+      "FemaleYoung",
+      "Spanish",
+      "YoungLad"
+     ]
+    },
+    {
+     "id": "voice_pitch",
+     "label": "Voice pitch",
+     "type": "slider",
+     "min": 0.77,
+     "max": 1.15,
+     "default": 1.0,
+     "acts_on": "the player's CharacterVoiceComponent.VoicePitch, kept within the chosen voice's own PitchLimits (MORDHAU's: e.g. Foppish 0.77-1.02, Irish 0.82-1.15, Eager 0.85-1.05).",
+     "help": "Your character's voice pitch. Each voice has its own range in MORDHAU; outside it the nearest pitch the voice allows is used.",
+     "step": 0.01
+    }
+   ],
+   "_note": "named 'Voice' the page came up empty in game (2026-10-15): Skyrim's interface has a word 'Voice' of its own and showed 'voice', which MCM Helper did not find"
+  },
+  {
+   "page": "Gameplay",
+   "rows": [
+    {
+     "id": "crouch_mode",
+     "label": "Crouch",
+     "type": "choice",
+     "choices": [
+      "Toggle, like Skyrim",
+      "Hold, like MORDHAU"
+     ],
+     "default": 0,
+     "acts_on": "the input handler (CombatInternal.h, sneak): Toggle = Skyrim's sneak untouched; Hold = held to crouch, let go to stand (live_input.json crouch_hold). MORDHAU's character follows Skyrim's sneaking either way. 2026-10-16: a streamer hammered Ctrl - with hold every tap crouched and stood up at once ('he cant crouch').",
+     "help": "Toggle: tap your Sneak key to crouch and tap again to stand, as in Skyrim. Hold: crouched while the key is held, as in MORDHAU."
+    },
+    {
+     "id": "fought_no_retreat",
+     "label": "Enemies never yield or flee",
+     "type": "toggle",
+     "default": 1,
+     "acts_on": "builds.json fought_no_retreat",
+     "help": "On: the people you fight never yield or run away (only Skyrim's essential characters still go down on one knee)."
+    },
+    {
+     "id": "kick_stagger",
+     "label": "Kicks stagger creatures",
+     "type": "toggle",
+     "default": 1,
+     "acts_on": "builds.json kick_stagger",
+     "help": "Your kick staggers creatures and anyone without a MORDHAU fighter."
+    },
+    {
+     "id": "arrow_stays_seconds",
+     "label": "Arrows stay stuck (seconds)",
+     "type": "slider",
+     "min": 0,
+     "max": 300,
+     "step": 10,
+     "default": 90,
+     "acts_on": "builds.json arrow_stays_seconds",
+     "help": "How long your arrows and bolts stay stuck where they hit."
+    },
+    {
+     "id": "hide_head_looking_down",
+     "label": "Hide your helmet when looking down",
+     "type": "toggle",
+     "default": 1,
+     "acts_on": "off = camera.json eye_head_hidden_looking_down taken as never",
+     "help": "Hides your helmet while you look far down in first person, so it does not block the view."
+    }
+   ]
+  },
+  {
+   "page": "Safety",
+   "rows": [
+    {
+     "id": "start_mordhau",
+     "label": "Start MORDHAU with Skyrim",
+     "type": "toggle",
+     "default": 1,
+     "acts_on": "Session.cpp: off = the plugin starts no session, as MordhauSkyrim.ini StartMordhau=0 (read once at Skyrim's start; only another reason not to start, never one to start). Safety tests run on it.",
+     "help": "Off: the mod never starts MORDHAU and Skyrim plays as usual. Takes effect at the next Skyrim start."
+    }
+   ]
+  }
+ ]
+}

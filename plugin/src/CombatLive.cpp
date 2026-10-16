@@ -129,6 +129,9 @@ namespace dm::Combat
 			const bool         wants = std::abs(input.x) + std::abs(input.y) > 0.05f;
 			const float        intent = wants ? std::atan2(input.x, input.y) * 57.29578f : 0.0f;
 			const bool         sprinting = wants && player->AsActorState()->IsSprinting();
+			// (over-encumbered: Skyrim makes the player walk - its pace, not measured and not corrected: a save loaded
+			// over-encumbered measured that walk as the run and made the player 2.2 times too fast)
+			const bool         heavy = player->IsOverEncumbered();
 			g_move.sprintHeld = sprinting ? g_move.sprintHeld + dt : 0.0f;
 
 			// the speed MORDHAU's rules allow right now, forward (the table already makes backward 0.8 of this):
@@ -150,16 +153,38 @@ namespace dm::Combat
 			const int state = sprinting ? 1 : 0;
 
 			// calibration: after half a second of steady movement straight ahead in this state, take what Skyrim delivers
-			const bool settled = wants && !airborne && std::abs(intent) < 20.0f && (!sprinting || g_move.sprintHeld > g_stats.Move("sprint_buildup") + 0.3f);
+			const bool settled = wants && !airborne && !heavy && std::abs(intent) < 20.0f && (!sprinting || g_move.sprintHeld > g_stats.Move("sprint_buildup") + 0.3f);
 			g_move.steady = settled && sprinting == g_move.wasSprinting ? g_move.steady + dt : 0.0f;
 			g_move.wasSprinting = sprinting;
-			if (!g_move.calibrated[state] && g_move.steady > 0.5f && a_measuredSpeed > 60.0f) {
-				g_move.gainSum[state] += a_measuredSpeed / (g_move.mult / 100.0f);
+			// (only what can be a normal run or sprint counts: Skyrim moves the player at the speeds this mod gave it from MORDHAU,
+			// so at SpeedMult 100 it delivers about what MORDHAU allows - half or less was walk mode, a slope, a crowd or a
+			// load; taken as the gain, it made the player 2.2 times too fast for the whole session: "i am going super fast")
+			const float sample = a_measuredSpeed / std::max(g_move.mult / 100.0f, 0.2f);
+			const bool  plausible = sample > 0.6f * desired && sample < 1.6f * desired;
+			if (!g_move.calibrated[state] && g_move.steady > 0.5f && a_measuredSpeed > 60.0f && plausible) {
+				g_move.gainSum[state] += sample;
 				if (++g_move.gainSamples[state] >= 20) {
 					g_move.gain[state] = g_move.gainSum[state] / static_cast<float>(g_move.gainSamples[state]);
 					g_move.calibrated[state] = true;
 					logger::info("movement: Skyrim delivers {:.0f} cm/s at SpeedMult 100 when {}; corrected to MORDHAU's {:.0f}", g_move.gain[state],
 						sprinting ? "sprinting" : "running", desired);
+				}
+			}
+			// once measured, still watched: steady movement that stays far from what MORDHAU allows (beyond a third either way)
+			// for two seconds, not held at a limit, measures this state again
+			{
+				static float off[2]{};
+				const bool   atLimit = g_move.mult <= 20.5f || g_move.mult >= 249.5f;
+				const bool   wrong = g_move.calibrated[state] && g_move.steady > 0.5f && !atLimit && !heavy && !player->AsActorState()->IsSwimming() && a_measuredSpeed > 30.0f &&
+				                   (a_measuredSpeed > 1.35f * desired || a_measuredSpeed < 0.65f * desired);
+				off[state] = wrong ? off[state] + dt : 0.0f;
+				if (off[state] > 2.0f) {
+					off[state] = 0.0f;
+					logger::info("movement: {} at {:.0f} cm/s where MORDHAU allows {:.0f} (SpeedMult {:.0f}): measured again", sprinting ? "sprinting" : "running",
+						a_measuredSpeed, desired, g_move.mult);
+					g_move.calibrated[state] = false;
+					g_move.gainSum[state] = 0.0f;
+					g_move.gainSamples[state] = 0;
 				}
 			}
 			// while a state is being measured its SpeedMult is held still
@@ -168,7 +193,7 @@ namespace dm::Combat
 			// speeds, which made swimming crawl)
 			const bool  swimming = player->AsActorState()->IsSwimming();
 			// (nor during any other Skyrim scene - bound, at the start of the game, the player crept along)
-			const float wanted = (!wants || swimming || g_skyrimOwns.load()) ? 100.0f : std::clamp(100.0f * desired / std::max(g_move.gain[state], 1.0f), 20.0f, 250.0f);
+			const float wanted = (!wants || swimming || heavy || g_skyrimOwns.load()) ? 100.0f : std::clamp(100.0f * desired / std::max(g_move.gain[state], 1.0f), 20.0f, 250.0f);
 			if (!measuring && std::abs(wanted - g_move.mult) > 0.5f) {
 				g_move.mult = wanted;
 				values->SetActorValue(RE::ActorValue::kSpeedMult, wanted);
@@ -623,6 +648,15 @@ namespace dm::Combat
 		{
 		if (link.live) {
 			static Clock::time_point lastAsk{};
+			// Skyrim's own draw / sheathe sound as Skyrim begins one (its animation's own was not heard with MORDHAU linked)
+			{
+				static auto was = RE::WEAPON_STATE::kSheathed;
+				const auto  now = a_player->AsActorState()->GetWeaponState();
+				if (now != was && (now == RE::WEAPON_STATE::kDrawing || now == RE::WEAPON_STATE::kSheathing)) {
+					SoundMix::PlaySkyrimDraw(a_player, now == RE::WEAPON_STATE::kDrawing);
+				}
+				was = now;
+			}
 			// (Skyrim drawing or putting away: MORDHAU's character is asked at once, so its own draw or holster plays while
 			// Skyrim's animation is the one shown. Asked afterwards, it played on its own once Skyrim's was over - seen in
 			// play: "the weapon disappears, then hands go down, hands up, hands down".)
@@ -708,9 +742,65 @@ namespace dm::Combat
 			}
 		}
 
+		// The settings menu's choices MORDHAU's script carries out - the voice (page "Character voice", "Your yells and
+		// grunts", "Enemies' MORDHAU voices") as one request VoiceSet<n>, and "MORDHAU volume" as Volume<percent>
+		// (main.lua numbered_action): when MORDHAU becomes live and whenever the menu changed them. (The pitch as a step 0..255 over 0.75 - 1.15: every voice's own limits lie within.)
+		void SendVoiceSettings(bool a_live)
+		{
+			static int  sent = -1;
+			static bool wasLive = false;
+			const int   generation = Settings::Generation();
+			if (a_live && (!wasLive || generation != sent)) {
+				sent = generation;
+				const int  voice = std::clamp(static_cast<int>(Settings::Value("voice", 4.0f)) + 1, 1, 24);  // (the menu's list from 0; the script's from 1)
+				const int  pitch = std::clamp(static_cast<int>(std::lround((Settings::Value("voice_pitch", 1.0f) - 0.75f) / 0.4f * 255.0f)), 0, 255);
+				const bool heard = Settings::Value("own_voice_sounds", 1.0f) > 0.5f;
+				const bool enemies = BuildValue("standin_voices") > 0.5f;
+				const auto request = std::format("VoiceSet{}", voice * 1000000 + pitch * 1000 + (heard ? 10 : 0) + (enemies ? 1 : 0));
+				Link::Request(request.c_str());
+				// MORDHAU's volume (page "Sound mix": its style or slider), in percent: MORDHAU's master sound in this session only (main.lua PS_apply_volume)
+				const auto volume = std::format("Volume{}", static_cast<int>(std::lround(SoundMix::MordhauVolume() * 100.0f)));
+				Link::Request(volume.c_str());
+			}
+			wasLive = a_live;
+		}
+
 		void LiveTick(RE::PlayerCharacter* a_player)
 		{
 			KeepTdmOut(Link::Current().live);
+			SendVoiceSettings(Link::Current().live);
+			// the settings menu's "Enemy skill at equal level" is the F8 menu's choice: changed in the menu, it is taken (the
+			// last one changed, F8 or the menu, counts)
+			{
+				static float seen = -1.0f;
+				const float  chosen = Settings::Value("enemy_skill", -1.0f);
+				if (chosen >= 0.0f && seen >= 0.0f && chosen != seen) {
+					SetAiLevel(static_cast<int>(chosen) + 1, true);
+				}
+				seen = chosen;
+			}
+			// the player's attack was parried: MORDHAU throws the attacker back with its BlockedMotion - Skyrim's block sound, by
+			// what the enemy parried with (the nearest enemy in front of the player)
+			{
+				static bool      wasBlocked = false;
+				const bool       blocked = std::string_view(Link::Current().motion).find("BlockedMotion") != std::string_view::npos;
+				if (blocked && !wasBlocked) {
+					RE::Actor* defender = nullptr;
+					float      best = 250.0f;
+					RE::ProcessLists::GetSingleton()->ForEachHighActor([&](RE::Actor* a_other) {
+						if (a_other && !a_other->IsDead() && a_other->Is3DLoaded()) {
+							const float d = a_other->GetPosition().GetDistance(a_player->GetPosition());
+							if (d < best) {
+								best = d;
+								defender = a_other;
+							}
+						}
+						return RE::BSContainer::ForEachResult::kContinue;
+					});
+					SoundMix::PlaySkyrimBlock(defender ? defender : a_player);
+				}
+				wasBlocked = blocked;
+			}
 			float forward = 0.0f, right = 0.0f;
 			if (auto* controls = RE::PlayerControls::GetSingleton()) {
 				forward = controls->data.moveInputVec.y;
@@ -1041,6 +1131,12 @@ namespace dm::Combat
 				++g_releaseNumber;
 				hitDone = false;
 				logger::info("live: release of {} began, blade {:.0f} units, MORDHAU stamina {:.0f}", link.motion, (tip - hand).Length(), link.stamina);
+				// Skyrim's own swing sound too, as loud as the menu says - for attacks only (MORDHAU's draw, EquipmentSwitchMotion,
+				// has a release as well: it gave a swing sound on every draw)
+				const std::string_view motion(link.motion);
+				if (motion.find("Strike") != motion.npos || motion.find("Stab") != motion.npos || motion.find("Kick") != motion.npos || motion.find("Bash") != motion.npos) {
+					SoundMix::PlaySkyrimSwing(a_player, motion.find("Kick") != motion.npos);
+				}
 			}
 			// Skyrim's world stops the blade as MORDHAU's own walls would: the outer part of the blade, and the path its
 			// tip took since the last frame, against walls, rocks, ground and trees
@@ -1094,17 +1190,20 @@ namespace dm::Combat
 			if (!hitDone) {
 				constexpr float kBodyRadius = 22.0f, kBladeRadius = 6.0f;
 				RE::Actor*      found = nullptr;
-				// (sheets/builds.json kick_stagger: a kick is not the blade - what it reaches is a line from the player's hip
+				// (a kick is not the blade - what it reaches is a line from the player's hip
 				// forward, and what it does to somebody without a stand-in is Skyrim's stagger)
-				const bool         kick = BuildValue("kick_stagger") > 0.5f && std::string_view(link.motion).find("Kick") != std::string_view::npos;
+				const bool         kick = std::string_view(link.motion).find("Kick") != std::string_view::npos;
 				const float        facingNow = a_player->GetAngleZ();
 				const RE::NiPoint3 kickFrom = a_player->GetPosition() + RE::NiPoint3{ 0.0f, 0.0f, a_player->GetHeight() * 0.4f };
 				const RE::NiPoint3 kickTo = kickFrom + RE::NiPoint3{ std::sin(facingNow), std::cos(facingNow), 0.0f } * BuildValue("kick_reach");
 				float              foundTall = 0.0f;
 				RE::ProcessLists::GetSingleton()->ForEachHighActor([&](RE::Actor* a_target) {
-					if (!a_target || a_target == a_player || a_target->IsDead() || !a_target->Is3DLoaded() || IsFought(a_target) ||
+					// (mirrored characters: MORDHAU itself decides - but the super kick throws them too: MORDHAU's kick does no damage,
+					// so it never reports one as a hit - "super kick doesnt work ... doesnt launch anyone", all kicks at a stand-in's bandit)
+					const bool superKickOnFought = kick && BuildValue("super_kick") > 0.5f;
+					if (!a_target || a_target == a_player || a_target->IsDead() || !a_target->Is3DLoaded() || (IsFought(a_target) && !superKickOnFought) ||
 						g_creatureHitRelease[a_target->GetFormID()] == g_releaseNumber) {
-						return RE::BSContainer::ForEachResult::kContinue;  // (mirrored characters: MORDHAU itself decides)
+						return RE::BSContainer::ForEachResult::kContinue;
 					}
 					float height = a_target->GetHeight();
 					if (height < 40.0f) {
@@ -1145,9 +1244,19 @@ namespace dm::Combat
 				if (found) {
 					g_creatureHitRelease[found->GetFormID()] = g_releaseNumber;  // (its stand-in's verdict for this swing is not counted again)
 				}
-				if (found && kick) {
+				if (found && kick && IsFought(found)) {
+					// (one with a MORDHAU stand-in, reached by the kick with the super kick on: only thrown - the kick itself is MORDHAU's)
 					hitDone = true;
-					if (foundTall > BuildValue("kick_stagger_tallest")) {
+					SuperKick(a_player, found);
+				} else if (found && kick) {
+					hitDone = true;
+					if (SuperKick(a_player, found)) {
+						// (thrown like Fus Ro Dah: no stagger on top)
+					} else if (BuildValue("kick_stagger") < 0.5f) {
+						// (settings menu "Kicks stagger creatures" off: the kick still lands - marker, sound, combat - without the
+						// stagger; it had made the kick a blade swing from the hand, which never reached anything)
+						logger::info("live: the kick reached {}: not staggered (kick_stagger off)", found->GetDisplayFullName());
+					} else if (foundTall > BuildValue("kick_stagger_tallest")) {
 						logger::info("live: the kick reached {} ({:.0f} units tall): too big to be staggered", found->GetDisplayFullName(), foundTall);
 					} else {
 						// (Skyrim's own stagger: away from where the player stands, as its own hits give it)
@@ -1159,8 +1268,17 @@ namespace dm::Combat
 						const bool taken = found->NotifyAnimationGraph("staggerStart");
 						logger::info("live: the kick reached {} ({:.0f} units tall): staggered ({})", found->GetDisplayFullName(), foundTall, taken ? "taken" : "not taken: no stagger in its animations, or it is in one already");
 					}
-					// (MORDHAU's hit marker and hit sound, as for any hit Skyrim judges; and whoever is kicked knows who did it)
-					if (BuildValue("hit_marker") > 0.5f) {
+					// a little damage (sheets/builds.json kick_creature_damage: a share of one clean hit), judged as a weapon hit of
+					// that size; ApplyHit gives the hit marker and sound and starts the fight. Without damage: the marker and sound here.
+					if (const float share = BuildValue("kick_creature_damage"); share > 0.0f) {
+						ActiveSwing swing;
+						swing.swing = g_liveSwing ? g_liveSwing : &sheets::kSwings[0];
+						swing.family = FamilyOf(a_player);
+						if (!swing.family) {
+							swing.family = &sheets::kWeaponFamilies[0];
+						}
+						ApplyHit(a_player, found, swing, 1.0f, Progress("clean_hit") * share * CreatureScale(found));
+					} else if (BuildValue("hit_marker") > 0.5f) {
 						CharacterRender::ShowHitMarker(false);
 						Link::Request("HitSound");
 					}
@@ -1179,7 +1297,7 @@ namespace dm::Combat
 					}
 					logger::info("live: MORDHAU's blade ({}) reached {} at {:.3f}s into the motion", link.motion, found->GetDisplayFullName(), link.motionTime);
 					// (no stand-in: MORDHAU gave no damage; one clean hit - a creature takes sheets/builds.json creature_damage_scale of it)
-					ApplyHit(a_player, found, swing, Humanoid(found) ? 1.0f : std::max(BuildValue("creature_damage_scale"), 0.1f), Progress("clean_hit"));
+					ApplyHit(a_player, found, swing, 1.0f, Progress("clean_hit") * CreatureScale(found));
 					{
 						// a blunt weapon stops in what it strikes, as in MORDHAU (a blade may carry on through): the attack
 						// ends there, the same way it ends on a wall. (Against people MORDHAU does this itself - a creature

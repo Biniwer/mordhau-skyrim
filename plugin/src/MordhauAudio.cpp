@@ -1,6 +1,7 @@
 #include "MordhauAudio.h"
 
 #include "bake/Cache.h"
+#include "Settings.h"
 #include "gen/Sheets.h"
 
 #include <cstdlib>
@@ -77,7 +78,7 @@ namespace dm::MordhauAudio
 		{
 			for (const auto& row : sheets::kBuilds) {
 				if (std::string_view(row.id) == "mordhau_background_audio") {
-					return row.value > 0.5f;
+					return Settings::Value(row.id, row.value) > 0.5f;  // (the settings menu's value, if it has one)
 				}
 			}
 			return false;

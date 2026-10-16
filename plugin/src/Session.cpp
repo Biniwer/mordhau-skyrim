@@ -2,6 +2,7 @@
 
 #include "MordhauAudio.h"
 #include "FirstStart.h"
+#include "Settings.h"
 #include "bake/Cache.h"
 
 #include <Windows.h>
@@ -628,8 +629,11 @@ namespace dm::Session
 			logger::info("session: MORDHAU's side is not beside the plugin ('{}'): the session is someone else's to run (the launcher)", g_payload.string());
 			return;
 		}
-		if (byLauncher || !g_settings.startMordhau) {
-			logger::info("session: not run by the plugin ({})", byLauncher ? "the launcher started this Skyrim" : "StartMordhau=0");
+		// (the settings menu's "Start MORDHAU with Skyrim" off - sheets/settings_menu.json start_mordhau: as StartMordhau=0, read
+		// once at Skyrim's start)
+		const bool menuOff = dm::Settings::Value("start_mordhau", 1.0f) < 0.5f;
+		if (byLauncher || !g_settings.startMordhau || menuOff) {
+			logger::info("session: not run by the plugin ({})", byLauncher ? "the launcher started this Skyrim" : menuOff ? "switched off in the settings menu" : "StartMordhau=0");
 			return;
 		}
 		std::thread(Run).detach();

@@ -190,6 +190,13 @@ out += ['', T + "// The first-start message box (sheets/first_start.json): MORDH
         T + f'inline constexpr const char* kFirstStartBody = {json.dumps(fs["body"])};',
         T + f'inline constexpr const char* kFirstStartAccept = {json.dumps(fs["accept"])};',
         T + f'inline constexpr const char* kFirstStartDecline = {json.dumps(fs["decline"])};']
+out += ['', T + "// Skyrim's own weapon sounds by kind (sheets/skyrim_combat_sounds.json, made by tools/skyrim_combat_sounds.py):",
+        T + "// the settings menu's Skyrim sound sliders turn each kind down. id: the record's number within its file.",
+        T + 'struct SkyrimCombatSound { const char* file; std::uint32_t id; const char* kind; const char* edid; };',
+        T + 'inline constexpr SkyrimCombatSound kSkyrimCombatSounds[] = {']
+for r in rows('skyrim_combat_sounds'):
+    out.append(f'{T}{T}{{ {s(r["file"])}, 0x{r["id"]}, {s(r["kind"])}, {s(r["edid"])} }},')
+out += [T + '};']
 out += ['}', '']
 dst = os.path.join(root, 'plugin', 'src', 'gen')
 os.makedirs(dst, exist_ok=True)

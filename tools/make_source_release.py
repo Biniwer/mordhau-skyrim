@@ -20,6 +20,7 @@ BUILDING = NL.join([
     '',
     '- `plugin/` - the SKSE plugin (C++23, CMake, vcpkg). `plugin/src/gen/Sheets.h` is generated from `sheets/` by `tools/gen_code.py`.',
     '- `loader/` - the loader `dwmapi.dll` that checks how MORDHAU was started before anything else is loaded. `loader/gen_exports.py` writes the export tables; `tools/build_loader.bat` builds it.',
+    "- `papyrus/` - the settings menu's script (Papyrus, compiled with the Creation Kit against SkyUI's and MCM Helper's script headers); `tools/make_mcm.py` writes the menu's pages for MCM Helper from `sheets/settings_menu.json`.",
     '- `mordhau_side/` - the Lua script that runs in MORDHAU under UE4SS, and this mod\'s UE4SS signature file.',
     '- `sheets/` - the design as data (JSON): every number and mapping the code uses. Change a sheet, then run `tools/gen_code.py`.',
     '- `tools/` - what builds the package and what was used to test it. Many are written for the author\'s PC (paths to the games at the top of each file).',
@@ -39,7 +40,7 @@ BUILDING = NL.join([
     'Nothing of MORDHAU or Skyrim is in this archive, and nothing of either is needed to compile; both games are needed to run and to test.',
     ''])
 
-take = [('plugin', ('extern', 'build')), ('loader', ()), ('mordhau_side', ()), ('sheets', ()), ('tools', ('__pycache__',)), ('installer', ())]
+take = [('plugin', ('extern', 'build')), ('papyrus', ()), ('loader', ()), ('mordhau_side', ()), ('sheets', ()), ('tools', ('__pycache__',)), ('installer', ())]
 loose = ['COPYING', 'HOW-TO-PLAY.md', 'release/description.md', 'release/credits.txt', 'release/README.txt', 'release/safety-measures.txt']
 skip_ext = ('.pyc', '.obj', '.pdb', '.dll', '.exe', '.zip', '.png', '.jpg', '.mp4', '.dds', '.bin')
 # (the words to look for are personal themselves: they are kept in _deps/private_words.txt, one per line, which never

@@ -478,6 +478,17 @@ local function numbered_action(p, name)
     elseif kind == "Emote" then
         p:RequestEmote(n)
         return true
+    elseif kind == "Volume" then
+        -- the settings menu's "MORDHAU volume", in percent
+        PS_volume = math.min(n, 100) / 100
+        PS_apply_volume(true)
+        return true
+    elseif kind == "VoiceSet" then
+        -- the settings menu's voice choices: voice * 1000000 + pitch step (0..255 over 0.75 - 1.15) * 1000 + heard * 10 + enemies heard
+        PS_voiceSet = { voice = n // 1000000, pitch = 0.75 + (n // 1000 % 1000) / 255 * 0.4, heard = n // 10 % 10 == 1 }
+        PS_STANDIN_VOICES = n % 10 == 1
+        PS_apply_voice(p, true)
+        return true
     end
     return false
 end
@@ -525,7 +536,7 @@ local function read_input()
             log("enemy skill level " .. level)
         end
     end
-    PS_skillSteps = {}
+    PS_skillOf = {}
     PS_passive = {}
     PS_ghostShield = {}
     -- (Skyrim is paused - a menu: every stand-in is passive for as long, so none walks, strikes or parries)
@@ -548,7 +559,7 @@ local function read_input()
     -- (a creature's stand-in: sheets/builds.json creature_standin)
     PS_dummy = {}
     for id in rest:gmatch(" gd:(%d+)") do PS_dummy[tonumber(id)] = true end
-    for id, n in rest:gmatch(" gb:(%d+),(%d)") do PS_skillSteps[tonumber(id)] = tonumber(n) end
+    for id, n in rest:gmatch(" gb:(%d+),(%d+)") do PS_skillOf[tonumber(id)] = tonumber(n) / 10 end   -- (each stand-in's own skill, 1..5 in tenths: by the level gap)
     input.shield = rest:match(" sh:([%w_]+)")   -- the MORDHAU shield for the one on the arm in Skyrim (nil: none)
     input.crouch = rest:find(" cr:1", 1, true) ~= nil   -- sneaking in Skyrim = crouching in MORDHAU
     for id, name in rest:gmatch(" (%d+):(%w+)") do input.actions[#input.actions + 1] = { tonumber(id), name } end
@@ -762,6 +773,16 @@ PS_ai_levels = {
     { 0.90, 0.90, 0.50, 0.45, 0.1 },
 }
 PS_ai_level = PS_ai_level or 3
+-- one stand-in's skill (1..5, in tenths, sent by the plugin by the level gap; else the chosen level), and the values for
+-- it: between two of the five levels, blended
+function PS_skill_of(b) return PS_skillOf and b and PS_skillOf[b.ghost] or PS_ai_level end
+function PS_ai_row(level)
+    level = math.max(1, math.min(5, level or PS_ai_level))
+    local lo = math.floor(level); local hi = math.min(5, lo + 1); local t = level - lo
+    local row = {}
+    for i = 1, 5 do row[i] = PS_ai_levels[lo][i] * (1 - t) + PS_ai_levels[hi][i] * t end
+    return row
+end
 local HEALTH_FLOOR = 30
 local DAMAGE_FACTOR = 0.15
 -- On unless cache/live_options.lua says otherwise (the launcher writes it; -SimpleEnemies turns it off). Tested on
@@ -939,19 +960,104 @@ function PS_move_block()
     end
     return PS_moveLast or string.rep(string.pack("<I4fffi4", 0, 0, 0, 0, 0), MAX_GHOSTS)
 end
--- Stand-ins are mute (sheets/builds.json standin_voices = 0): Skyrim's people speak only as Skyrim has them speak.
--- MORDHAU's own switch for a muffled voice is used, with the muffled volume at nothing; set again every 2 s, since
--- MORDHAU sets the switch itself from what the character wears. The player's own voice component is never touched.
+-- Stand-ins are mute (sheets/builds.json standin_voices = 0; the settings menu's "Enemies' MORDHAU voices"): Skyrim's
+-- people speak only as Skyrim has them speak. MORDHAU's own switch for a muffled voice is used, with the muffled volume
+-- at nothing; set again every 2 s, since MORDHAU sets the switch itself from what the character wears. Switched on in
+-- the menu, a muted stand-in gets MORDHAU's own muffled volume back.
 PS_STANDIN_VOICES = false
 function PS_mute_voice(b, c)
-    if PS_STANDIN_VOICES or os.clock() - (b.mutedAt or -10) < 2.0 then return end
+    if os.clock() - (b.mutedAt or -10) < 2.0 then return end
     b.mutedAt = os.clock()
+    if PS_STANDIN_VOICES then
+        if b.muted then
+            b.muted = false
+            pcall(function() local vc = c.CharacterVoiceComponent; vc.MuffledVoiceVolumeMultiplier = b.muffledWas or 1.5; vc.bIsVoiceMuffled = false end)
+        end
+        return
+    end
     local ok = pcall(function()
         local vc = c.CharacterVoiceComponent
+        if not b.muffledWas then b.muffledWas = vc.MuffledVoiceVolumeMultiplier end
         vc.MuffledVoiceVolumeMultiplier = 0.0
         vc.bIsVoiceMuffled = true
     end)
+    b.muted = ok
     if not b.muteTold then b.muteTold = true; log("stand-in " .. tostring(b.look) .. (ok and " is mute (no MORDHAU voice)" or ": its voice could NOT be muted")) end
+end
+-- MORDHAU's arena is not Skyrim's world: its walls, pillars and props stand where they stand in MORDHAU, so an
+-- enemy's swing 4-6 m from the player met one of them and was thrown back (BlockedMotion) at nothing to be seen
+-- (sheets/builds.json mordhau_world_hits = 0: "npcs are hitting invisible objects", 2026-10-15; 21 such swings in one
+-- test). Every attack - the player's and the stand-ins' - gets MORDHAU's own bDisableWorldCollision as it begins.
+-- (Skyrim's walls stopping a blade is the plugin's, sheets/builds.json wall_cut - off for now.)
+function PS_no_world_hits(pawn)
+    local function off(ch)
+        pcall(function()
+            local m = ch:GetMotion()
+            if there(m) and m.bDisableWorldCollision == false then m.bDisableWorldCollision = true end   -- (only attack motions have it)
+        end)
+    end
+    off(pawn)
+    for _, b in ipairs(PS_get_bots()) do
+        if not b.dead and there(b.obj) then off(b.obj) end
+    end
+end
+-- The settings menu's "MORDHAU volume": MORDHAU's master sound class turned down through its own master sound mix, in
+-- this session only (GameplayStatics SetSoundMixClassOverride - MORDHAU's saved sound settings are never touched). Put
+-- on again when MORDHAU has a new world (the override belongs to one).
+function PS_apply_volume(now)
+    if not PS_volume then return end
+    local ok, err = pcall(function()
+        local w = FindFirstOf("PlayerController"):GetWorld()
+        if not now and PS_volumeWorld == w:GetFullName() then return end
+        local base = "/Game/Mordhau/Audio/Other/"
+        local cls = StaticFindObject(base .. "Classes/GlobalMasterSoundClass.GlobalMasterSoundClass")
+        local mix = StaticFindObject(base .. "Mix/GlobalMasterSoundMix.GlobalMasterSoundMix")
+        if not (there(cls) and there(mix)) then
+            LoadAsset(base .. "Classes/GlobalMasterSoundClass.GlobalMasterSoundClass"); LoadAsset(base .. "Mix/GlobalMasterSoundMix.GlobalMasterSoundMix")
+            cls = StaticFindObject(base .. "Classes/GlobalMasterSoundClass.GlobalMasterSoundClass"); mix = StaticFindObject(base .. "Mix/GlobalMasterSoundMix.GlobalMasterSoundMix")
+        end
+        local gs = StaticFindObject("/Script/Engine.Default__GameplayStatics")
+        gs:SetSoundMixClassOverride(w, mix, cls, PS_volume, 1.0, 0.0, true)
+        if PS_volumeWorld ~= w:GetFullName() then gs:PushSoundMixModifier(w, mix) end
+        PS_volumeWorld = w:GetFullName()
+    end)
+    if now or not ok then log(string.format("volume: MORDHAU at %.0f%%", PS_volume * 100) .. (ok and "" or " - FAILED: " .. tostring(err))) end
+end
+-- The player's voice (sheets/settings_menu.json, page "Character voice", and "Your yells and grunts"): which of
+-- MORDHAU's voices, at which pitch (kept within the voice's own limits), and whether it is heard. Sent by the plugin as
+-- "VoiceSet<n>" (see numbered_action); until it comes, the mercenary's own voice and pitch. Put on the player's character again
+-- every 2 s, since MORDHAU sets them back from the mercenary when it gives the player a new character.
+-- (sheets/settings_menu.json "voice" voice_assets, in that order - the menu lists them by MORDHAU's own names)
+local PS_VOICES = { "Barbarian", "Englishman", "CruelKnight", "FemaleCruel", "Raziel", "MiddleEastern", "FemaleFrench", "FemaleGerman", "FemaleItalian", "FemaleSlavic", "Reginald", "French", "German", "Irish", "Knight", "FemaleNoble", "Nordic", "FemaleNorthern", "Bernard", "Scot", "Slavic", "FemaleYoung", "Spanish", "YoungLad" }
+PS_voiceSet = PS_voiceSet or { voice = 0, pitch = 1.0, heard = true }
+function PS_apply_voice(p, now)
+    if not now and os.clock() - (PS_voiceAt or -10) < 2.0 then return end
+    PS_voiceAt = os.clock()
+    local set = PS_voiceSet
+    local ok, err = pcall(function()
+        local vc = p.CharacterVoiceComponent
+        if not PS_ownVoice then PS_ownVoice = { voice = vc.CharacterVoice, pitch = vc.VoicePitch, muffled = vc.MuffledVoiceVolumeMultiplier } end
+        local name = PS_VOICES[set.voice]
+        local voice = PS_ownVoice.voice
+        if name then
+            local path = "/Game/Mordhau/Blueprints/Voices/BP_" .. name
+            voice = StaticFindObject(path .. ".Default__BP_" .. name .. "_C")
+            if not there(voice) then LoadAsset(path .. ".BP_" .. name .. "_C"); voice = StaticFindObject(path .. ".Default__BP_" .. name .. "_C") end
+        end
+        if there(voice) and vc.CharacterVoice ~= voice then vc.CharacterVoice = voice end
+        local pitch = PS_ownVoice.pitch
+        if name then
+            pitch = set.pitch
+            pcall(function() local l = voice.PitchLimits; pitch = math.max(l.X, math.min(l.Y, pitch)) end)   -- (each voice's own range in MORDHAU)
+        end
+        vc.VoicePitch = pitch
+        if not set.heard then
+            vc.MuffledVoiceVolumeMultiplier = 0.0; vc.bIsVoiceMuffled = true
+        elseif vc.MuffledVoiceVolumeMultiplier == 0.0 then
+            vc.MuffledVoiceVolumeMultiplier = PS_ownVoice.muffled; vc.bIsVoiceMuffled = false
+        end
+    end)
+    if now then log("voice: " .. (PS_VOICES[set.voice] or "the mercenary's own") .. string.format(", pitch %.2f", set.pitch) .. (set.heard and "" or ", not heard") .. (ok and "" or " - FAILED: " .. tostring(err))) end
 end
 -- MORDHAU can hand out a bot with a Demon Horde voice: a stand-in for a Skyrim person gets a human one (the player's)
 function PS_human_voice(c, pawn)
@@ -1037,21 +1143,20 @@ end
 
 -- A stand-in fights with a set skill, not with whichever behaviour profile MORDHAU gave the bot (sheets/enemy_ai.json
 -- standin_skill): it parries in time more often than not.
-function PS_standin_skill(c, steps)
+function PS_standin_skill(c, level)
     pcall(function()
         local prof = c.Controller.BehaviorProfile
         if not there(prof) then return end
         local name = prof:GetFullName():match("[^%.]+$")
         local function set(k, v) pcall(function() prof[k] = v end) end
-        local level = math.min(5, PS_ai_level + (steps or 0))
-        local L = PS_ai_levels[level]
+        local L = PS_ai_row(level)
         set("PerfectParryProbability", L[2])
         set("ParryTimingRandom", 0.3 * (1 - L[2]))
         pcall(function() prof.ParryTimingVariance = { X = 0.0, Y = 0.4 * (1 - L[2]) } end)
         set("FallForFeintProbability", 1 - L[2] * 0.8); set("FootworkInsteadOfParryProbability", 0.05)
         set("RiposteProbability", 0.4 + 0.6 * L[2]); set("FeintProbability", L[3]); set("MorphProbability", L[4]); set("ChamberProbability", L[2] * 0.5)
         set("BaseAttackHesitanceTime", L[5])
-        log("stand-in skill set on " .. tostring(name) .. string.format(" (well-timed parry %.2f, timing error now %.2f s)", prof.PerfectParryProbability, prof.ParryTimingRandom))
+        log("stand-in skill set on " .. tostring(name) .. string.format(" (skill %.1f: well-timed parry %.2f, timing error now %.2f s)", level or PS_ai_level, prof.PerfectParryProbability, prof.ParryTimingRandom))
     end)
 end
 
@@ -1352,6 +1457,9 @@ local function update_ghosts(pawn, pc)
     local playerStriking = os.clock() <= (playerReleaseUntil or 0)
     local parked = 0
     for i = #bots, 1, -1 do if bots[i].dead then table.remove(bots, i) end end
+    PS_apply_voice(pawn)
+    if os.clock() - (PS_volumeAt or -10) > 2.0 then PS_volumeAt = os.clock(); PS_apply_volume(false) end
+    PS_no_world_hits(pawn)
     for _, b in ipairs(bots) do
         local c = b.obj
         if c:IsValid() then
@@ -1387,7 +1495,7 @@ local function update_ghosts(pawn, pc)
                     end)
                 elseif not passive and b.noParry then
                     b.noParry = nil
-                    PS_standin_skill(c, PS_skillSteps and PS_skillSteps[b.ghost] or 0)
+                    PS_standin_skill(c, PS_skill_of(b))
                 end
             end
             -- A stand-in that has lost its weapon (disarmed, dropped) takes it up again: after 3 s when it lies within
@@ -1429,7 +1537,7 @@ local function update_ghosts(pawn, pc)
                     b.crouchSince = os.clock()
                 end
             end
-            local steps = g and PS_skillSteps and PS_skillSteps[b.ghost] or 0
+            local skill = g and PS_skill_of(b) or PS_ai_level
             -- A stand-in that stands idle within reach of the player for 6 s has a brain that has gone to sleep (seen
             -- after Skyrim had been paused or in the background for minutes: the bandits no longer attacked): started again.
             if g and not b.demon and not (PS_passive and PS_passive[b.ghost]) then
@@ -1442,7 +1550,7 @@ local function update_ghosts(pawn, pc)
                     log("stand-in " .. tostring(b.look) .. " stood idle beside the player for 6 s: its brain is started again")
                 end
             end
-            if g and not b.demon and (b.skillFor ~= b.ghost or b.skillSteps ~= steps) then b.skillFor = b.ghost; b.skillSteps = steps; PS_standin_skill(c, steps) end
+            if g and not b.demon and (b.skillFor ~= b.ghost or b.skillLevel ~= skill) then b.skillFor = b.ghost; b.skillLevel = skill; PS_standin_skill(c, skill) end
             local okArm, armErr = pcall(arm, b)
             if PS_parrytest and g and not b.demon then
                 pcall(function()
@@ -1917,7 +2025,7 @@ local function update_ghosts(pawn, pc)
                             end
                             mine = "IdleMotion"
                         end
-                        if releaseBegan and near and mine == "IdleMotion" and not (PS_passive and PS_passive[b.ghost]) and math.random() < PS_ai_levels[math.min(5, PS_ai_level + (b.skillSteps or 0))][1] then
+                        if releaseBegan and near and mine == "IdleMotion" and not (PS_passive and PS_passive[b.ghost]) and math.random() < PS_ai_row(b.skillLevel or PS_ai_level)[1] then
                             -- (the same parry button the player has: RequestParry is refused for a bot)
                             pcall(function() c:FeintOrBlockPressed() end)
                             b.parryUp = os.clock() + 0.12

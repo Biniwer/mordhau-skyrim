@@ -65,6 +65,13 @@
    "verified": false
   },
   {
+   "id": "mordhau_world_hits",
+   "value": 0.0,
+   "meaning": "play-test note, 2026-10-15: 'npcs are hitting invisible objects'. 0 = no attack in the mod's session is stopped by MORDHAU's own map (its walls, pillars and props stand where they stand in MORDHAU's arena, not where Skyrim's are): the script sets MORDHAU's bDisableWorldCollision on every attack motion, the player's and the stand-ins'. In the D: test before: 21 enemy swings thrown back (BlockedMotion) 4-6 m from the player, who was not parrying. Skyrim's walls do not stop a blade either while wall_reach and wall_cut are 0 (both off since the play tests of 2026-10-08) - before this, only MORDHAU's map did, at places that had nothing to do with Skyrim's. Script: main.lua PS_no_world_hits (always on; this row is its note).",
+   "source": "the D: test log, 2026-10-15; MORDHAU's attack motion property found by listing BP_1H_RightStrikeMotion's properties",
+   "verified": false
+  },
+  {
    "id": "skyrim_weapon_look",
    "value": 1.0,
    "meaning": "1 = the player's weapon is drawn as the Skyrim weapon that is equipped (Skyrim's own model and textures, placed where MORDHAU's counterpart is); 0 = MORDHAU's model. A weapon picked up in MORDHAU that is not the equipped one's counterpart is always MORDHAU's model.",
@@ -573,6 +580,27 @@
    "value": 0.75,
    "meaning": "how hard that stagger is, as Skyrim counts it (its staggerMagnitude: 0.25 a flinch, 0.5 a step back, 0.75 several steps, 1 the longest)",
    "source": "chosen: a clear step back without the longest animation",
+   "verified": false
+  },
+  {
+   "id": "kick_creature_damage",
+   "value": 0.25,
+   "meaning": "play-test note, 2026-10-15: 'yes add a little kick damage to creatures'. The player's kick on anyone without a MORDHAU stand-in (a wolf, a skeever, a draugr beyond the stand-in count ...) takes this share of one clean hit (progression.json clean_hit), times creature_damage_scale for creatures - as a weapon hit of that size is judged by Skyrim's progression. 0 = the kick does no damage (stagger, marker and sound only, as before). Settings menu: 'Kick damage to creatures'.",
+   "source": "chosen: a quarter of a clean hit, about a fifth of what a sword blow takes",
+   "verified": false
+  },
+  {
+   "id": "super_kick",
+   "value": 0.0,
+   "meaning": "play-test note, 2026-10-15: 'also make a superpowered kick option that throws people like the fusrodah'. 1 = whoever the player's kick reaches - a creature or person without a stand-in, or a stand-in's Skyrim character when MORDHAU judged the kick - is thrown away from the player by Skyrim's own push (AIProcess::KnockExplosion, what PushActorAway and Unrelenting Force use), instead of the stagger; not dragons. Settings menu: 'Super kick'.",
+   "source": "the user's wish",
+   "verified": false
+  },
+  {
+   "id": "super_kick_force",
+   "value": 10.0,
+   "meaning": "how hard the super kick throws (Skyrim's push magnitude; PushActorAway-style force). Settings menu: 'Super kick force'.",
+   "source": "chosen: a clear throw of a few metres, to be tuned in play",
    "verified": false
   },
   {

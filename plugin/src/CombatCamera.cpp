@@ -7,6 +7,10 @@ namespace dm::Combat
 		// After the third-person camera update: this frame's animation is on the skeleton, the frame is not drawn yet.
 		float CameraValue(std::string_view a_id)
 		{
+			// (settings menu "Hide your helmet when looking down" off: never far enough down)
+			if (a_id == "eye_head_hidden_looking_down" && Settings::Value("hide_head_looking_down", 1.0f) < 0.5f) {
+				return 2.0f;
+			}
 			for (const auto& row : sheets::kCamera) {
 				if (a_id == row.id) {
 					return row.value;

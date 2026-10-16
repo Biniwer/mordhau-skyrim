@@ -207,12 +207,39 @@ namespace dm::Combat
 		// hit takes. a_skyrimDamage: what Skyrim itself would give this hit (the player's weapon, skill, perks); 0 = not known.
 		float Progress(const char* a_id)
 		{
+			// (settings menu "Level difference matters" off: level counts as equal both ways)
+			const std::string_view id(a_id);
+			if ((id == "level_min" || id == "level_max") && Settings::Value("level_gap", 1.0f) < 0.5f) {
+				return 1.0f;
+			}
 			for (const auto& value : sheets::kProgression) {
-				if (std::string_view(value.id) == a_id) {
-					return value.value;
+				if (id == value.id) {
+					return Settings::Value(id, value.value);
 				}
 			}
 			return 0.0f;
+		}
+
+		// (given as the strength of the hit - MORDHAU damage counted against clean_hit - since a hit judged by the progression
+		// does not use ApplyHit's scale: passed as that scale, it had done nothing since progression.json came in)
+		float CreatureScale(RE::Actor* a_target)
+		{
+			return Humanoid(a_target) ? 1.0f : std::max(BuildValue("creature_damage_scale"), 0.1f);
+		}
+
+		bool SuperKick(RE::Actor* a_player, RE::Actor* a_target)
+		{
+			if (!a_player || !a_target || a_target->IsDead() || BuildValue("super_kick") < 0.5f || a_target->HasKeywordString("ActorTypeDragon")) {
+				return false;
+			}
+			auto* process = a_target->GetActorRuntimeData().currentProcess;
+			if (!process) {
+				return false;
+			}
+			const float force = std::max(BuildValue("super_kick_force"), 0.0f);
+			process->KnockExplosion(a_target, a_player->GetPosition(), force);
+			logger::info("live: super kick - {} thrown away (force {:.0f})", a_target->GetDisplayFullName(), force);
+			return true;
 		}
 
 		float HitFraction(RE::Actor* a_attacker, RE::Actor* a_target, float a_mordhauDamage, float a_skyrimDamage)
@@ -260,6 +287,13 @@ namespace dm::Combat
 			// a blow that kills outright in MORDHAU (a maul to the head) kills here too, short of a higher-level target
 			if (a_mordhauDamage >= Progress("lethal_blow")) {
 				fraction = std::max(fraction, std::min(1.0f, level));
+			}
+			// the settings menu's "Damage you deal" / "Damage you take", on top of all of the above
+			if (a_attacker == player) {
+				fraction *= std::max(Settings::Value("damage_dealt", 1.0f), 0.0f);
+			}
+			if (onPlayer) {
+				fraction *= std::max(Settings::Value("damage_taken", 1.0f), 0.0f);
 			}
 			logger::info("progress: {} (level {:.0f}) on {} (level {:.0f}, full health {:.0f}): quality {:.2f} (MORDHAU {:.0f}) x level {:.2f} x offence {:.2f} (Skyrim damage {:.0f}) / defence {:.2f} (armour {:.0f}%) -> {:.0f}% of full health = {:.0f}, about {:.1f} such hits to kill",
 				a_attacker->GetDisplayFullName(), attackerLevel, a_target->GetDisplayFullName(), targetLevel, fullHealth, quality, a_mordhauDamage, level, offence, a_skyrimDamage, defence,

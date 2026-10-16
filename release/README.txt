@@ -24,6 +24,8 @@ BEFORE YOU INSTALL - READ THIS
 - Skyrim Special Edition 1.7.104 (backwards compatible with 1.6.1170; other versions are untested), with
   SKSE for your version and the Address Library for SKSE Plugins
   (Nexus Mods, mod 32444).
+- Optional, for the in-game settings menu (Mod Configuration -> MORDHAU x Skyrim): SkyUI and MCM Helper, both
+  on Nexus Mods. Without them the mod runs with its default settings.
 - Windows 10 or 11, a PC that can run both games at the same time, about 3 GB of free disk space.
 - It changes how Skyrim plays a great deal. Use a new save or one you do not mind losing.
 - Other combat, camera and first-person-body mods for Skyrim will clash with it. Texture, quest and world mods are fine.
@@ -42,7 +44,12 @@ keyboard. The first start prepares MORDHAU's models once the main menu is up (un
 starts MORDHAU. MORDHAU needs one to four minutes to open its match; until then Skyrim plays as usual. When *MORDHAU is
 live* appears at the top left, draw a melee weapon. Controls and what to expect: HOW-TO-PLAY.md beside this file.
 
-To play Skyrim without it: switch the mod off in your mod manager, or set StartMordhau=0 in MordhauSkyrim.ini.
+To play Skyrim without it: switch the mod off in your mod manager, set StartMordhau=0 in MordhauSkyrim.ini, or
+switch off Start MORDHAU with Skyrim in the settings menu (Safety page; from the next start).
+
+Settings (with SkyUI and MCM Helper): damage, armour, enemy skill, kicks, MORDHAU's and Skyrim's combat sounds, your
+character's MORDHAU voice, crouch toggle or hold, and more. They are kept by MCM Helper in
+Data\MCM\Settings\MordhauWeapons.ini.
 
 WHAT IT DOES TO MORDHAU'S FOLDER
 --------------------------------

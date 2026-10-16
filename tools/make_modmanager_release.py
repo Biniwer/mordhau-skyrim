@@ -26,6 +26,11 @@ put(os.path.join(ROOT, 'installer', 'modmanager', 'MordhauSkyrim.ini'), os.path.
 put(os.path.join(SKYRIM, 'Data', 'MordhauWeapons.esp'), 'MordhauWeapons.esp')
 put(os.path.join(ROOT, 'mordhau_side', 'PoseStream', 'Scripts', 'main.lua'), os.path.join(SIDE, 'mordhau', 'Mods', 'PoseStream', 'Scripts', 'main.lua'))
 put(os.path.join(ROOT, 'installer', 'modmanager', 'README.md'), os.path.join(SIDE, 'README.md'))
+# the settings menu (sheets/settings_menu.json): the quest's script, compiled with the Creation Kit (papyrus/), and MCM
+# Helper's pages and defaults (tools/make_mcm.py); MCM Helper finds them by the plugin's name, MordhauWeapons
+put(os.path.join(ROOT, 'build', 'papyrus', 'MordhauSkyrimMCM.pex'), os.path.join('Scripts', 'MordhauSkyrimMCM.pex'))
+for name in ('config.json', 'settings.ini'):
+    put(os.path.join(ROOT, 'build', 'mcm', 'MCM', 'Config', 'MordhauWeapons', name), os.path.join('MCM', 'Config', 'MordhauWeapons', name))
 # the play guide: HOW-TO-PLAY.md with the parts about the launcher script replaced (so the two never drift apart)
 guide = open(os.path.join(ROOT, 'HOW-TO-PLAY.md'), encoding='utf-8').read()
 def swap(text, start, end, new):
@@ -62,6 +67,9 @@ guide = swap(guide, "- **MORDHAU's character never appears / attacks do nothing:
 """)
 guide = swap(guide, '- **To get rid of it:**', '## Settings', "- **To get rid of it:** see *Remove* in the README.\n\n")
 guide = swap(guide, '## Settings', None, r"""## Settings
+
+In game (with SkyUI and MCM Helper): Esc -> System -> Mod Configuration -> **MORDHAU x Skyrim** - combat, sound mix,
+your character's voice, crouch toggle or hold, enemy skill, and whether MORDHAU starts with Skyrim.
 
 `MordhauSkyrim.ini` beside the plugin (`Data\SKSE\Plugins`): MORDHAU somewhere Steam does not know, easier enemies
 (`SimpleEnemies=1`), the size of MORDHAU's window, or the mod switched off (`StartMordhau=0`). Which mercenary: put its

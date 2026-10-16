@@ -673,11 +673,22 @@ namespace dm::CharacterRender
 			// MORDHAU's gore on Skyrim's own bodies: the Skyrim head (with hair, helmet - everything weighted to the
 			// head bone) is folded away into the neck, MORDHAU's neck piece (cut) or stump (crushed) stands on the
 			// neck, and a cut-off head flies as MORDHAU's own head model in the character's skin and hair colours.
+			// (someone on the list who is alive - a save from before the blow loaded, someone brought back, or a new character
+			// that got a dead one's id - gets the head back and is taken off: "if someone loses their head, its gone for good,
+			// reloading and re entering places didnt fix it", seen in a player's video)
+			std::vector<std::uint32_t> alive;
 			for (const auto& [goreId, goreKind] : g_headless) {
 				auto* victim = RE::TESForm::LookupByID<RE::Actor>(goreId);
 				auto* victimRoot = victim ? victim->Get3D(false) : nullptr;
 				auto* headNode = victimRoot ? victimRoot->GetObjectByName("NPC Head [Head]") : nullptr;
 				auto* chestNode = victimRoot ? victimRoot->GetObjectByName("NPC Spine2 [Spn2]") : nullptr;
+				if (victim && !victim->IsDead() && victim->AsActorValueOwner()->GetActorValue(RE::ActorValue::kHealth) > 0.0f) {
+					alive.push_back(goreId);
+					if (headNode) {
+						headNode->local.scale = 1.0f;
+					}
+					continue;
+				}
 				if (!headNode || !chestNode) {
 					continue;
 				}
@@ -721,6 +732,11 @@ namespace dm::CharacterRender
 						}
 					}
 				}
+			}
+			for (const auto id : alive) {
+				g_headless.erase(id);
+				std::erase_if(g_looseHeads, [id](const auto& a_head) { return a_head.id == id; });
+				logger::info("gore: {:08X} is alive again: its head is back", id);
 			}
 			// A MORDHAU weapon held as a Skyrim item by a Skyrim body: MORDHAU's model, in Skyrim's own weapon
 			// hand (the WEAPON node; which way a weapon lies on it is read from the hidden Skyrim model there).

@@ -396,7 +396,7 @@ namespace dm::Combat
 		{
 			for (const auto& value : sheets::kBuilds) {
 				if (std::string_view(value.id) == a_id) {
-					return value.value;
+					return Settings::Value(a_id, value.value);  // (the settings menu's value, if it has one)
 				}
 			}
 			return 0.0f;

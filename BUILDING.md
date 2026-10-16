@@ -6,6 +6,7 @@ Licence: GPL-3.0-or-later (COPYING). Copyright (C) 2026 spock290. Third-party li
 
 - `plugin/` - the SKSE plugin (C++23, CMake, vcpkg). `plugin/src/gen/Sheets.h` is generated from `sheets/` by `tools/gen_code.py`.
 - `loader/` - the loader `dwmapi.dll` that checks how MORDHAU was started before anything else is loaded. `loader/gen_exports.py` writes the export tables; `tools/build_loader.bat` builds it.
+- `papyrus/` - the settings menu's script (Papyrus, compiled with the Creation Kit against SkyUI's and MCM Helper's script headers); `tools/make_mcm.py` writes the menu's pages for MCM Helper from `sheets/settings_menu.json`.
 - `mordhau_side/` - the Lua script that runs in MORDHAU under UE4SS, and this mod's UE4SS signature file.
 - `sheets/` - the design as data (JSON): every number and mapping the code uses. Change a sheet, then run `tools/gen_code.py`.
 - `tools/` - what builds the package and what was used to test it. Many are written for the author's PC (paths to the games at the top of each file).

@@ -72,13 +72,33 @@ for i, row in enumerate(rows):
         elif t in (b'VMAD', b'EITM', b'EAMT', b'CNAM'): continue            # (no scripts, enchantment or template carried over)
         subs.append((t, d))
     records.append(record(b'WEAP', 0x01000800 + i, subs))
-group_body = b''.join(records)
-group = b'GRUP' + struct.pack('<I4sIHHHH', 24 + len(group_body), b'WEAP', 0, 0, 0, 0, 0) + group_body
-header = record(b'TES4', 0, [(b'HEDR', struct.pack('<fiI', 1.70, len(records) + 1, 0x800 + len(rows))), (b'CNAM', b'MordhauSkyrim\0'),
+def grup(label, recs):
+    body = b''.join(recs)
+    return b'GRUP' + struct.pack('<I4sIHHHH', 24 + len(body), label, 0, 0, 0, 0, 0) + body
+
+def wstr(s):
+    return struct.pack('<H', len(s)) + s.encode()
+
+# The settings menu (sheets/settings_menu.json): a hidden quest that runs from the game's start with the script
+# MordhauSkyrimMCM (papyrus/, extends MCM Helper's MCM_ConfigBase) and a player alias carrying SkyUI's
+# SKI_PlayerLoadGameAlias, so the menu registers again after each load. Laid out as SkyUI_SE.esp's own menu quests
+# (SKI_WidgetManagerInstance): the same VMAD, DNAM flags and alias fields.
+MCM_QUEST = 0x01000800 + len(rows)
+vmad = (struct.pack('<hhH', 5, 2, 1) + wstr('MordhauSkyrimMCM') + b'\0' + struct.pack('<H', 0)   # one script, no properties
+        + b'\x02' + struct.pack('<H', 0) + wstr('')                                               # no fragments
+        + struct.pack('<H', 1) + struct.pack('<HhI', 0, 0, MCM_QUEST)                             # alias 0 of this quest
+        + struct.pack('<hhH', 5, 2, 1) + wstr('SKI_PlayerLoadGameAlias') + b'\0' + struct.pack('<H', 0))
+quest = record(b'QUST', MCM_QUEST, [
+    (b'EDID', b'MordhauSkyrimMCMQuest\0'), (b'VMAD', vmad), (b'FULL', b'MordhauSkyrimMCMQuest\0'),
+    (b'DNAM', bytes.fromhex('110100ff0000000000000000')), (b'NEXT', b''), (b'ANAM', struct.pack('<I', 1)),
+    (b'ALST', struct.pack('<I', 0)), (b'ALID', b'PlayerAlias\0'), (b'FNAM', struct.pack('<I', 0)),
+    (b'ALFR', struct.pack('<I', 0x14)), (b'VTCK', struct.pack('<I', 0)), (b'ALED', b'')])
+
+header = record(b'TES4', 0, [(b'HEDR', struct.pack('<fiI', 1.70, len(records) + 3, 0x800 + len(rows) + 1)), (b'CNAM', b'MordhauSkyrim\0'),
                              (b'MAST', b'Skyrim.esm\0'), (b'DATA', struct.pack('<Q', 0))], flags=0x200)   # 0x200 = light plugin
 with open(OUT, 'wb') as f:
-    f.write(header + group)
-print(f'{OUT}: {len(records)} weapons, {os.path.getsize(OUT)} bytes')
+    f.write(header + grup(b'WEAP', records) + grup(b'QUST', [quest]))
+print(f'{OUT}: {len(records)} weapons and the settings menu quest {MCM_QUEST:08X}, {os.path.getsize(OUT)} bytes')
 
 plugins = os.path.join(os.environ['LOCALAPPDATA'], 'Skyrim Special Edition', 'Plugins.txt')
 lines = open(plugins, encoding='utf-8', errors='replace').read().splitlines() if os.path.exists(plugins) else []

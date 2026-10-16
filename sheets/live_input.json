@@ -142,7 +142,7 @@
    "device": 0,
    "code": 29,
    "request": "CrouchHold",
-   "mordhau_default": "Left Ctrl, MORDHAU's Crouch: held = crouched, let go = up (Skyrim's own sneak is a toggle). While MORDHAU is linked, a press only counts for Skyrim when the player is standing, and letting go is handed to Skyrim as the press that ends sneaking. Whatever key Skyrim has for 'Sneak' is used; this row names the default.",
+   "mordhau_default": "Left Ctrl, MORDHAU's Crouch: held = crouched, let go = up (Skyrim's own sneak is a toggle). While MORDHAU is linked, a press only counts for Skyrim when the player is standing, and letting go is handed to Skyrim as the press that ends sneaking. Whatever key Skyrim has for 'Sneak' is used; this row names the default. Only with the settings menu's 'Crouch' at 'Hold, like MORDHAU' (since 2026-10-16; the default is Skyrim's own toggle).",
    "verified": false
   },
   {

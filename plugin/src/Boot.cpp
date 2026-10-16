@@ -1,5 +1,7 @@
 #include "Boot.h"
 #include "FirstStart.h"
+#include "Settings.h"
+#include "SoundMix.h"
 
 namespace dm
 {
@@ -21,9 +23,16 @@ namespace dm
 				if (!g_dataLoaded && RE::TESForm::LookupByID(0x7)) {
 					g_dataLoaded = true;
 					logger::info("boot: data loaded");
+					Settings::Load();
+					SoundMix::ApplySkyrim();
 					if (g_events.dataLoaded) {
 						g_events.dataLoaded();
 					}
+				}
+				// The settings menu lives in the journal: what the player chose there counts from its closing on.
+				if (a_event->menuName == RE::JournalMenu::MENU_NAME && !a_event->opening) {
+					Settings::Load();
+					SoundMix::ApplySkyrim();
 				}
 				if (a_event->menuName == RE::MainMenu::MENU_NAME && !a_event->opening) {
 					g_mainMenuClosed = true;
