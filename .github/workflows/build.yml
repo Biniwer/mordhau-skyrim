@@ -80,12 +80,13 @@ jobs:
           Expand-Archive ue4ss.zip ue4ss
           Copy-Item ue4ss\UE4SS.dll $side
           # (the mod's own loader replaces UE4SS's dwmapi.dll; no GUI console window, no hot reload; MORDHAU is
-          # "++UE4+4.26-Mordhau" but laid out as 4.25 (tools/uasset.py; with 4.26 its async loader hits OnOutOfMemory as
-          # soon as UE4SS is in), and UE4SS's own engine version scan finds neither - "Failed to find EngineVersion")
+          # "++UE4+4.26-Mordhau": UE4SS's own engine version scan does not find it ("Failed to find EngineVersion").
+          # 4.26 it is - its StaticConstructObject_Internal takes FStaticConstructObjectParameters (4.26's form, per the
+          # .pdb); with 4.25, UE4SS's hook on it crashes MORDHAU's async loading thread every time.
           (Get-Content ue4ss\UE4SS-settings.ini) `
             -replace '^(GuiConsoleEnabled|GuiConsoleVisible|EnableHotReloadSystem)\s*=.*$', '$1 = 0' `
             -replace '^MajorVersion\s*=.*$', 'MajorVersion = 4' `
-            -replace '^MinorVersion\s*=.*$', 'MinorVersion = 25' |
+            -replace '^MinorVersion\s*=.*$', 'MinorVersion = 26' |
             Set-Content "$side\UE4SS-settings.ini"
           foreach ($mod in 'ConsoleEnablerMod', 'Keybinds', 'shared') {
             Copy-Item -Recurse "ue4ss\Mods\$mod" "$side\Mods\$mod"
