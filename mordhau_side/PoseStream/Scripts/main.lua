@@ -904,7 +904,9 @@ local WEAPONS = "/Game/Mordhau/Blueprints/Equipment/Weapons/"
 -- a single point at the grip: swings went through people). MORDHAU's own call puts the default parts on it.
 function PS_finish_weapon(w)
     if not there(w) then return end
-    local ok = pcall(function() w:AssignCustomization({ ID = 0, Colors = { 0, 0, 0 }, Parts = { 0, 0, 0 }, Pattern = 0, Skin = 0 }, 0, 0, 0) end)
+    -- (no Colors / Parts lists: newer UE4SS sizes a Lua list inside a struct by the call's first argument instead of the
+    -- list - LuaUObject.cpp push_arrayproperty, lua_rawlen(L, 1) - and crashes MORDHAU on it. Left out, they stay empty.)
+    local ok = pcall(function() w:AssignCustomization({ ID = 0, Pattern = 0, Skin = 0 }, 0, 0, 0) end)
     if not ok and not PS_finishWarned then PS_finishWarned = true; log("a spawned weapon could not be given its parts (its swings will not reach)") end
 end
 
@@ -3036,9 +3038,18 @@ local function tick()
         local fn = StaticFindObject(HOOK)
         if fn and fn:IsValid() then
             PS_hooked = true
+            -- (the frame runs as a game thread action, not inside the hook: newer UE4SS holds its Lua mutex for a hook's
+            -- whole callback and takes the same mutex for every object constructed, on any thread. A load the frame
+            -- causes - PrepareAndSendCustomizationIfChanged loading a voice, seen 2026-10-16 - then waits for the async
+            -- loading thread, which waits for the mutex: MORDHAU hangs. Game thread actions run without it.)
             RegisterHook(HOOK, function()
-                local ok, err = pcall(PS_frame)
-                if not ok and PS_lastError ~= tostring(err) then PS_lastError = tostring(err); log("frame error: " .. PS_lastError) end
+                if PS_framePending then return end   -- never queue a second frame behind one that has not run yet
+                PS_framePending = true
+                ExecuteInGameThread(function()
+                    PS_framePending = false
+                    local ok, err = pcall(PS_frame)
+                    if not ok and PS_lastError ~= tostring(err) then PS_lastError = tostring(err); log("frame error: " .. PS_lastError) end
+                end)
             end)
             log("attached to the controller's tick")
         end
