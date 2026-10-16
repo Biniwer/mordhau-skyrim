@@ -50,6 +50,15 @@ say "MordhauPath=$winpath"
 say "making MordhauWeapons.esp from your Skyrim.esm"
 LOCALAPPDATA=$LOCAL python3 -I "$HERE/tools/make_items_esp.py" "$SKYRIM"
 
+# The plugin is built with Visual Studio 2022, whose std::mutex needs a current msvcp140.dll; Skyrim's prefix comes
+# with the 2016 one (14.00.24215), on which the plugin's first mutex lock reads address 0 and SKSE reports "fatal
+# error occurred while loading plugin". Steam keeps the 2022 redistributable in Steamworks Shared.
+redist="$STEAM/steamapps/common/Steamworks Shared/_CommonRedist/vcredist/2022/VC_redist.x64.exe"
+[ -f "$redist" ] || stop "VC++ 2022 redistributable not found at $redist"
+say "installing the VC++ 2022 runtime into Skyrim's prefix"
+STEAM_COMPAT_CLIENT_INSTALL_PATH=$STEAM STEAM_COMPAT_DATA_PATH=$COMPAT \
+    "$PROTON/proton" run "$redist" /install /quiet /norestart
+
 say "Wine: native dwmapi.dll for Mordhau-Win64-Shipping.exe, in Skyrim's prefix only"
 STEAM_COMPAT_CLIENT_INSTALL_PATH=$STEAM STEAM_COMPAT_DATA_PATH=$COMPAT \
     "$PROTON/proton" run reg add \
