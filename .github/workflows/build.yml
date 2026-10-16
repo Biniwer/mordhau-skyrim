@@ -1,0 +1,100 @@
+# Builds the SKSE plugin and the MORDHAU-side loader on Windows and packages them with UE4SS v3.0.1 in the layout of
+# Skyrim's Data folder (what tools/make_modmanager_release.py makes, without the parts that need the author's PC:
+# MordhauWeapons.esp is made from the player's own Skyrim.esm by linux/install.sh, the settings menu is left out).
+name: build
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-2022
+    env:
+      COMMONLIB_COMMIT: d61bca4de789428aa7d98a770b1323ddf1bb855c
+      UE4SS_URL: https://github.com/UE4SS-RE/RE-UE4SS/releases/download/v3.0.1/UE4SS_v3.0.1.zip
+      VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\vcpkg-cache
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: CommonLibSSE-NG
+        shell: bash
+        run: |
+          git init -q plugin/extern/CommonLibSSE-NG
+          cd plugin/extern/CommonLibSSE-NG
+          git remote add origin https://github.com/alandtse/CommonLibSSE-NG
+          git fetch -q --depth 1 origin "$COMMONLIB_COMMIT"
+          git checkout -q FETCH_HEAD
+          git submodule update -q --init --depth 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Generate Sheets.h
+        run: python tools/gen_code.py
+
+      - name: vcpkg binary cache
+        uses: actions/cache@v4
+        with:
+          path: vcpkg-cache
+          key: vcpkg-${{ hashFiles('plugin/vcpkg.json') }}-${{ env.COMMONLIB_COMMIT }}
+          restore-keys: vcpkg-
+
+      - name: Configure plugin
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force $env:VCPKG_DEFAULT_BINARY_CACHE | Out-Null
+          cmake -S plugin -B build -G "Visual Studio 17 2022" -A x64 `
+            -DCMAKE_TOOLCHAIN_FILE="$env:VCPKG_INSTALLATION_ROOT\scripts\buildsystems\vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static-md
+
+      - name: Build plugin
+        run: cmake --build build --config RelWithDebInfo --target DirectionalMelee
+
+      - uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Build loader
+        shell: cmd
+        run: |
+          cd loader
+          python gen_exports.py || exit /b 1
+          if not exist ..\build\loader mkdir ..\build\loader
+          ml64 /nologo /c /Fo..\build\loader\exports.obj exports.asm || exit /b 1
+          cl /nologo /c /O1 /MT /W4 /EHs-c- /GS- /Fo..\build\loader\ loader.cpp exports_table.cpp || exit /b 1
+          link /nologo /DLL /OUT:..\build\loader\dwmapi.dll /DEF:exports.def /NOIMPLIB /NOEXP ..\build\loader\loader.obj ..\build\loader\exports_table.obj ..\build\loader\exports.obj kernel32.lib user32.lib || exit /b 1
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $out = 'package'
+          $plugins = "$out\SKSE\Plugins"
+          $side = "$plugins\MordhauSkyrim\mordhau"
+          New-Item -ItemType Directory -Force $side | Out-Null
+          Copy-Item build\dist\DirectionalMelee.asi "$plugins\MordhauSkyrim.dll"
+          Copy-Item build\RelWithDebInfo\DirectionalMelee.pdb "$plugins\MordhauSkyrim.pdb"
+          Copy-Item installer\modmanager\MordhauSkyrim.ini $plugins
+          Copy-Item build\loader\dwmapi.dll $side
+
+          Invoke-WebRequest $env:UE4SS_URL -OutFile ue4ss.zip
+          Expand-Archive ue4ss.zip ue4ss
+          Copy-Item ue4ss\UE4SS.dll $side
+          # (the mod's own loader replaces UE4SS's dwmapi.dll; no GUI console window, no hot reload)
+          (Get-Content ue4ss\UE4SS-settings.ini) `
+            -replace '^(GuiConsoleEnabled|GuiConsoleVisible|EnableHotReloadSystem)\s*=.*$', '$1 = 0' |
+            Set-Content "$side\UE4SS-settings.ini"
+          foreach ($mod in 'ConsoleEnablerMod', 'Keybinds', 'shared') {
+            Copy-Item -Recurse "ue4ss\Mods\$mod" "$side\Mods\$mod"
+          }
+          "ConsoleEnablerMod : 1`r`nKeybinds : 1`r`nPoseStream : 1" | Set-Content "$side\Mods\mods.txt"
+          New-Item -ItemType Directory -Force "$side\Mods\PoseStream\Scripts", "$side\UE4SS_Signatures" | Out-Null
+          Copy-Item mordhau_side\PoseStream\Scripts\main.lua "$side\Mods\PoseStream\Scripts"
+          Copy-Item mordhau_side\UE4SS_Signatures\*.lua "$side\UE4SS_Signatures"
+          Copy-Item -Recurse installer\LICENSES "$plugins\MordhauSkyrim\LICENSES"
+          Copy-Item HOW-TO-PLAY.md "$plugins\MordhauSkyrim"
+          Get-ChildItem -Recurse -File $out | ForEach-Object { $_.FullName.Substring((Resolve-Path $out).Path.Length + 1) }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MordhauSkyrim-Data
+          path: package

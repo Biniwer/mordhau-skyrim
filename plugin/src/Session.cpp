@@ -279,6 +279,41 @@ namespace dm::Session
 			}
 		}
 
+		// More of MORDHAU's command line, for a MORDHAU that needs it to start at all: the Epic Games Store build quits
+		// on "cannot reach backend services" without the Epic launcher's one-time login. cache/launch_args.txt holds one
+		// argument per line; something outside Skyrim (linux/skyrim-launch.sh) keeps it fresh, since the login in it
+		// lasts minutes only and MORDHAU may be (re)started long after Skyrim. Read anew at every start; no file, none.
+		std::wstring ExtraArguments(const fs::path& a_cache)
+		{
+			const auto      file = a_cache / "launch_args.txt";
+			std::error_code ec;
+			if (!fs::exists(file, ec)) {
+				return {};
+			}
+			std::ifstream in(file, std::ios::binary);
+			std::string   line;
+			std::wstring  extra;
+			int           count = 0;
+			while (std::getline(in, line)) {
+				line = Trim(line);
+				if (line.empty() || line.find('"') != std::string::npos) {
+					continue;
+				}
+				const int    length = MultiByteToWideChar(CP_UTF8, 0, line.data(), static_cast<int>(line.size()), nullptr, 0);
+				std::wstring wide(static_cast<std::size_t>(std::max(length, 0)), L'\0');
+				MultiByteToWideChar(CP_UTF8, 0, line.data(), static_cast<int>(line.size()), wide.data(), length);
+				extra += L" \"" + wide + L"\"";
+				++count;
+			}
+			const auto age = std::chrono::duration_cast<std::chrono::seconds>(fs::file_time_type::clock::now() - fs::last_write_time(file, ec)).count();
+			// (only how many and how old: the file holds a login)
+			logger::info("session: {} more argument(s) for MORDHAU from {} ({} s old)", count, file.filename().string(), age);
+			if (age > 240) {
+				logger::warn("session: {} is older than four minutes; a login in it may have run out", file.filename().string());
+			}
+			return extra;
+		}
+
 		// Starts MORDHAU into its own offline match (the script opens it and spawns the mercenary). The loader is put into
 		// its folder for this start only. The handle of the started game, or nothing.
 		HANDLE StartMordhau(const fs::path& a_bin, const fs::path& a_cache, bool& a_other)
@@ -312,6 +347,7 @@ namespace dm::Session
 			auto         environment = EnvironmentForMordhau(std::wstring(key.begin(), key.end()));
 			std::wstring command = L"\"" + (a_bin / kExe).wstring() + L"\" -windowed -ResX=" + std::to_wstring(g_settings.width) + L" -ResY=" + std::to_wstring(g_settings.height) +
 								   L" -insecure";  // (always: this MORDHAU is not for anti-cheat-protected play - sheets/live_link.json managed_session)
+			command += ExtraArguments(a_cache);
 			STARTUPINFOW        startup{};
 			PROCESS_INFORMATION started{};
 			startup.cb = sizeof(startup);
