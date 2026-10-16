@@ -1007,6 +1007,8 @@ end
 PS_SILENT_CLASSES = {
     "Classes/MusicSoundClass.MusicSoundClass", "Classes/Music.Music",
     "Classes/Ambient/AmbientSoundClass.AmbientSoundClass", "Classes/Ambient/ThePitAmbient.ThePitAmbient",
+    -- (footsteps: Skyrim plays its own for every character; MORDHAU's character also walks on the spot by design)
+    "Classes/FoleyClasses/FootstepsSoundClass.FootstepsSoundClass", "Classes/PreMixClasses/PreFootsteps.PreFootsteps",
 }
 -- The settings menu's "MORDHAU volume": MORDHAU's master sound class turned down through its own master sound mix, in
 -- this session only (GameplayStatics SetSoundMixClassOverride - MORDHAU's saved sound settings are never touched). Put
@@ -1025,8 +1027,8 @@ function PS_apply_volume(now)
         end
         local gs = StaticFindObject("/Script/Engine.Default__GameplayStatics")
         gs:SetSoundMixClassOverride(w, mix, cls, PS_volume, 1.0, 0.0, true)
-        -- MORDHAU's music and its arena's ambience (the wind of FFA_ThePit) are silenced, with their child classes: beside
-        -- Skyrim only MORDHAU's fighting and voices are wanted
+        -- MORDHAU's music, its arena's ambience (the wind of FFA_ThePit) and its footsteps are silenced, with their child
+        -- classes: beside Skyrim only MORDHAU's fighting and voices are wanted
         for _, path in ipairs(PS_SILENT_CLASSES) do
             local quiet = StaticFindObject(base .. path)
             if not there(quiet) then LoadAsset(base .. path); quiet = StaticFindObject(base .. path) end
