@@ -1003,6 +1003,11 @@ function PS_no_world_hits(pawn)
         if not b.dead and there(b.obj) then off(b.obj) end
     end
 end
+-- MORDHAU's sound classes kept silent in the mod's session (see PS_apply_volume)
+PS_SILENT_CLASSES = {
+    "Classes/MusicSoundClass.MusicSoundClass", "Classes/Music.Music",
+    "Classes/Ambient/AmbientSoundClass.AmbientSoundClass", "Classes/Ambient/ThePitAmbient.ThePitAmbient",
+}
 -- The settings menu's "MORDHAU volume": MORDHAU's master sound class turned down through its own master sound mix, in
 -- this session only (GameplayStatics SetSoundMixClassOverride - MORDHAU's saved sound settings are never touched). Put
 -- on again when MORDHAU has a new world (the override belongs to one).
@@ -1020,6 +1025,13 @@ function PS_apply_volume(now)
         end
         local gs = StaticFindObject("/Script/Engine.Default__GameplayStatics")
         gs:SetSoundMixClassOverride(w, mix, cls, PS_volume, 1.0, 0.0, true)
+        -- MORDHAU's music and its arena's ambience (the wind of FFA_ThePit) are silenced, with their child classes: beside
+        -- Skyrim only MORDHAU's fighting and voices are wanted
+        for _, path in ipairs(PS_SILENT_CLASSES) do
+            local quiet = StaticFindObject(base .. path)
+            if not there(quiet) then LoadAsset(base .. path); quiet = StaticFindObject(base .. path) end
+            if there(quiet) then gs:SetSoundMixClassOverride(w, mix, quiet, 0.0, 1.0, 0.0, true) end
+        end
         if PS_volumeWorld ~= w:GetFullName() then gs:PushSoundMixModifier(w, mix) end
         PS_volumeWorld = w:GetFullName()
     end)
