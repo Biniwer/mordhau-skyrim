@@ -1,4 +1,4 @@
-# Builds the SKSE plugin and the MORDHAU-side loader on Windows and packages them with UE4SS v3.0.1 in the layout of
+# Builds the SKSE plugin and the MORDHAU-side loader on Windows and packages them with UE4SS (see UE4SS_URL) in the layout of
 # Skyrim's Data folder (what tools/make_modmanager_release.py makes, without the parts that need the author's PC:
 # MordhauWeapons.esp is made from the player's own Skyrim.esm by linux/install.sh, the settings menu is left out).
 name: build
@@ -12,7 +12,10 @@ jobs:
     runs-on: windows-2022
     env:
       COMMONLIB_COMMIT: d61bca4de789428aa7d98a770b1323ddf1bb855c
-      UE4SS_URL: https://github.com/UE4SS-RE/RE-UE4SS/releases/download/v3.0.1/UE4SS_v3.0.1.zip
+      # UE4SS: the experimental build of 2026-10-14 (3.0.1 corrupts this MORDHAU's memory at startup, with every Lua mod
+      # off). Pinned by file and checksum: experimental-latest is replaced as new builds come out.
+      UE4SS_URL: https://github.com/UE4SS-RE/RE-UE4SS/releases/download/experimental-latest/UE4SS_v3.0.1-1176-g1ba38db4.zip
+      UE4SS_SHA256: e615ee7a2c24344ea5aeef85183d6cfd550f4f6352225976679f9fefffd0b9a5
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\vcpkg-cache
     steps:
       - uses: actions/checkout@v4
@@ -77,21 +80,22 @@ jobs:
           Copy-Item build\loader\dwmapi.dll $side
 
           Invoke-WebRequest $env:UE4SS_URL -OutFile ue4ss.zip
+          if ((Get-FileHash ue4ss.zip -Algorithm SHA256).Hash -ne $env:UE4SS_SHA256) { throw 'UE4SS zip: checksum differs' }
           Expand-Archive ue4ss.zip ue4ss
-          Copy-Item ue4ss\UE4SS.dll $side
-          # (the mod's own loader replaces UE4SS's dwmapi.dll; no GUI console window, no hot reload; MORDHAU is
-          # "++UE4+4.26-Mordhau": UE4SS's own engine version scan does not find it ("Failed to find EngineVersion").
-          # 4.26 it is - its StaticConstructObject_Internal takes FStaticConstructObjectParameters (4.26's form, per the
-          # .pdb); with 4.25, UE4SS's hook on it crashes MORDHAU's async loading thread every time.
-          (Get-Content ue4ss\UE4SS-settings.ini) `
+          Copy-Item ue4ss\ue4ss\UE4SS.dll $side
+          # (the mod's own loader replaces UE4SS's dwmapi.dll. This build finds MORDHAU's engine version itself (4.26)
+          # and ships no GUI console and no hot reload; its object array cache is off by default, but the script looks
+          # objects up every frame and without the cache each look-up walks every object of the game: MORDHAU froze)
+          (Get-Content ue4ss\ue4ss\UE4SS-settings.ini) `
             -replace '^(GuiConsoleEnabled|GuiConsoleVisible|EnableHotReloadSystem)\s*=.*$', '$1 = 0' `
-            -replace '^MajorVersion\s*=.*$', 'MajorVersion = 4' `
-            -replace '^MinorVersion\s*=.*$', 'MinorVersion = 26' |
+            -replace '^bUseUObjectArrayCache\s*=.*$', 'bUseUObjectArrayCache = true' |
             Set-Content "$side\UE4SS-settings.ini"
           foreach ($mod in 'ConsoleEnablerMod', 'Keybinds', 'shared') {
-            Copy-Item -Recurse "ue4ss\Mods\$mod" "$side\Mods\$mod"
+            Copy-Item -Recurse "ue4ss\ue4ss\Mods\$mod" "$side\Mods\$mod"
           }
-          "ConsoleEnablerMod : 1`r`nKeybinds : 1`r`nPoseStream : 1" | Set-Content "$side\Mods\mods.txt"
+          # (UE4SS's own console and key binding mods are shipped switched off: the script needs neither, and with
+          # ConsoleEnablerMod on, MORDHAU's render thread crashed drawing its UI right after the start)
+          "ConsoleEnablerMod : 0`r`nKeybinds : 0`r`nPoseStream : 1" | Set-Content "$side\Mods\mods.txt"
           New-Item -ItemType Directory -Force "$side\Mods\PoseStream\Scripts", "$side\UE4SS_Signatures" | Out-Null
           Copy-Item mordhau_side\PoseStream\Scripts\main.lua "$side\Mods\PoseStream\Scripts"
           Copy-Item mordhau_side\UE4SS_Signatures\*.lua "$side\UE4SS_Signatures"
