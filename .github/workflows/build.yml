@@ -79,9 +79,12 @@ jobs:
           Invoke-WebRequest $env:UE4SS_URL -OutFile ue4ss.zip
           Expand-Archive ue4ss.zip ue4ss
           Copy-Item ue4ss\UE4SS.dll $side
-          # (the mod's own loader replaces UE4SS's dwmapi.dll; no GUI console window, no hot reload)
+          # (the mod's own loader replaces UE4SS's dwmapi.dll; no GUI console window, no hot reload; MORDHAU is
+          # "++UE4+4.26-Mordhau", which UE4SS's own engine version scan does not find - "Failed to find EngineVersion")
           (Get-Content ue4ss\UE4SS-settings.ini) `
-            -replace '^(GuiConsoleEnabled|GuiConsoleVisible|EnableHotReloadSystem)\s*=.*$', '$1 = 0' |
+            -replace '^(GuiConsoleEnabled|GuiConsoleVisible|EnableHotReloadSystem)\s*=.*$', '$1 = 0' `
+            -replace '^MajorVersion\s*=.*$', 'MajorVersion = 4' `
+            -replace '^MinorVersion\s*=.*$', 'MinorVersion = 26' |
             Set-Content "$side\UE4SS-settings.ini"
           foreach ($mod in 'ConsoleEnablerMod', 'Keybinds', 'shared') {
             Copy-Item -Recurse "ue4ss\Mods\$mod" "$side\Mods\$mod"
