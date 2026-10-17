@@ -15,11 +15,20 @@ set -euo pipefail
 PKG=${1:?usage: install.sh <unzipped MordhauSkyrim-Data folder>}
 HERE=$(cd "$(dirname "$0")/.." && pwd)
 STEAM=$HOME/.local/share/Steam
-SKYRIM=${SKYRIM:-$STEAM/steamapps/common/Skyrim Special Edition}
-COMPAT=$STEAM/steamapps/compatdata/489830
+# the Steam library (Steam's own folder or one added under Settings > Storage) that holds app $1
+library() {
+    local lib
+    while IFS= read -r lib; do
+        [ -f "$lib/steamapps/appmanifest_$1.acf" ] && { echo "$lib"; return; }
+    done < <(grep -o '"path"[[:space:]]*"[^"]*"' "$STEAM/steamapps/libraryfolders.vdf" | cut -d'"' -f4)
+    echo "$STEAM"
+}
+LIB=$(library 489830)
+SKYRIM=${SKYRIM:-$LIB/steamapps/common/Skyrim Special Edition}
+COMPAT=$LIB/steamapps/compatdata/489830
 PFX=$COMPAT/pfx
 MORDHAU=${MORDHAU:-$HOME/Games/Heroic/Mordhau}
-PROTON=${PROTON:-$STEAM/steamapps/common/Proton - Experimental}
+PROTON=${PROTON:-$(library 1493710)/steamapps/common/Proton - Experimental}
 LOCAL=$PFX/drive_c/users/steamuser/AppData/Local
 
 say() { echo "[install] $*"; }
@@ -53,7 +62,7 @@ LOCALAPPDATA=$LOCAL python3 -I "$HERE/tools/make_items_esp.py" "$SKYRIM"
 # The plugin is built with Visual Studio 2022, whose std::mutex needs a current msvcp140.dll; Skyrim's prefix comes
 # with the 2016 one (14.00.24215), on which the plugin's first mutex lock reads address 0 and SKSE reports "fatal
 # error occurred while loading plugin". Steam keeps the 2022 redistributable in Steamworks Shared.
-redist="$STEAM/steamapps/common/Steamworks Shared/_CommonRedist/vcredist/2022/VC_redist.x64.exe"
+redist="$(library 228980)/steamapps/common/Steamworks Shared/_CommonRedist/vcredist/2022/VC_redist.x64.exe"
 [ -f "$redist" ] || stop "VC++ 2022 redistributable not found at $redist"
 say "installing the VC++ 2022 runtime into Skyrim's prefix"
 STEAM_COMPAT_CLIENT_INSTALL_PATH=$STEAM STEAM_COMPAT_DATA_PATH=$COMPAT \

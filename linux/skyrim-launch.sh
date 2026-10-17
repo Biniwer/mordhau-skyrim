@@ -16,7 +16,16 @@ LEG=/app/bin/heroic/resources/app.asar.unpacked/build/bin/x64/linux/legendary
 CFG=$HOME/.var/app/$HGL/config/heroic/legendaryConfig/legendary
 MORDHAU=${MORDHAU:-$HOME/Games/Heroic/Mordhau}
 BIN=$MORDHAU/Mordhau/Binaries/Win64
-COMPAT=${STEAM_COMPAT_DATA_PATH:-$HOME/.local/share/Steam/steamapps/compatdata/489830}
+STEAM=$HOME/.local/share/Steam
+# Skyrim's prefix: Steam passes it; else looked up in the Steam library (Settings > Storage) that holds Skyrim
+skyrim_compat() {
+    local lib
+    while IFS= read -r lib; do
+        [ -f "$lib/steamapps/appmanifest_489830.acf" ] && { echo "$lib/steamapps/compatdata/489830"; return; }
+    done < <(grep -o '"path"[[:space:]]*"[^"]*"' "$STEAM/steamapps/libraryfolders.vdf" | cut -d'"' -f4)
+    echo "$STEAM/steamapps/compatdata/489830"
+}
+COMPAT=${STEAM_COMPAT_DATA_PATH:-$(skyrim_compat)}
 CACHE=$COMPAT/pfx/drive_c/users/steamuser/AppData/Local/MordhauSkyrim/cache
 ARGS=$CACHE/launch_args.txt
 EVERY=90    # seconds between logins
