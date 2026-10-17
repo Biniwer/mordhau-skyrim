@@ -14,7 +14,7 @@
    "family": "one_hand_sword",
    "name_contains": "Iron",
    "mordhau_weapon": "Specific/OneHanded/BP_ArmingSword",
-   "note": "play-test note, 2026-10-12. Was the Bastard Sword (the user's choice of 2026-10-08): it is the only MORDHAU weapon given to a one-handed Skyrim family whose other grip is two-handed (bSecondIsTwoHanded, the greatsword's animations) - a Skyrim one-handed sword has no handle for the second hand. Now the Arming Sword: one-handed in both grips, 94 cm. The Bastard Sword stays as its own item, with MORDHAU's model.",
+   "note": "play-test note, 2026-10-12. Was the Bastard Sword (the choice of 2026-10-08): it is the only MORDHAU weapon given to a one-handed Skyrim family whose other grip is two-handed (bSecondIsTwoHanded, the greatsword's animations) - a Skyrim one-handed sword has no handle for the second hand. Now the Arming Sword: one-handed in both grips, 94 cm. The Bastard Sword stays as its own item, with MORDHAU's model.",
    "verified": false
   },
   {
@@ -22,7 +22,7 @@
    "family": "one_hand_sword",
    "name_contains": "Imperial",
    "mordhau_weapon": "Specific/OneHanded/BP_ArmingSword",
-   "note": "play-test note, 2026-10-12. Was the Bastard Sword (the user's choice of 2026-10-08): it is the only MORDHAU weapon given to a one-handed Skyrim family whose other grip is two-handed (bSecondIsTwoHanded, the greatsword's animations) - a Skyrim one-handed sword has no handle for the second hand. Now the Arming Sword: one-handed in both grips, 94 cm. The Bastard Sword stays as its own item, with MORDHAU's model.",
+   "note": "play-test note, 2026-10-12. Was the Bastard Sword (the choice of 2026-10-08): it is the only MORDHAU weapon given to a one-handed Skyrim family whose other grip is two-handed (bSecondIsTwoHanded, the greatsword's animations) - a Skyrim one-handed sword has no handle for the second hand. Now the Arming Sword: one-handed in both grips, 94 cm. The Bastard Sword stays as its own item, with MORDHAU's model.",
    "verified": false
   },
   {
@@ -46,7 +46,7 @@
    "family": "one_hand_sword",
    "name_contains": "Glass|Blades|Katana",
    "mordhau_weapon": "Specific/OneHanded/BP_Rapier",
-   "note": "was the Scimitar together with scimitars, then the Rapier while the Scimitar's model could not be built. Scimitars have their own row now (one_hand_sword_scimitar); these stay the Rapier until the user says otherwise.",
+   "note": "was the Scimitar together with scimitars, then the Rapier while the Scimitar's model could not be built. Scimitars have their own row now (one_hand_sword_scimitar); these stay the Rapier until play-testing says otherwise.",
    "verified": false
   },
   {

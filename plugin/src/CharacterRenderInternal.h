@@ -225,20 +225,6 @@ float4 PSHud(VSOut i) : SV_Target
 {
 	return float4(i.nrm, 1.0);
 }
-// a streak behind an arrow: clip-space position with its real depth (walls hide it), colour in the normal, how solid in uv.x
-VSOut VSTrail(VSIn i)
-{
-	VSOut o;
-	o.pos = float4(i.pos.xyz, 1.0);
-	o.nrm = i.nrm;
-	o.uv = i.uv;
-	o.wpos = float3(0, 0, 0);
-	return o;
-}
-float4 PSTrail(VSOut i) : SV_Target
-{
-	return float4(i.nrm, saturate(i.uv.x));
-}
 // MORDHAU's voice / emote menu from its window: as PSHudTex, on a dark backing that fades out at the edges (so the
 // list reads over a bright sky)
 float4 PSHudPicture(VSOut i) : SV_Target
@@ -254,122 +240,6 @@ float4 PSHudTex(VSOut i) : SV_Target
 	return float4(c, saturate(max(c.r, max(c.g, c.b)) * 8.0));
 }
 
-// Demon Horde's weapon blessing (sheets/blessings.json), added on top of an enchanted weapon, all additive:
-// the glow on the weapon (MORDHAU's M_PackAPunch), sparks and smoke along it (P_EnchantGlow), the swing trail.
-cbuffer Bless : register(b3)
-{
-	float4 blessGlow;       // rgb; a: strength (the trail's strength in the trail pass)
-	float4 blessSpark;      // rgb; a: size (world units)
-	float4 blessSmoke;      // rgb; a: strength
-	float4 blessTime;       // x: seconds, y: noise repeats, z: noise drift per second, w: points in this draw
-	float4 blessSparkInfo;  // x: sparks alive, y, z: shortest and longest life (s), w: drift (units/s)
-	float4 blessSmokeInfo;  // x: puffs alive, y, z: shortest and longest life (s), w: rise (units/s)
-	float4 blessSmokeSize;  // x, y: smallest and largest puff (units), z: orbit (units)
-	float4 camRight;        // the camera's right and up, in the world
-	float4 camUp;
-};
-Texture2D blessTex : register(t8);   // MORDHAU's noise (glow), smoke or trail texture, by pass
-
-float4 PSBlessGlow(VSOut i) : SV_Target
-{
-	float2 uv = i.uv * blessTime.y;
-	float  t = blessTime.x * blessTime.z;
-	float  a = blessTex.Sample(samp, uv + float2(t, t * 0.7)).r;
-	float  b = blessTex.Sample(samp, uv * 1.7 - float2(t * 0.6, t)).r;
-	float  noise = saturate(a * b * 2.0);
-	float3 n = normalize(i.nrm);
-	float3 v = normalize(-i.wpos);
-	float  rim = pow(1.0 - saturate(abs(dot(n, v))), 2.0);
-	return float4(blessGlow.rgb * (noise * 0.8 + rim * 0.5) * blessGlow.a, 1.0);
-}
-
-// every point of the weapon's model is a place a spark or a puff of smoke can come from; each kept point stands
-// for one particle that is born there again and again (its own life, its own start), in the weapon's place now
-struct BlessPoint { float3 wpos : TEXCOORD1; };
-BlessPoint VSBlessPoint(VSIn i)
-{
-	float4x4 skin = bones[i.ids.x] * i.wts.x + bones[i.ids.y] * i.wts.y + bones[i.ids.z] * i.wts.z + bones[i.ids.w] * i.wts.w;
-	BlessPoint o;
-	o.wpos = mul(mul(float4(i.pos, 1.0), skin), world).xyz;
-	return o;
-}
-// the same for a Skyrim weapon mesh as Skyrim stores it (Skyrim's own weapon in the hand)
-BlessPoint VSBlessPointSky(VSSkyIn i)
-{
-	BlessPoint o;
-	o.wpos = mul(float4(i.pos.xyz, 1.0), world).xyz;
-	return o;
-}
-struct BlessSprite { float4 pos : SV_Position; float4 col : COLOR0; float3 uvk : TEXCOORD0; };
-float BlessHash(float n) { return frac(sin(n * 12.9898 + 0.731) * 43758.5453); }
-[maxvertexcount(4)]
-void GSBless(point BlessPoint p[1], uint prim : SV_PrimitiveID, inout TriangleStream<BlessSprite> s)
-{
-	float id = (float)prim;
-	float h0 = BlessHash(id), h1 = BlessHash(id * 1.37 + 4.1), h2 = BlessHash(id * 2.11 + 9.7), h3 = BlessHash(id * 0.71 + 2.3);
-	float keep = h0 * max(blessTime.w, 1.0);
-	if (keep >= blessSparkInfo.x + blessSmokeInfo.x) {
-		return;
-	}
-	bool   spark = keep < blessSparkInfo.x;
-	float4 info = spark ? blessSparkInfo : blessSmokeInfo;
-	float  life = lerp(info.y, info.z, h1);
-	float  age01 = frac(blessTime.x / life + h2);
-	float  age = age01 * life;
-	float  turn = h3 * 6.2832 + age * 1.5;
-	float3 around = float3(cos(turn), sin(turn), 0.0);
-	float3 at = p[0].wpos;
-	float  size;
-	float4 col;
-	if (spark) {
-		float3 drift = float3(BlessHash(id * 3.3) * 2.0 - 1.0, BlessHash(id * 5.9) * 2.0 - 1.0, 1.0) * info.w;
-		at += drift * age + around * blessSmokeSize.z * 0.5;
-		size = blessSpark.a * (1.0 + 0.5 * age01);
-		float fade = smoothstep(0.0, 0.1, age01) * (1.0 - smoothstep(0.6, 1.0, age01));
-		col = float4(blessSpark.rgb * fade * 2.0, 0.0);
-	} else {
-		size = lerp(blessSmokeSize.x, blessSmokeSize.y, h1) * (0.6 + 0.4 * age01);
-		at += float3(0.0, 0.0, info.w * age) + around * size * 0.2;
-		float fade = smoothstep(0.0, 0.2, age01) * (1.0 - age01);
-		col = float4(blessSmoke.rgb * blessSmoke.a * fade, 1.0);
-	}
-	float3 r = camRight.xyz * size * 0.5, u = camUp.xyz * size * 0.5;
-	BlessSprite o;
-	o.col = col;
-	o.uvk = float3(0, 0, h3);
-	o.pos = mul(float4(at - r - u, 1.0), viewProj); o.uvk.xy = float2(0, 1); s.Append(o);
-	o.pos = mul(float4(at - r + u, 1.0), viewProj); o.uvk.xy = float2(0, 0); s.Append(o);
-	o.pos = mul(float4(at + r - u, 1.0), viewProj); o.uvk.xy = float2(1, 1); s.Append(o);
-	o.pos = mul(float4(at + r + u, 1.0), viewProj); o.uvk.xy = float2(1, 0); s.Append(o);
-}
-float4 PSBlessPoint(BlessSprite i) : SV_Target
-{
-	float r = length(i.uvk.xy * 2.0 - 1.0);
-	if (i.col.a < 0.5) {
-		float g = saturate(1.0 - r);   // a spark: a bright point that falls off quickly
-		return float4(i.col.rgb * g * g * g, 1.0);
-	}
-	float smoke = blessTex.Sample(samp, i.uvk.xy * 0.5 + i.uvk.z).r;
-	float m = saturate(1.0 - r);
-	return float4(i.col.rgb * smoke * m * m, 1.0);
-}
-
-// the swing trail: camera-relative positions, colour in the normal; uv.x = how old (0 newest), uv.y = hilt..tip
-VSOut VSBlessTrail(VSIn i)
-{
-	VSOut o;
-	o.pos = mul(float4(i.pos, 1.0), viewProj);
-	o.nrm = i.nrm;
-	o.uv = i.uv;
-	o.wpos = i.pos;
-	return o;
-}
-float4 PSBlessTrail(VSOut i) : SV_Target
-{
-	float tex = blessTex.Sample(samp, i.uv).r;
-	float fade = (1.0 - saturate(i.uv.x)) * smoothstep(0.0, 0.3, i.uv.y);
-	return float4(i.nrm * (0.4 + tex) * fade * blessGlow.a, 1.0);
-}
 )";
 
 		struct Vertex
@@ -537,11 +407,6 @@ float4 PSBlessTrail(VSOut i) : SV_Target
 
 		inline ID3D11PixelShader*       g_hudPs = nullptr;
 
-		inline ID3D11VertexShader*      g_trailVs = nullptr;      // streaks behind arrows
-
-		inline ID3D11PixelShader*       g_trailPs = nullptr;
-
-		inline std::vector<Trail>       g_trails;
 
 		inline ID3D11Buffer*            g_hudVb = nullptr;
 
@@ -731,9 +596,6 @@ float4 PSBlessTrail(VSOut i) : SV_Target
 		inline std::mutex                                     g_mordhauHeldLock;
 
 		// Fought characters that are Skyrim's alone right now (yielding, fleeing): told by Combat every frame.
-		inline std::mutex                        g_ownHipsLock;
-		inline std::unordered_set<std::uint32_t> g_ownHips;
-		inline std::unordered_map<std::uint32_t, std::vector<std::string>> g_skyrimBones;  // per body: bones left in Skyrim's pose (plain names; under g_ownHipsLock)
 		inline std::mutex                        g_skyrimHasLock;
 
 		inline std::unordered_set<std::uint32_t> g_skyrimHas;
@@ -745,7 +607,12 @@ float4 PSBlessTrail(VSOut i) : SV_Target
 		inline float             g_arrowTurn = 1.5707963f;       // an arrow's model lies along its +Z: turned to lie along the way it flies
 
 		inline std::atomic<float> g_unsheatheWait{ 3.0f };       // sheets/builds.json unsheathe_wait
+		inline std::atomic<float> g_drawSmooth{ 0.0f };          // sheets/builds.json standin_draw_smooth (per second; 0 = off)
+		inline std::atomic<float> g_drawSmoothMost{ 40.0f };     // ... standin_draw_smooth_most
+		inline std::atomic<bool>  g_drawMeasure{ false };        // dev measure=1: drawn and physics steps logged
 		inline std::atomic<bool>  g_leftCasting{ false };        // the player's left hand casts: its arm is Skyrim's (SetLeftCasting)
+		inline std::atomic<bool>  g_castArmSkyrim{ true };       // anyone else's left hand casting: its arm Skyrim's too (SetCastArm)
+		inline std::atomic<float> g_castArmLinger{ 0.5f };       // ...until this long after the cast
 
 		// a bone of the left arm or hand (shoulder to fingertips), by its Skyrim node name
 		inline bool LeftArmBone(std::string_view a_node)
@@ -761,57 +628,10 @@ float4 PSBlessTrail(VSOut i) : SV_Target
 			return false;
 		}
 
-		// Demon Horde's weapon blessings on enchanted weapons (sheets/blessings.json, builds.json bless_*)
-		inline ID3D11PixelShader*        g_blessGlowPs = nullptr;
-		inline ID3D11VertexShader*       g_blessPointVs = nullptr;
-		inline ID3D11VertexShader*       g_blessPointSkyVs = nullptr;  // (Skyrim's own weapon meshes)
-		inline ID3D11RasterizerState*    g_blessRaster[2]{};           // a glow drawn over Skyrim's own mesh: pulled a hair towards the camera (standard, reversed depth)
-		inline ID3D11GeometryShader*     g_blessGs = nullptr;
-		inline ID3D11PixelShader*        g_blessPointPs = nullptr;
-		inline ID3D11VertexShader*       g_blessTrailVs = nullptr;
-		inline ID3D11PixelShader*        g_blessTrailPs = nullptr;
-		inline ID3D11Buffer*             g_blessCb = nullptr;
-		inline ID3D11Buffer*             g_blessVb = nullptr;     // the swing trails
-		constexpr UINT                   kBlessTrailVertices = 3072;
-		inline ID3D11BlendState*         g_blendAdd = nullptr;
-		inline ID3D11DepthStencilState*  g_depthLessTest = nullptr;     // tested against the scene, not written
-		inline ID3D11DepthStencilState*  g_depthGreaterTest = nullptr;
-		inline ID3D11ShaderResourceView* g_blessTex[3]{};             // MORDHAU's noise, smoke and trail textures
-		inline bool                      g_blessTexTried = false;
-
-		// set around the drawing of one weapon: the next drawSections adds the blessing to it (element -1 = none)
-		struct BlessNow
-		{
-			int           element = -1;  // row of sheets/blessings.json
-			std::uint32_t key = 0;       // whose (the trail is kept per holder)
-			XMFLOAT4X4    world{};       // the weapon's space (cm, z along it from the grip) -> camera-relative world
-		};
-		inline BlessNow g_bless;
-
-		struct BlessTrailPoint
-		{
-			float        t = 0.0f;  // seconds (BlessClock)
-			RE::NiPoint3 base, tip;  // world
-		};
-		struct BlessTrail
-		{
-			int                         element = 0;
-			std::deque<BlessTrailPoint> points;
-		};
-		inline std::unordered_map<std::uint32_t, BlessTrail> g_blessTrails;
-
-		float BlessValue(std::string_view a_id);     // sheets/builds.json
-		float BlessClock();                          // seconds since the first use, for the effects' timing
-		int   BlessingOf(RE::Actor* a_actor);        // the blessing row for the weapon in this actor's right hand, -1 = none (as UpdateBlessings last found it)
-		int   BlessingFromInventory(RE::Actor* a_actor);  // the same read from the actor's inventory: game thread only
-		std::vector<std::uint32_t> BlessedHolders();      // everyone UpdateBlessings last found holding a blessed weapon
-		void  LoadBlessTextures(ID3D11Device* a_device);
-
 		inline std::atomic<std::int64_t> g_hitMarkerAt{ 0 };     // steady-clock milliseconds of the last hit to mark (0: none)
 
 		inline std::atomic<bool>         g_hitMarkerKill{ false };
 
-		inline bool              g_woodNow = false;              // what is drawn right now is a bow (its grey texture gets its wood colour)
 
 		inline std::atomic<bool> g_skyrimOwns{ false };          // a Skyrim scene has the player's body (sitting, riding, a scripted scene...)
 
@@ -843,7 +663,7 @@ float4 PSBlessTrail(VSOut i) : SV_Target
 
 		std::shared_ptr<FullClip> GetClip(const std::string& a_name);
 
-		// ---- movement (MORDHAU's own layering, read from its blends by tools/bake_locomotion.py for now) ----
+		// ---- movement (MORDHAU's own layering, read from its blends at the first start) ----
 		// lower: the shared leg blend, by direction and gait (0 walk .. 1 run). upper: the weapon's upper-body blend, by
 		// direction and its speed value. still / jump / fall / land: single clips.
 		struct Sample
@@ -894,9 +714,7 @@ float4 PSBlessTrail(VSOut i) : SV_Target
 		// and the weapon, which did get them, left the hand).
 		inline std::vector<float> g_liveRaw;
 
-		inline std::atomic<int>       g_drawKind{ 0 };    // MORDHAU's draw clip being played over the live pose (see PlayDraw)
 
-		inline std::atomic<long long> g_drawBegan{ 0 };   // ...since (steady clock, ms)
 
 		bool LivePose(LocalPose& a_io, float a_dt);
 
@@ -1015,11 +833,9 @@ float4 PSBlessTrail(VSOut i) : SV_Target
 
 		inline std::unordered_map<std::uint32_t, RE::NiPoint3> g_bodyLift;
 
-		inline std::atomic<bool> g_pauldronsFollow{ true };  // sheets/builds.json pauldrons_follow
 
 		inline std::atomic<bool> g_skyrimShieldLook{ true }; // sheets/builds.json skyrim_shield_look
 
-		inline std::atomic<bool> g_pelvisAlign{ false };     // sheets/builds.json pelvis_align
 
 		RE::NiMatrix3 MirrorX(RE::NiMatrix3 a_m);
 
@@ -1042,7 +858,7 @@ float4 PSBlessTrail(VSOut i) : SV_Target
 
 		void PoseSkyrimBodiesNow();
 
-		// The baked outfits (cache/enemies/looks.txt, written by tools/bake_looks.py from sheets/looks.json): number and
+		// The baked outfits (cache/enemies/looks.txt, written at the first start from sheets/looks.json): number and
 		// which Skyrim people wear it. Read once.
 		enum LookClass { kCivilian = 0, kRobe, kLight, kHeavy };
 
@@ -1144,15 +960,12 @@ float4 PSBlessTrail(VSOut i) : SV_Target
 
 		void ListNearFigures(RE::PlayerCharacter* player, const Link::State& link, std::vector<Figure>& figures, const int lookCount);
 
-		void DrawArrowTrails(ID3D11DeviceContext* context, D3D11_TEXTURE2D_DESC& sd, const RE::NiPoint3& cam, const XMMATRIX& viewProj, D3D11_MAPPED_SUBRESOURCE& map, const UINT stride, const UINT offset);
 
 		void DrawHitMarker(ID3D11DeviceContext* context, D3D11_TEXTURE2D_DESC& sd, D3D11_MAPPED_SUBRESOURCE& map, const UINT stride, const UINT offset);
 
 		void DrawFallbackBars(RE::PlayerCharacter* player, ID3D11DeviceContext* context, D3D11_TEXTURE2D_DESC& sd, const Link::State& link, D3D11_MAPPED_SUBRESOURCE& map, const UINT stride, const UINT offset, bool& hudStreamed);
 
 		void DrawInFrame();
-
-		void PlacePlayerWeaponForFrame();
 
 		inline std::atomic<bool> g_thirdWeaponMordhau{ true };  // sheets/builds.json third_person_weapon_mordhau
 

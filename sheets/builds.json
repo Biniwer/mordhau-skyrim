@@ -37,20 +37,6 @@
    "verified": false
   },
   {
-   "id": "wall_hit_after",
-   "value": 0.07,
-   "meaning": "seconds into the release before Skyrim's world can stop the player's blade (MORDHAU has a curve for this, FC_StrikeWorldCollisionPercentage: a swing that starts beside a wall is not stopped at once)",
-   "source": "a guess at that curve",
-   "verified": false
-  },
-  {
-   "id": "wall_blade_from",
-   "value": 0.15,
-   "meaning": "only this outer share of the blade is tested against Skyrim's world (the hands and the lower blade pass close to things all the time)",
-   "source": "own choice",
-   "verified": false
-  },
-  {
    "id": "wall_reach",
    "value": 0.0,
    "meaning": "0 = OFF (play-test note, 2026-10-08). Otherwise: how far (Skyrim units) the player's surroundings are felt for walls, in three directions at chest height",
@@ -58,16 +44,9 @@
    "verified": false
   },
   {
-   "id": "wall_cut",
-   "value": 0.0,
-   "meaning": "1 = the plugin itself also ends an attack whose blade meets Skyrim's world (no recoil); 0 = left to MORDHAU, which meets the unseen wall piece and recoils by its own rules",
-   "source": "own choice",
-   "verified": false
-  },
-  {
    "id": "mordhau_world_hits",
    "value": 0.0,
-   "meaning": "play-test note, 2026-10-15: 'npcs are hitting invisible objects'. 0 = no attack in the mod's session is stopped by MORDHAU's own map (its walls, pillars and props stand where they stand in MORDHAU's arena, not where Skyrim's are): the script sets MORDHAU's bDisableWorldCollision on every attack motion, the player's and the stand-ins'. In the D: test before: 21 enemy swings thrown back (BlockedMotion) 4-6 m from the player, who was not parrying. Skyrim's walls do not stop a blade either while wall_reach and wall_cut are 0 (both off since the play tests of 2026-10-08) - before this, only MORDHAU's map did, at places that had nothing to do with Skyrim's. Script: main.lua PS_no_world_hits (always on; this row is its note).",
+   "meaning": "play-test note, 2026-10-15. 0 = no attack in the mod's session is stopped by MORDHAU's own map (its walls, pillars and props stand where they stand in MORDHAU's arena, not where Skyrim's are): the script sets MORDHAU's bDisableWorldCollision on every attack motion, the player's and the stand-ins'. In the D: test before: 21 enemy swings thrown back (BlockedMotion) 4-6 m from the player, who was not parrying. Skyrim's walls do not stop a blade either while wall_reach and wall_cut are 0 (both off since the play tests of 2026-10-08) - before this, only MORDHAU's map did, at places that had nothing to do with Skyrim's. Script: main.lua PS_no_world_hits (always on; this row is its note).",
    "source": "the D: test log, 2026-10-15; MORDHAU's attack motion property found by listing BP_1H_RightStrikeMotion's properties",
    "verified": false
   },
@@ -96,7 +75,7 @@
    "id": "standin_keep_margin",
    "value": 350.0,
    "meaning": "an enemy that already has a MORDHAU stand-in counts as this much nearer (Skyrim units) when the three nearest fighters are chosen, so stand-ins are not swapped back and forth between enemies at about the same distance",
-   "source": "stress run 2026-10-08: 12 bandits, a stand-in changed enemy about every 9 seconds (each change re-arms it); 350 on 2026-10-08 (the user: characters kept putting weapons and shields away and taking them out)",
+   "source": "stress run 2026-10-08: 12 bandits, a stand-in changed enemy about every 9 seconds (each change re-arms it); 350 on 2026-10-08 (play-testing: characters kept putting weapons and shields away and taking them out)",
    "verified": false
   },
   {
@@ -114,48 +93,6 @@
    "verified": false
   },
   {
-   "id": "arrow_trail_length",
-   "value": 0.0,
-   "meaning": "length (Skyrim units) of the pale streak drawn behind an arrow or bolt in flight - the player's own and every Skyrim arrow - as MORDHAU draws behind its arrows; 0 = none",
-   "source": "play-test note, 2026-10-08; 0 on 2026-10-08, play-test note; 0 on 2026-10-08, play-test note",
-   "verified": false
-  },
-  {
-   "id": "arrow_trail_width",
-   "value": 0.9,
-   "meaning": "width of that streak at the arrow (Skyrim units; it narrows to nothing at its end and is never thinner than about two pixels)",
-   "source": "play-test note, 2026-10-08",
-   "verified": false
-  },
-  {
-   "id": "arrow_trail_alpha",
-   "value": 0.28,
-   "meaning": "how solid the streak is at the arrow (it fades to nothing at its end)",
-   "source": "play-test note, 2026-10-08",
-   "verified": false
-  },
-  {
-   "id": "arrow_stays_seconds",
-   "value": 90.0,
-   "meaning": "how long one of the player's arrows or bolts stays stuck in the world where it struck (the newest 24 are kept), as MORDHAU's arrows stay; Skyrim's own arrow sounds play at the strike (stick / flesh)",
-   "source": "the user, 2026-10-08: archery exactly like MORDHAU's",
-   "verified": false
-  },
-  {
-   "id": "arrow_start_right",
-   "value": 9.0,
-   "meaning": "first person: how far right of the eye (Skyrim units) the player's arrow starts - at the bow, so it is seen leaving; it flies parallel to the aim",
-   "source": "2026-10-08: straight out of the eye the arrow was never seen in any frame",
-   "verified": false
-  },
-  {
-   "id": "arrow_start_down",
-   "value": 7.0,
-   "meaning": "...and how far below the eye",
-   "source": "2026-10-08: straight out of the eye the arrow was never seen in any frame",
-   "verified": false
-  },
-  {
    "id": "undead_fight",
    "value": 1.0,
    "meaning": "1 = draugr and skeletons that hold a melee weapon get MORDHAU stand-ins like people (they walk on Skyrim's human skeleton); 0 = people only. Animals, giants, dragons and everything that casts stay Skyrim's.",
@@ -166,35 +103,28 @@
    "id": "stamina_restore_step",
    "value": 15.0,
    "meaning": "Skyrim's stamina bar shows MORDHAU's stamina; when Skyrim itself restores more than this many points between two frames (a potion, food, a spell effect), the gain is passed on to MORDHAU's stamina",
-   "source": "the user, 2026-10-08; 15 on 2026-10-08 (at 4, ordinary regeneration was passed on 31 times in one play session)",
-   "verified": false
-  },
-  {
-   "id": "enemy_arrows_mordhau",
-   "value": 0.0,
-   "meaning": "1 = an enemy archer's arrow or bolt that hits the player does MORDHAU's damage for that kind of bow (recurve 50/40/26/25, long bow 70/50/36/34, crossbow 60/50/42/40 by the player's armour: none/light/-/heavy; +50/30/20/20 on the head), scaled into Skyrim's health like every MORDHAU hit; it can be parried or blocked and has MORDHAU's trail. The archer itself still aims and shoots by Skyrim's AI.",
-   "source": "the user, 2026-10-08: enemy archers by MORDHAU's rules; values read from MORDHAU's own projectiles; 0 on 2026-10-08, play-test note; 0 on 2026-10-08, play-test note",
+   "source": "play-test note, 2026-10-08; 15 on 2026-10-08 (at 4, ordinary regeneration was passed on 31 times in one play session)",
    "verified": false
   },
   {
    "id": "mordhau_shield",
    "value": 1.0,
    "meaning": "1 = with a shield on the arm in Skyrim, MORDHAU's character is handed a shield too (its shield parry); 0 = no shield in MORDHAU (the block button is the plain timed parry)",
-   "source": "2026-10-08; switch added when the user suspected the shield work of making weapons invisible",
+   "source": "2026-10-08; switch added when play-testing suspected the shield work of making weapons invisible",
    "verified": false
   },
   {
-   "id": "archer_standin_reach",
-   "value": 450.0,
-   "meaning": "an enemy holding a bow or crossbow gets a MORDHAU stand-in while it is within this distance (Skyrim units) of the player, so the player's melee is judged by MORDHAU against it (hits, flinches); the stand-in itself stays passive (the archer keeps shooting by Skyrim's AI). 0 = archers never get stand-ins.",
-   "source": "play-test note, 2026-10-08",
+   "id": "standin_radius_m",
+   "value": 10.0,
+   "meaning": "metres around the player (70 Skyrim units a metre) within which everyone in a fight - enemies, allies, archers - gets a MORDHAU stand-in (the nearest standin_limit of them); one that has a stand-in keeps it until it is 2 m beyond, out of the fight, dead or no longer a fighter. Set in the settings menu (Combat page, 5-20 m). Replaces the fixed 700 units for melee and 450 for archers used before",
+   "source": "play-test note, 2026-10-16; asked who counts: 'Everyone fighting' (allies included - their stand-ins' MORDHAU brains can go for the player's character, noted)",
    "verified": false
   },
   {
-   "id": "enemy_arrows_own",
-   "value": 0.0,
-   "meaning": "1 = an arrow or bolt an enemy looses is taken out of Skyrim at once and flown by the mashup as MORDHAU's arrow (its speed for that bow, its drop, its model and trail, sticks where it lands); when it reaches the player a parry or a raised shield facing it stops it, else it does MORDHAU's damage. 0 = Skyrim's own projectile.",
-   "source": "play-test note, 2026-10-08; 0 on 2026-10-08, play-test note; 0 on 2026-10-08, play-test note",
+   "id": "standin_limit",
+   "value": 12.0,
+   "meaning": "how many enemies fight by MORDHAU's rules at once (1 .. Link::kGhosts = 24, the places the link has); the nearest that many. Set in the settings menu (Combat page). MORDHAU's script writes only the places in use, so a lower number costs less",
+   "source": "play-test note, 2026-10-16 (with 128 places MORDHAU's pose rate fell from ~200 to 83 a second: a slideshow)",
    "verified": false
   },
   {
@@ -205,24 +135,10 @@
    "verified": false
   },
   {
-   "id": "enemy_arrow_gravity",
-   "value": 240.0,
-   "meaning": "drop (Skyrim units/s^2) of an enemy's arrow once the mashup flies it: about Skyrim's own arrow drop, because Skyrim's archers aim for it (their launch speed is kept too)",
-   "source": "2026-10-08: with MORDHAU's speed and drop the test arrows fell short",
-   "verified": false
-  },
-  {
-   "id": "mordhau_archery",
-   "value": 0.0,
-   "meaning": "1 = a bow or crossbow out in Skyrim is MORDHAU's (its draw, release, arrows, the bow model in the hand); 0 = bows, crossbows and their arrows are entirely Skyrim's own, for the player and for everyone else (as staves and spells are)",
-   "source": "play-test note, 2026-10-08. All the archery work stays in the code behind this switch.",
-   "verified": false
-  },
-  {
    "id": "unsheathe_wait",
-   "value": 3.0,
+   "value": 0.5,
    "meaning": "an enemy that draws its weapon keeps Skyrim's own body animation (its unsheathe) until Skyrim has the weapon out, and then for at most this many seconds more while its MORDHAU stand-in is still being handed its weapon; only then is MORDHAU's pose put on it",
-   "source": "play-test note, 2026-10-08",
+   "source": "play-test note, 2026-10-08; 3 -> 0.5 on 2026-10-17 (play-test: people took long to draw; MORDHAU had their weapon ready within 0.3-1.3 s)",
    "verified": false
   },
   {
@@ -257,7 +173,7 @@
    "id": "demo_from_wall",
    "value": 700.0,
    "meaning": "demonstration scene (dev key demo=1, cell ThroatOfTheWorld01): how far in front of the summit's word wall the player is set down (Skyrim units)",
-   "source": "the user's demo for a clip, 2026-10-08; the cell's own arrival point slid off the mountain",
+   "source": "a demo for a clip, 2026-10-08; the cell's own arrival point slid off the mountain",
    "verified": false
   },
   {
@@ -277,29 +193,29 @@
   {
    "id": "fought_no_retreat",
    "value": 1.0,
-   "meaning": "1 again since 2026-10-14 (play-test note: 'people still yield all the time, make it so atleast they dont move or remove the thing entirely'): fought people no longer run away or give up; only Skyrim's essential characters still go down on one knee (they cannot die). 1 = a character with a MORDHAU stand-in does not retreat at low health: confidence in its own data is set to 'never flees' and Skyrim's fleeing state is cleared each frame; while Skyrim still has it running away or kneeling, its stand-in holds its attacks. 0 = Skyrim's own behaviour (the stand-in still holds its attacks meanwhile). 0 since 2026-10-12 (play-test note: MORDHAU's AI is not to control people who are yielding or fleeing): Skyrim's own retreat, yield and kneel are left alone; for as long as one lasts the character is Skyrim's - its stand-in holds its attacks, does not move it and does not pose its body.",
-   "source": "the user, 2026-10-09: Skyrim takes over and runs away at low health, slowly, while MORDHAU's AI still attacks",
+   "meaning": "1 again since 2026-10-14 (play-test note): fought people no longer run away or give up; only Skyrim's essential characters still go down on one knee (they cannot die). 1 = a character with a MORDHAU stand-in does not retreat at low health: confidence in its own data is set to 'never flees' and Skyrim's fleeing state is cleared each frame; while Skyrim still has it running away or kneeling, its stand-in holds its attacks. 0 = Skyrim's own behaviour (the stand-in still holds its attacks meanwhile). 0 since 2026-10-12 (play-test note: MORDHAU's AI is not to control people who are yielding or fleeing): Skyrim's own retreat, yield and kneel are left alone; for as long as one lasts the character is Skyrim's - its stand-in holds its attacks, does not move it and does not pose its body.",
+   "source": "play-test note, 2026-10-09: Skyrim takes over and runs away at low health, slowly, while MORDHAU's AI still attacks",
    "verified": false
   },
   {
    "id": "gore_skyrim_head",
    "value": 1.0,
    "meaning": "1 = a head cut off is the Skyrim character's own head and neck wound (Skyrim's decapitation), thrown on MORDHAU's arc (head_throw_out / head_throw_up); nothing of MORDHAU's is put on the body. 0 = MORDHAU's head model and neck piece.",
-   "source": "the user, 2026-10-09: make the MORDHAU head invisible and use Skyrim's decapitated head",
+   "source": "play-test note, 2026-10-09: make the MORDHAU head invisible and use Skyrim's decapitated head",
    "verified": false
   },
   {
    "id": "head_throw_out",
    "value": 170.0,
    "meaning": "how fast (Skyrim units/s) a cut-off Skyrim head is thrown away from the blow - MORDHAU's own launch for a severed head",
-   "source": "the user, 2026-10-09: fly on MORDHAU's arc but with Skyrim's head and neck wound",
+   "source": "play-test note, 2026-10-09: fly on MORDHAU's arc but with Skyrim's head and neck wound",
    "verified": false
   },
   {
    "id": "head_throw_up",
    "value": 260.0,
    "meaning": "...and upward; Skyrim's physics then carries it on that arc",
-   "source": "the user, 2026-10-09: fly on MORDHAU's arc but with Skyrim's head and neck wound",
+   "source": "play-test note, 2026-10-09: fly on MORDHAU's arc but with Skyrim's head and neck wound",
    "verified": false
   },
   {
@@ -315,13 +231,6 @@
    "meaning": "1 = a weapon MORDHAU's character throws flies in Skyrim (its MORDHAU model, tumbling unless it is a spear), does MORDHAU's thrown damage for the armour of whom it strikes, leaves the player's hands and inventory and lies where it lands as the real Skyrim item (taken back the normal Skyrim way); 0 = MORDHAU throws but nothing happens in Skyrim",
    "source": "play-test note, 2026-10-09",
    "verified": true
-  },
-  {
-   "id": "pauldrons_follow",
-   "value": 0.0,
-   "meaning": "1 = on a Skyrim body in MORDHAU's movement the two pauldron nodes (NPC L/R Pauldron) keep their rest-skeleton attitude on the spine and are moved by as much as the shoulder joint is away from its rest place; 0 = left on Skyrim's own animation. OFF: measured 2026-10-09 on Daedric armour, the plates were only 1.0-1.5 units from that place and the shoulder joint 0.0 from rest, so this is not the gap the user sees.",
-   "source": "play-test note, 2026-10-09",
-   "verified": false
   },
   {
    "id": "standin_voices",
@@ -345,6 +254,41 @@
    "verified": false
   },
   {
+   "id": "standin_wall_reach",
+   "value": 70.0,
+   "meaning": "units: around a body walked through Skyrim's movement step (hybrid_physics 2), the nearest wall within this distance (8 rays at chest height that pass through characters and loose things) is told to MORDHAU's script with the stand-in's place - its direction in the player's frame and how far - and the script keeps the stand-in from going past it in MORDHAU (its place pushed back out to the wall's line, less standin_wall_margin_cm). 0 = not told",
+   "source": "play-test note, 2026-10-17 (item 3 of the improvements: MORDHAU's bots walked into Skyrim's walls - MORDHAU's floor has none - and were set back each time)",
+   "verified": false
+  },
+  {
+   "id": "standin_wall_margin_cm",
+   "value": 35.0,
+   "meaning": "cm: how far short of a told wall's line a stand-in's middle is kept in MORDHAU (about a body's half width)",
+   "source": "starting value, 2026-10-17",
+   "verified": false
+  },
+  {
+   "id": "hybrid_physics_far",
+   "value": 300.0,
+   "meaning": "units: a walked body whose stand-in is farther off than this is not moved towards it at all - the stand-in is set back onto the body (one just given a stand-in was handed over while its bot still stood ~1,450 units away, and the body ran towards it at 721 units/s: D: test 2026-10-17)",
+   "source": "D: gate test 2026-10-17 ~02:15",
+   "verified": false
+  },
+  {
+   "id": "hybrid_physics_snap",
+   "value": 60.0,
+   "meaning": "units: a walked body this far from its stand-in's place ...",
+   "source": "starting value, 2026-10-17",
+   "verified": false
+  },
+  {
+   "id": "hybrid_physics_snap_seconds",
+   "value": 0.3,
+   "meaning": "... for this long: the stand-in is set back onto its body in MORDHAU (it walked where the body cannot follow)",
+   "source": "starting value, 2026-10-17",
+   "verified": false
+  },
+  {
    "id": "hybrid_step_units",
    "value": 40.0,
    "meaning": "the highest step up or down (Skyrim units) a character is walked over when following its stand-in; a taller change of ground is refused (a ledge, a drop)",
@@ -352,38 +296,10 @@
    "verified": false
   },
   {
-   "id": "hybrid_snap_cm",
-   "value": 45.0,
-   "meaning": "when a free stand-in is this far (cm) from where its Skyrim character really is for a third of a second - Skyrim refused its steps - it is set back to the character's place (110 at first: in tight places the stand-in stood up to a metre from the body Skyrim showed and the player's swings went through it - 70 since 2026-10-09; and a step Skyrim refuses now sets the stand-in back at once and holds it at its character for hybrid_hold_seconds)",
-   "source": "chosen",
-   "verified": false
-  },
-  {
-   "id": "hybrid_hold_seconds",
-   "value": 0.5,
-   "meaning": "how long (s) a stand-in whose steps Skyrim refused is held at its Skyrim character before MORDHAU's AI may move it again (NOT USED since 2026-10-09 23:50: a refused step sets the stand-in back that very frame and it stays free)",
-   "source": "play-test note, 2026-10-09 (1.5 at first)",
-   "verified": false
-  },
-  {
    "id": "skyrim_draw_sheathe",
    "value": 1.0,
    "meaning": "1 = while the player draws or puts away a weapon (Skyrim's weapon state: wanting to / doing it), Skyrim has the body like in its other scenes: its own draw and sheathe animations play, in both views, and its own weapon model moves between hand and sheath; MORDHAU's pose returns when the weapon is out (or away). 0 = MORDHAU's pose throughout (its holster motion is a half-second shrug, hardly a draw or a put-away at all).",
    "source": "play-test note, 2026-10-09 - so OFF; MORDHAU's own draw and holster motions are to be made visible instead Then, 2026-10-10, Skyrim's own were chosen instead - ON (it works in both views and on a fresh install; MORDHAU's baked draw clips are off).",
-   "verified": false
-  },
-  {
-   "id": "pelvis_align",
-   "value": 0.0,
-   "meaning": "how a posed Skyrim body's pelvis is lined up with MORDHAU's hips: 1 = Skyrim's rest pelvis is first turned so that its direction to the first spine node agrees with MORDHAU's hips-to-lower-back direction (sheets/bone_map.json pelvis row; as it was), 0 = the two rest poses are used as they are. In Skyrim's skeleton the spine does not hang from the pelvis and that direction is a few units long and points oddly, so the turn can be large: an armour's skirt, which follows the pelvis alone, sat turned (seen in play on Imperial light armour: the skirt cut through the legs, its opening at the back). The turn that 1 would make is logged at start.",
-   "source": "the user, 2026-10-09",
-   "verified": false
-  },
-  {
-   "id": "mordhau_draw_clips",
-   "value": 0.0,
-   "meaning": "1 = while Skyrim draws or puts away the player's weapon, MORDHAU's own draw animation for where that weapon is carried is played on the upper body of the player's MORDHAU pose, third person: from the left hip for one-handed weapons (Mordhau/Animations/RawClips/Misc/Draw_Right_LeftHip), from the back for two-handed ones (Draw_Right_Back); putting away is the same clip backwards (MORDHAU has no separate one). Baked into cache/*.dmfull by tools/bake_character.py clip. 0 = only what MORDHAU's character does live (a half-second shrug). OFF since 2026-10-10 (the user chose Skyrim's own draw and sheathe animations: skyrim_draw_sheathe).",
-   "source": "play-test note, 2026-10-09",
    "verified": false
   },
   {
@@ -397,7 +313,7 @@
    "id": "death_speed_limit",
    "value": 220.0,
    "meaning": "for 0.5 s after a fought character dies, no part of its body moves faster than this (Skyrim units per second; turning limited likewise): a body went limp out of a pose and a place this plugin had set that frame, and Skyrim read the jump as speed - seen in play as people flying off when killed. A head thrown off by a decapitation is left alone. 0 = no limit.",
-   "source": "the user, 2026-10-09 (220 chosen: about a brisk fall)",
+   "source": "play-test note, 2026-10-09 (220 chosen: about a brisk fall)",
    "verified": false
   },
   {
@@ -445,7 +361,7 @@
   {
    "id": "skyrim_weapon_half_turn",
    "value": 1.0,
-   "meaning": "play-test note, 2026-10-11 (its edge faced backwards; log: the model has its head on its -x side). 1 = a Skyrim weapon model laid along MORDHAU's weapon is turned half round about its own length (players' and enemies'). A sword looks the same both ways. Not yet confirmed by the user. Not while the weapon held is a MORDHAU item: MORDHAU's own model is drawn on that same node and was turned with it - play-test note, 2026-10-12.",
+   "meaning": "play-test note, 2026-10-11 (its edge faced backwards; log: the model has its head on its -x side). 1 = a Skyrim weapon model laid along MORDHAU's weapon is turned half round about its own length (players' and enemies'). A sword looks the same both ways. Not yet confirmed by play-testing. Not while the weapon held is a MORDHAU item: MORDHAU's own model is drawn on that same node and was turned with it - play-test note, 2026-10-12.",
    "source": "",
    "verified": true
   },
@@ -520,45 +436,38 @@
    "verified": false
   },
   {
-   "id": "hybrid_smooth",
-   "value": 1.0,
-   "unit": "1 = on",
-   "meaning": "play-test note and a Nexus comment, 2026-10-13: fought characters move in small jerks. Recorded frame by frame: a stand-in walking evenly is reported in uneven steps (0.6 to 4.5 units in neighbouring frames with the player standing still) because MORDHAU's frames are of uneven length (11-23 ms) and not in step with Skyrim's, and each report was shown for exactly one Skyrim frame. 1 = every report carries MORDHAU's own game time; the plugin takes the stand-in's speed from two reports and walks the character to where the stand-in is at the MORDHAU time that belongs to the Skyrim frame being drawn (at most hybrid_lead_seconds ahead of the last report); its heading the same way; and its height follows the ground at hybrid_height_rate instead of jumping to it. 0 = as before. (Two earlier tries of the same night did not help and are not in: carrying the last report on by its ARRIVAL times, and easing the angle between the two worlds - which made fighters swing as the view turned.)",
+   "id": "standin_interp_seconds",
+   "value": 0.035,
+   "meaning": "stand-ins are shown this far in the past (seconds of MORDHAU's own game time): Skyrim keeps MORDHAU's last few reports of each stand-in (pose, weapon, place, heading, each stamped with MORDHAU's clock) and shows the moment this long ago, blended between the two reports around it - even movement however unevenly the reports arrive, and no overshoot (the 'lead' smoothing predicted ahead). Applies to the pose on the Skyrim body, the weapon in its hand, and where a walked body is put. Hits stay MORDHAU's. 0 = the newest report, as before. MORDHAU's clock is set against Skyrim's by the earliest arrival seen (slowly let go)",
+   "source": "play-test note, 2026-10-17. 0.035 s: at ~94 reports a second (D: test) about three reports apart, so a late one does not leave a gap",
    "verified": false
   },
   {
-   "id": "hybrid_lead_seconds",
-   "value": 0.05,
-   "unit": "s",
-   "meaning": "see hybrid_smooth: the longest a stand-in's last reported place is carried on at its speed (about three frames; more would run on past a stand-in that has stopped)",
+   "id": "standin_draw_smooth",
+   "value": 30.0,
+   "meaning": "per second: a body in MORDHAU's pose is drawn at a smoothed place that follows where Skyrim's physics has it (each frame this share per second of the gap; 30 = about 33 ms behind), not more than standin_draw_smooth_most units off - the physics moves it in uneven jumps (some frames none, the next twice as far); only the drawing is moved, the body itself stays where the physics put it. 0 = drawn where the physics has it",
+   "source": "play-test note, 2026-10-17 (next: smoother drawing between physics steps; the D: tests had 2-7 of 61 frames without a step)",
    "verified": false
   },
   {
-   "id": "hybrid_height_rate",
-   "value": 250.0,
-   "unit": "Skyrim units/s",
-   "meaning": "see hybrid_smooth: how fast a walked character's height follows the ground under it (a step of hybrid_step_units takes about a sixth of a second)",
+   "id": "standin_draw_smooth_most",
+   "value": 40.0,
+   "meaning": "units: the drawn place is never more than this off the physics place (farther: drawn where it is at once)",
+   "source": "starting value, 2026-10-17",
    "verified": false
   },
   {
    "id": "hybrid_fixed_origin",
    "value": 1.0,
    "unit": "1 = on (in the script, not switchable)",
-   "meaning": "play-test note, 2026-10-13 ('seems the jitters mainly happen when i move'; recorded: with the player walking, the place MORDHAU reports for a free stand-in steps back against its own last step in 11-12% of frames, standing still in 1-4%). MORDHAU's player character walks on the spot: it is let stray up to 5 cm and then set back. Where a free stand-in stands in Skyrim's world, and the shift that keeps it there while the player walks and turns, were reckoned from wherever that character was in the frame - so each stand-in's place took on the same 0-5 cm saw-tooth. Now both are reckoned from the fixed spot. A held stand-in is still placed against the character itself.",
+   "meaning": "play-test note, 2026-10-13 (recorded: with the player walking, the place MORDHAU reports for a free stand-in steps back against its own last step in 11-12% of frames, standing still in 1-4%). MORDHAU's player character walks on the spot: it is let stray up to 5 cm and then set back. Where a free stand-in stands in Skyrim's world, and the shift that keeps it there while the player walks and turns, were reckoned from wherever that character was in the frame - so each stand-in's place took on the same 0-5 cm saw-tooth. Now both are reckoned from the fixed spot. A held stand-in is still placed against the character itself.",
    "verified": false
-  },
-  {
-   "id": "hybrid_player_gap",
-   "value": 50.0,
-   "unit": "Skyrim units",
-   "meaning": "play-test note, 2026-10-13 (a bandit kicking: 'he tried moving forwards and got teleported back then walked forward again and again teleport'). MORDHAU lets two fighters stand nearer to each other than Skyrim lets two characters: walked to where its stand-in is in a lunge, the character was put into the player, Skyrim pushed it out again (recorded: it moved 1.3 units a frame while its stand-in moved 5.5, 39-48 units from the player), the two came apart and the script set the stand-in back to its character. A walked character is now never put nearer to the player than this; the few centimetres between it and its stand-in are far inside what the script tolerates. 2026-10-13, same day, after 0.1.14-0.1.16 were out: 'whenever an enemy comes close to me he starts teleporting back then runs back to me'. Holding only the Skyrim body off was half of it: MORDHAU's player walks on the spot, so walking into a fighter shifts his stand-in towards that spot without limit, body and stand-in come apart and the script sets the stand-in back. The stand-in is now held off the player's spot at the same distance (the script's PLAYER_GAP, 72 cm). Later the same day (report: 'whenever an enemy comes close to me he starts teleporting back then runs back to me'): the limit that matters is MORDHAU's. Its characters are 50 cm round (CapsuleRadius read in play), so two never stand nearer than 100 cm = 70 units. Walking INTO a fighter in Skyrim shifted his stand-in inside that, MORDHAU threw it back out the next frame (recorded: its place flipping 47 <-> 69 units from the player every frame). The script now holds a free stand-in 101 cm off the player's spot itself (PS_PLAYER_GAP in main.lua). Measured in one session, 45 s each, walking into a bandit: jumps of his place close to the player 29 and 7 with the rule off, 1 and 1 with it on.",
-   "verified": true
   },
   {
    "id": "standin_scale",
    "value": 1.0,
    "unit": "1 = on",
-   "meaning": "play-test note, 2026-10-13 ('i am looking at the top of his head ... a straight horizontal swing goes directly over'). Measured side by side (tools/heights_compare.py, both games logging the same heights with MORDHAU's game time): the feet of a fought character agree between the two games to about a centimetre, but MORDHAU had its head and hips 9-11 cm HIGHER than Skyrim shows them (within 5 cm only 11-20% of the time). Skyrim draws people in their own sizes - a bandit at 0.98, the player at 1.03 - and in MORDHAU the player and every stand-in are one size. 1 = each stand-in is given its Skyrim character's size against the player's (the two scales divided), so a swing meets the body where it is seen. 0 = all one size, as before.",
+   "meaning": "play-test note, 2026-10-13 . Measured side by side (tools/heights_compare.py, both games logging the same heights with MORDHAU's game time): the feet of a fought character agree between the two games to about a centimetre, but MORDHAU had its head and hips 9-11 cm HIGHER than Skyrim shows them (within 5 cm only 11-20% of the time). Skyrim draws people in their own sizes - a bandit at 0.98, the player at 1.03 - and in MORDHAU the player and every stand-in are one size. 1 = each stand-in is given its Skyrim character's size against the player's (the two scales divided), so a swing meets the body where it is seen. 0 = all one size, as before.",
    "verified": false
   },
   {
@@ -571,7 +480,7 @@
   {
    "id": "kick_stagger",
    "value": 1.0,
-   "meaning": "play-test note, 2026-10-13: 'i want kicks to stagger non mordhau enemies'. 1 = the player's kick staggers whoever it reaches that has no MORDHAU stand-in (a wolf, a spider, a draugr beyond the stand-in count ...): Skyrim's own stagger, away from the player. Against a stand-in MORDHAU judges the kick itself, as before. A kick no longer counts as a weapon hit on such an enemy: until now the held weapon's blade was tested during the kick's release and gave a full weapon hit where it happened to pass (seen in the log: 'MORDHAU's blade (BP_KickMotion_C) reached Falmer'). Same day, in play: 'you cant combo after, the hit counts as a miss' - MORDHAU knows nothing of an enemy without a stand-in, so its kick ran out as a missed one. The plugin now tells the script (request KickLanded) and the script ends the kick motion there, so the next attack can be started at once; MORDHAU's hit marker and hit sound are given as for any hit Skyrim judges.",
+   "meaning": "play-test note, 2026-10-13. 1 = the player's kick staggers whoever it reaches that has no MORDHAU stand-in (a wolf, a spider, a draugr beyond the stand-in count ...): Skyrim's own stagger, away from the player. Against a stand-in MORDHAU judges the kick itself, as before. A kick no longer counts as a weapon hit on such an enemy: until now the held weapon's blade was tested during the kick's release and gave a full weapon hit where it happened to pass (seen in the log: 'MORDHAU's blade (BP_KickMotion_C) reached Falmer'). Same day, in play: MORDHAU knows nothing of an enemy without a stand-in, so its kick ran out as a missed one. The plugin now tells the script (request KickLanded) and the script ends the kick motion there, so the next attack can be started at once; MORDHAU's hit marker and hit sound are given as for any hit Skyrim judges.",
    "source": "play-test note, 2026-10-13",
    "verified": false
   },
@@ -585,15 +494,15 @@
   {
    "id": "kick_creature_damage",
    "value": 0.25,
-   "meaning": "play-test note, 2026-10-15: 'yes add a little kick damage to creatures'. The player's kick on anyone without a MORDHAU stand-in (a wolf, a skeever, a draugr beyond the stand-in count ...) takes this share of one clean hit (progression.json clean_hit), times creature_damage_scale for creatures - as a weapon hit of that size is judged by Skyrim's progression. 0 = the kick does no damage (stagger, marker and sound only, as before). Settings menu: 'Kick damage to creatures'.",
+   "meaning": "play-test note, 2026-10-15. The player's kick on anyone without a MORDHAU stand-in (a wolf, a skeever, a draugr beyond the stand-in count ...) takes this share of one clean hit (progression.json clean_hit), times creature_damage_scale for creatures - as a weapon hit of that size is judged by Skyrim's progression. 0 = the kick does no damage (stagger, marker and sound only, as before). Settings menu: 'Kick damage to creatures'.",
    "source": "chosen: a quarter of a clean hit, about a fifth of what a sword blow takes",
    "verified": false
   },
   {
    "id": "super_kick",
    "value": 0.0,
-   "meaning": "play-test note, 2026-10-15: 'also make a superpowered kick option that throws people like the fusrodah'. 1 = whoever the player's kick reaches - a creature or person without a stand-in, or a stand-in's Skyrim character when MORDHAU judged the kick - is thrown away from the player by Skyrim's own push (AIProcess::KnockExplosion, what PushActorAway and Unrelenting Force use), instead of the stagger; not dragons. Settings menu: 'Super kick'.",
-   "source": "the user's wish",
+   "meaning": "play-test note, 2026-10-15. 1 = whoever the player's kick reaches - a creature or person without a stand-in, or a stand-in's Skyrim character when MORDHAU judged the kick - is thrown away from the player by Skyrim's own push (AIProcess::KnockExplosion, what PushActorAway and Unrelenting Force use), instead of the stagger; not dragons. Settings menu: 'Super kick'.",
+   "source": "a play-test wish",
    "verified": false
   },
   {
@@ -622,14 +531,14 @@
   {
    "id": "shield_wall_blocks",
    "value": 1.0,
-   "meaning": "play-test note, 2026-10-13: 'make it so the alt mode on applicable shields block damage from creatures'. 1 = while MORDHAU's shield wall is up (the shield's alternate mode, MORDHAU's R; streamed back as a ShieldParry motion in its blocking stage 0), a hit Skyrim judges on the player from the front - a creature's bite or claw, an arrow - is stopped, as one is by the timed parry or by the held block button. Until now only the block button counted: the wall raised with R stopped MORDHAU's own fighters but not Skyrim's creatures.",
+   "meaning": "play-test note, 2026-10-13. 1 = while MORDHAU's shield wall is up (the shield's alternate mode, MORDHAU's R; streamed back as a ShieldParry motion in its blocking stage 0), a hit Skyrim judges on the player from the front - a creature's bite or claw, an arrow - is stopped, as one is by the timed parry or by the held block button. Until now only the block button counted: the wall raised with R stopped MORDHAU's own fighters but not Skyrim's creatures.",
    "source": "play-test note, 2026-10-13",
    "verified": false
   },
   {
    "id": "creature_standin",
    "value": 1.0,
-   "meaning": "Play-test note 2026-10-14: 'now creatures only take damage in the head' - the stand-in, a person at the creature's front, only met swings at the head. Since then the blade is ALSO tested against the creature's whole body (as before the stand-in), and each swing counts once per creature, whichever test counts it first. play-test note, 2026-10-13: 'is it possible to have a small mordhau character who doesnt attack at the front of the creatures so when you kick ...' - 'make it'. 1 = a creature that fights the player (a wolf, a spider, a skeever: anything that is not a person) gets a MORDHAU stand-in that only stands to be hit: passive (never attacks, never parries), held at the creature's front end, as tall against the player as the creature is. MORDHAU itself then judges whether the player's swing or kick lands on it - so a landed kick is a landed kick, a hit can be followed by a combo, a blunt weapon stops in the body - while the creature stays Skyrim's in everything else: its body, its animation, its movement, its own attacks on the player. The damage is still the creature kind (creature_damage_scale of a clean hit); a landed kick gives Skyrim's stagger (kick_stagger_magnitude) and no damage. Stand-in places left over by people go to the nearest such creatures; one without a stand-in (no place left, or taller than creature_standin_tallest) is judged by the blade against its body as before.",
+   "meaning": "Play-test note 2026-10-14: the stand-in, a person at the creature's front, only met swings at the head. Since then the blade is ALSO tested against the creature's whole body (as before the stand-in), and each swing counts once per creature, whichever test counts it first. play-test note, 2026-10-13: 'make it'. 1 = a creature that fights the player (a wolf, a spider, a skeever: anything that is not a person) gets a MORDHAU stand-in that only stands to be hit: passive (never attacks, never parries), held at the creature's front end, as tall against the player as the creature is. MORDHAU itself then judges whether the player's swing or kick lands on it - so a landed kick is a landed kick, a hit can be followed by a combo, a blunt weapon stops in the body - while the creature stays Skyrim's in everything else: its body, its animation, its movement, its own attacks on the player. The damage is still the creature kind (creature_damage_scale of a clean hit); a landed kick gives Skyrim's stagger (kick_stagger_magnitude) and no damage. Stand-in places left over by people go to the nearest such creatures; one without a stand-in (no place left, or taller than creature_standin_tallest) is judged by the blade against its body as before.",
    "source": "play-test note, 2026-10-13",
    "verified": false
   },
@@ -665,192 +574,31 @@
    "verified": false
   },
   {
-   "id": "creature_fighters",
-   "value": 0.0,
-   "meaning": "OFF since 2026-10-14 at the user's word: 'you know what just cancel this, bring it back to how it was before we started to put mordhau animations on creatures'. Falmer were looked at and found acceptable, trolls and Dwarven Centurions were tried and taken out. With 0 every creature is as before: Skyrim's own body, animations and attacks, with the hidden stand-in that only stands to be hit where creature_standin gives one. 1 = the creatures listed in sheets/creature_fighters.json fight with the moves of a MORDHAU Demon Horde creature (see that sheet). 0 = they stay Skyrim's, with a stand-in that only stands to be hit (creature_standin).",
-   "source": "play-test note, 2026-10-14",
-   "verified": false
-  },
-  {
-   "id": "creature_knockdown_every",
-   "value": 5.0,
-   "meaning": "play-test note, 2026-10-14: 'all of the centurions moves ragdoll me maybe make it just ragdoll me every 5 moves max'. A MORDHAU creature on a Skyrim creature's body (sheets/creature_fighters.json - the Ogre's strike and stomp throw a fighter down in MORDHAU) knocks the player down only once in this many of its knockdowns; the others are undone at once in MORDHAU and the Skyrim body stays on its feet. People's knockdowns (a kick) are untouched.",
-   "source": "play-test note, 2026-10-14",
-   "verified": false
-  },
-  {
    "id": "tdm_off_while_linked",
    "value": 1.0,
-   "meaning": "1 = while MORDHAU is linked, True Directional Movement's directional movement and its turning of the player are switched off through TDM's own interface (TDM_API RequestDisableDirectionalMovement / RequestYawControl) and handed back when the link ends. Players running TDM could only walk forward with the weapon put away (Nexus reports, 2026-10-13/14: 'I can only move forward when my weapon is sheathed', 'I cannot walk sideways'): TDM turned the character toward where the player pressed, this mod keeps it facing the view. Since 2026-10-15 also TDM's target lock (its key is the middle mouse button, this mod's cast key - the user: 'middle mouse is tdm lockon feature but also our spellcast, do something about that'), through TDM's own interface (RequestDisableTargetLock), given back with the rest.",
-   "source": "Nexus reports and the user's request, 2026-10-14",
-   "verified": false
-  },
-  {
-   "id": "bless_on",
-   "value": 0.0,
-   "meaning": "0 since the play-test note 2026-10-15: 'i dont like the effects get em out' - no blessing look on any weapon. 1 = enchanted weapons carry Demon Horde's blessing look (sheets/blessings.json): the glow, the sparks and smoke, the swing trail. 0 = none of it.",
-   "source": "the user, 2026-10-15: 'yes do all of em'",
-   "verified": false
-  },
-  {
-   "id": "bless_glow_strength",
-   "value": 0.9,
-   "meaning": "how bright the glow on the weapon is (MORDHAU's M_PackAPunch: additive, unlit noise in the blessing's colour); 1 = the colour at full where the noise is white",
-   "source": "by eye: MORDHAU's own value is in its material graph, not readable as a number",
-   "verified": false
-  },
-  {
-   "id": "bless_glow_noise_scale",
-   "value": 3.0,
-   "meaning": "how many times the noise texture repeats over the weapon's texture space",
-   "source": "by eye",
-   "verified": false
-  },
-  {
-   "id": "bless_glow_noise_speed",
-   "value": 0.15,
-   "meaning": "how fast the noise drifts over the weapon (texture widths per second)",
-   "source": "by eye",
-   "verified": false
-  },
-  {
-   "id": "bless_sparks",
-   "value": 40.0,
-   "meaning": "how many sparks are alive on one weapon at a time: MORDHAU's FlashBall and FlashBall_Local each spawn 5 a second and live 2-6 s (about 20 each)",
-   "source": "read from MORDHAU's P_EnchantGlow, 2026-10-15",
-   "verified": false
-  },
-  {
-   "id": "bless_spark_life_min",
-   "value": 2.0,
-   "meaning": "a spark's life, shortest (s)",
-   "source": "read from MORDHAU's P_EnchantGlow, 2026-10-15",
-   "verified": false
-  },
-  {
-   "id": "bless_spark_life_max",
-   "value": 6.0,
-   "meaning": "a spark's life, longest (s)",
-   "source": "read from MORDHAU's P_EnchantGlow, 2026-10-15",
-   "verified": false
-  },
-  {
-   "id": "bless_spark_size",
-   "value": 2.0,
-   "meaning": "a spark's size (cm). MORDHAU's start size is 0.25-0.5 cm, growing 1.5 times over its life, made larger on screen by MORDHAU's bloom; Skyrim adds no bloom to what this mod draws, so it is drawn larger here (choice)",
-   "source": "MORDHAU's numbers read from P_EnchantGlow; the size here by eye",
-   "verified": false
-  },
-  {
-   "id": "bless_spark_drift",
-   "value": 5.0,
-   "meaning": "how fast a spark drifts sideways (cm/s, either way) and rises (cm/s): MORDHAU's StartVelocity -5..5 sideways, 5 up",
-   "source": "read from MORDHAU's P_EnchantGlow, 2026-10-15",
-   "verified": false
-  },
-  {
-   "id": "bless_spark_orbit",
-   "value": 5.0,
-   "meaning": "how far a spark circles around its spot (cm): MORDHAU's orbit offset 5 (and 2.5 the other way)",
-   "source": "read from MORDHAU's P_EnchantGlow, 2026-10-15",
-   "verified": false
-  },
-  {
-   "id": "bless_smoke",
-   "value": 30.0,
-   "meaning": "how many smoke puffs are alive on one weapon at a time: MORDHAU's Smoke spawns 20 a second and lives 0.5-2.5 s",
-   "source": "read from MORDHAU's P_EnchantGlow, 2026-10-15",
-   "verified": false
-  },
-  {
-   "id": "bless_smoke_life_min",
-   "value": 0.5,
-   "meaning": "a smoke puff's life, shortest (s)",
-   "source": "read from MORDHAU's P_EnchantGlow, 2026-10-15",
-   "verified": false
-  },
-  {
-   "id": "bless_smoke_life_max",
-   "value": 2.5,
-   "meaning": "a smoke puff's life, longest (s)",
-   "source": "read from MORDHAU's P_EnchantGlow, 2026-10-15",
-   "verified": false
-  },
-  {
-   "id": "bless_smoke_size_min",
-   "value": 5.0,
-   "meaning": "a smoke puff's size, smallest (cm)",
-   "source": "read from MORDHAU's P_EnchantGlow, 2026-10-15",
-   "verified": false
-  },
-  {
-   "id": "bless_smoke_size_max",
-   "value": 15.0,
-   "meaning": "a smoke puff's size, largest (cm)",
-   "source": "read from MORDHAU's P_EnchantGlow, 2026-10-15",
-   "verified": false
-  },
-  {
-   "id": "bless_smoke_rise",
-   "value": 7.5,
-   "meaning": "how fast smoke rises (cm/s): MORDHAU's StartVelocity up 5-10",
-   "source": "read from MORDHAU's P_EnchantGlow, 2026-10-15",
-   "verified": false
-  },
-  {
-   "id": "bless_smoke_strength",
-   "value": 0.35,
-   "meaning": "how strongly smoke shows (additive, as MORDHAU's M_EnchantGlowSmoke)",
-   "source": "by eye",
-   "verified": false
-  },
-  {
-   "id": "bless_trail_on",
-   "value": 0.0,
-   "meaning": "1 = a trail behind a blessed weapon's swing (MORDHAU's P_WeaponTrailGlow); 0 = none. 0 since the play-test note 2026-10-15: 'remove the trail i dont like it'. The glow, sparks and smoke stay.",
-   "source": "the user, 2026-10-15",
-   "verified": true
-  },
-  {
-   "id": "bless_trail_life",
-   "value": 0.15,
-   "meaning": "how long a point of the swing trail stays (s). MORDHAU's P_WeaponTrailGlow keeps its trail 0.12 s; its P_WeaponTrailLinger a little longer. 0.25 here so it reads at Skyrim's frame rates (choice)",
-   "source": "MORDHAU's TrailLifeTime 0.12 read from P_WeaponTrailGlow; 0.25 at first, 0.15 after the play-test note 2026-10-15: 'the trails are a bit much'",
-   "verified": false
-  },
-  {
-   "id": "bless_trail_speed",
-   "value": 250.0,
-   "meaning": "the weapon tip must move at least this fast (cm/s) for the trail to show - a swing, not walking with it",
-   "source": "by eye",
-   "verified": false
-  },
-  {
-   "id": "bless_trail_strength",
-   "value": 0.4,
-   "meaning": "how bright the trail is at the blade (it fades to nothing at its end)",
-   "source": "by eye; 0.8 at first, halved after the play-test note 2026-10-15: 'the trails are a bit much'",
+   "meaning": "1 = while MORDHAU is linked, True Directional Movement's directional movement and its turning of the player are switched off through TDM's own interface (TDM_API RequestDisableDirectionalMovement / RequestYawControl) and handed back when the link ends. Players running TDM could only walk forward with the weapon put away (Nexus reports, 2026-10-13/14): TDM turned the character toward where the player pressed, this mod keeps it facing the view. Since 2026-10-15 also TDM's target lock (its key is the middle mouse button, this mod's cast key - play-testing), through TDM's own interface (RequestDisableTargetLock), given back with the rest.",
+   "source": "Nexus reports and the play-tester's request, 2026-10-14",
    "verified": false
   },
   {
    "id": "cast_arm_skyrim",
    "value": 1.0,
-   "meaning": "1 = while the left hand casts (the cast key, sheets/live_input.json cast_left), the player's left arm and hand are left in Skyrim's own casting animation instead of MORDHAU's pose: the spell comes from a raised, open hand. Play-test note 2026-10-15: 'the spellcasting in first person makes it look like you piss fire instead of casting it like skyrim, and third person makes fire come out of your closed hand'.",
-   "source": "the user, 2026-10-15",
+   "meaning": "1 = while the left hand casts (the cast key, sheets/live_input.json cast_left), the player's left arm and hand are left in Skyrim's own casting animation instead of MORDHAU's pose: the spell comes from a raised, open hand. The same for anyone else fought by MORDHAU's rules whose left hand casts (a melee weapon in the right hand, a spell in the left: since 2026-10-17 they get a stand-in too). Play-test note 2026-10-15.",
+   "source": "play-test note, 2026-10-15",
    "verified": false
   },
   {
    "id": "cast_arm_linger",
    "value": 0.5,
    "meaning": "seconds the left arm stays Skyrim's after the cast ends (Skyrim's animation lowers it), then MORDHAU's pose has it again",
-   "source": "the user, 2026-10-15",
+   "source": "play-test note, 2026-10-15",
    "verified": false
   },
   {
    "id": "mordhau_background_audio",
    "value": 1.0,
-   "meaning": "1 = before the mod starts MORDHAU, MORDHAU's own setting for its sound while its window is not in front (Engine.ini [Audio] UnfocusedVolumeMultiplier) is set to 1; once MORDHAU is live the player's own value is put back into the file (MORDHAU reads it only at its start). Without it MORDHAU, always behind Skyrim, made no sound - a Nexus report, 2026-10-15: 'the audio doesn't come through'. The developer's own install had the line set by hand early on, which is why it was not noticed.",
-   "source": "Nexus report passed on by the user, 2026-10-15; the user: 'Make it'",
+   "meaning": "1 = before the mod starts MORDHAU, MORDHAU's own setting for its sound while its window is not in front (Engine.ini [Audio] UnfocusedVolumeMultiplier) is set to 1; once MORDHAU is live the player's own value is put back into the file (MORDHAU reads it only at its start). Without it MORDHAU, always behind Skyrim, made no sound - a Nexus report, 2026-10-15. The developer's own install had the line set by hand early on, which is why it was not noticed.",
+   "source": "Nexus report passed on in play-testing, 2026-10-15",
    "verified": false
   }
  ]

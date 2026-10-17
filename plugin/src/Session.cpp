@@ -168,6 +168,26 @@ namespace dm::Session
 			return true;
 		}
 
+		// The script's native helper (MordhauBones.dll, mordhau_side/bones) is never kept in MORDHAU's folder: it is copied into
+		// the mod's own cache folder for the session and loaded from there by the script; a copy in MORDHAU's folder (from a test
+		// build) is removed at the start and the end of every session. (A file of ours that is not there cannot be found by a
+		// normal start of MORDHAU.)
+		bool ClearHelper(const fs::path& a_bin)
+		{
+			const auto old = a_bin / "Mods" / "PoseStream" / "Scripts" / "MordhauBones.dll";
+			std::error_code ec;
+			if (!fs::exists(old, ec)) {
+				return true;
+			}
+			SetFileAttributesW(old.c_str(), FILE_ATTRIBUTE_NORMAL);
+			if (!DeleteFileW(old.c_str())) {
+				logger::error("session: '{}' could not be removed from MORDHAU's folder (error {})", old.string(), GetLastError());
+				return false;
+			}
+			logger::info("session: removed MordhauBones.dll from MORDHAU's folder (it is only ever kept in the mod's cache folder)");
+			return true;
+		}
+
 		// MORDHAU's side, from beside the plugin into MORDHAU's Binaries\Win64: UE4SS (the script host) unless someone's
 		// own is there, this mashup's script, and where the shared cache is. Nothing of MORDHAU's own is changed.
 		bool PlaceFiles(const fs::path& a_bin, const fs::path& a_cache)
@@ -222,6 +242,11 @@ namespace dm::Session
 				std::ofstream(list, std::ios::trunc) << (listed ? "" : "PoseStream : 1\n") << all;
 			}
 			std::ofstream(a_bin / "Mods" / "PoseStream" / "cache_dir.txt", std::ios::trunc) << a_cache.string() << "\n";
+			// (the native helper into the mod's own cache folder, not MORDHAU's - see ClearHelper)
+			if (const auto helper = g_payload.parent_path() / "MordhauBones.dll"; fs::exists(helper, ec)) {
+				Put(helper, a_cache / "MordhauBones.dll");
+			}
+			ClearHelper(a_bin);
 			return ok && fs::exists(a_bin / "UE4SS.dll", ec) && fs::exists(a_bin / "Mods" / "PoseStream" / "Scripts" / "main.lua", ec);
 		}
 
@@ -588,6 +613,7 @@ namespace dm::Session
 				}
 				CloseHandle(mordhau);
 				ClearLoader(bin);
+				ClearHelper(bin);
 				MordhauAudio::Restore(cache);
 				logger::info("session: MORDHAU closed after {:.0f} s", Seconds(started));
 				if (Seconds(started) < 60.0f && ++quick >= 3) {

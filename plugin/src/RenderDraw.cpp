@@ -320,14 +320,8 @@ namespace dm::CharacterRender
 		if (handModel && !skyrimBody) {
 			const std::size_t              bones = handModel->look.bones.size();
 			static std::vector<XMFLOAT4X4> still(kMaxBones);
-			// a bow: its limbs and string as MORDHAU has them right now (else the model is rigid)
-			const bool posedBow = link.bowBones > 0 && static_cast<std::size_t>(link.bowBones) == bones && bones <= 12;
 			for (std::size_t i = 0; i <= bones; ++i) {
-				if (posedBow && i < bones) {
-					XMStoreFloat4x4(&still[i], XMLoadFloat4x4(&handModel->look.bones[i].invRest) * fromLink(link.bow[i]));
-				} else {
-					XMStoreFloat4x4(&still[i], XMMatrixIdentity());
-				}
+				XMStoreFloat4x4(&still[i], XMMatrixIdentity());
 			}
 			if (SUCCEEDED(context->Map(g_frameCb, 0, D3D11_MAP_WRITE_DISCARD, 0, &map))) {
 				auto* fc = static_cast<FrameConstants*>(map.pData);
@@ -343,33 +337,7 @@ namespace dm::CharacterRender
 			}
 			context->IASetVertexBuffers(0, 1, &handModel->look.vb, &stride, &offset);
 			context->IASetIndexBuffer(handModel->look.ib, DXGI_FORMAT_R32_UINT, 0);
-			{
-				// (bows and the crossbow: MORDHAU's textures for them are grey, the wood colour is in its material)
-				std::string lower = link.weaponClass;
-				std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-				g_woodNow = lower.find("bow") != std::string::npos;
-			}
-			g_bless.element = BlessingOf(player);  // (enchanted: Demon Horde's blessing on it, sheets/blessings.json)
-			g_bless.key = player->GetFormID();
-			XMStoreFloat4x4(&g_bless.world, handWeapon * placement);
 			drawSections(handModel->look.sections);
-			g_bless.element = -1;
-			g_woodNow = false;
-			if (posedBow && link.arrowShown) {
-				// the arrow on the string, where MORDHAU has it
-				XMFLOAT4X4 arrowPose[2];
-				XMStoreFloat4x4(&arrowPose[0], fromLink(link.arrowBones[0]));
-				XMStoreFloat4x4(&arrowPose[1], fromLink(link.arrowBones[1]));
-				propPose = arrowPose;
-				propPoseBones = 2;
-				drawProp("arrow", fromLink(link.arrowAt) * handWeapon * placement, SunReaching(player));
-				propPose = nullptr;
-				static bool told = false;
-				if (!told) {
-					told = true;
-					logger::info("archery: the arrow on the string is drawn (the bow is posed with {} bones)", link.bowBones);
-				}
-			}
 		}
 		}
 
@@ -471,13 +439,7 @@ namespace dm::CharacterRender
 					}
 					context->IASetVertexBuffers(0, 1, &model.look.vb, &stride, &offset);
 					context->IASetIndexBuffer(model.look.ib, DXGI_FORMAT_R32_UINT, 0);
-					if (ghost.weaponState == 1) {
-						g_bless.element = BlessingOf(actor);  // (in the hand and enchanted: Demon Horde's blessing on it)
-						g_bless.key = id;
-						XMStoreFloat4x4(&g_bless.world, weaponWorld);
-					}
 					drawSections(model.look.sections);
-					g_bless.element = -1;
 				}
 			}
 		}
@@ -674,8 +636,8 @@ namespace dm::CharacterRender
 			// head bone) is folded away into the neck, MORDHAU's neck piece (cut) or stump (crushed) stands on the
 			// neck, and a cut-off head flies as MORDHAU's own head model in the character's skin and hair colours.
 			// (someone on the list who is alive - a save from before the blow loaded, someone brought back, or a new character
-			// that got a dead one's id - gets the head back and is taken off: "if someone loses their head, its gone for good,
-			// reloading and re entering places didnt fix it", seen in a player's video)
+			// that got a dead one's id - gets the head back and is taken off: a head lost once stayed lost through
+			// reloads and cell changes, seen in a player's video)
 			std::vector<std::uint32_t> alive;
 			for (const auto& [goreId, goreKind] : g_headless) {
 				auto* victim = RE::TESForm::LookupByID<RE::Actor>(goreId);
@@ -778,12 +740,7 @@ namespace dm::CharacterRender
 				m.m[2][0] = along.x * k, m.m[2][1] = along.y * k, m.m[2][2] = along.z * k;
 				m.m[3][0] = node->world.translate.x - cam.x, m.m[3][1] = node->world.translate.y - cam.y, m.m[3][2] = node->world.translate.z - cam.z;
 				m.m[3][3] = 1.0f;
-				// (in the hand and enchanted: Demon Horde's blessing on it, sheets/blessings.json)
-				if (std::string_view(a_node) == "WEAPON") {
-					g_bless = { BlessingOf(a_holder), a_holder->GetFormID(), m };
-				}
 				drawProp(name, XMLoadFloat4x4(&m), SunReaching(a_holder));
-				g_bless.element = -1;
 				return true;
 			};
 			const auto skyrimWeaponState = player->AsActorState()->GetWeaponState();
@@ -996,410 +953,6 @@ namespace dm::CharacterRender
 		}
 		}
 
-		// The blessing's constants (sheets/blessings.json row, builds.json bless_*), with the camera's right and up for sprites facing it.
-		void FillBlessConstants(ID3D11DeviceContext* context, int a_element, float a_points, float a_strength, const XMMATRIX& a_viewProj)
-		{
-			D3D11_MAPPED_SUBRESOURCE map{};
-			if (!g_blessCb || FAILED(context->Map(g_blessCb, 0, D3D11_MAP_WRITE_DISCARD, 0, &map))) {
-				return;
-			}
-			const auto& row = sheets::kBlessings[std::clamp(a_element, 0, static_cast<int>(std::size(sheets::kBlessings)) - 1)];
-			const float k = kCmToUnits;
-			// the camera's right and up: two screen directions taken back into the (camera-relative) world
-			const XMMATRIX back = XMMatrixInverse(nullptr, a_viewProj);
-			const auto     unproject = [&](float a_x, float a_y) { return XMVector3TransformCoord(XMVectorSet(a_x, a_y, 0.5f, 1.0f), back); };
-			const XMVECTOR middle = unproject(0.0f, 0.0f);
-			XMFLOAT3       right{}, up{};
-			XMStoreFloat3(&right, XMVector3Normalize(unproject(0.1f, 0.0f) - middle));
-			XMStoreFloat3(&up, XMVector3Normalize(unproject(0.0f, 0.1f) - middle));
-			const float values[36]{
-				row.glow[0], row.glow[1], row.glow[2], a_strength,
-				row.spark[0], row.spark[1], row.spark[2], BlessValue("bless_spark_size") * k,
-				row.smoke[0], row.smoke[1], row.smoke[2], BlessValue("bless_smoke_strength"),
-				BlessClock(), BlessValue("bless_glow_noise_scale"), BlessValue("bless_glow_noise_speed"), a_points,
-				BlessValue("bless_sparks"), BlessValue("bless_spark_life_min"), BlessValue("bless_spark_life_max"), BlessValue("bless_spark_drift") * k,
-				BlessValue("bless_smoke"), BlessValue("bless_smoke_life_min"), BlessValue("bless_smoke_life_max"), BlessValue("bless_smoke_rise") * k,
-				BlessValue("bless_smoke_size_min") * k, BlessValue("bless_smoke_size_max") * k, BlessValue("bless_spark_orbit") * k, 0.0f,
-				right.x, right.y, right.z, 0.0f,
-				up.x, up.y, up.z, 0.0f,
-			};
-			std::memcpy(map.pData, values, sizeof(values));
-			context->Unmap(g_blessCb, 0);
-		}
-
-		// Demon Horde's blessing on the weapon just drawn (g_bless): its glow drawn over it, sparks and smoke along it, and
-		// where its blade is now for the swing trail. Leaves the state as drawSections had it.
-		void DrawBlessPasses(ID3D11Device* device, ID3D11DeviceContext* context, const std::vector<Section>& a_sections, bool a_reversed, const RE::NiPoint3& a_cam, const XMMATRIX& a_viewProj)
-		{
-			if (g_bless.element < 0 || !g_blessGlowPs || !g_blessGs || !g_blessCb || !g_blendAdd || !g_depthLessTest) {
-				return;
-			}
-			LoadBlessTextures(device);
-			float points = 0.0f, zMin = FLT_MAX, zMax = -FLT_MAX;
-			for (const auto& section : a_sections) {
-				points += static_cast<float>(section.count);
-				zMin = std::min(zMin, section.zMin), zMax = std::max(zMax, section.zMax);
-			}
-			FillBlessConstants(context, g_bless.element, points, BlessValue("bless_glow_strength"), a_viewProj);
-			const FLOAT factor[4]{ 0, 0, 0, 0 };
-			context->OMSetBlendState(g_blendAdd, factor, 0xFFFFFFFF);
-			context->OMSetDepthStencilState(a_reversed ? g_depthGreaterTest : g_depthLessTest, 0);
-			context->PSSetConstantBuffers(3, 1, &g_blessCb);
-			context->GSSetConstantBuffers(3, 1, &g_blessCb);
-			ID3D11Buffer* gsCbs[2]{ g_frameCb, g_boneCb };
-			context->GSSetConstantBuffers(0, 2, gsCbs);
-			// the glow on the weapon itself (MORDHAU's M_PackAPunch)
-			if (g_blessTex[0]) {
-				context->PSSetShaderResources(8, 1, &g_blessTex[0]);
-				context->PSSetShader(g_blessGlowPs, nullptr, 0);
-				for (const auto& section : a_sections) {
-					context->DrawIndexed(section.count, section.first, 0);
-				}
-			}
-			// sparks and smoke (MORDHAU's P_EnchantGlow)
-			if (g_blessTex[1] && g_blessPointVs && g_blessPointPs) {
-				context->PSSetShaderResources(8, 1, &g_blessTex[1]);
-				context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
-				context->VSSetShader(g_blessPointVs, nullptr, 0);
-				context->GSSetShader(g_blessGs, nullptr, 0);
-				context->PSSetShader(g_blessPointPs, nullptr, 0);
-				for (const auto& section : a_sections) {
-					context->DrawIndexed(section.count, section.first, 0);
-				}
-				context->GSSetShader(nullptr, nullptr, 0);
-				context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-				context->VSSetShader(g_vs, nullptr, 0);
-			}
-			context->PSSetShader(g_ps, nullptr, 0);
-			context->OMSetBlendState(g_blend, factor, 0xFFFFFFFF);
-			context->OMSetDepthStencilState(a_reversed ? g_depthGreater : g_depthLess, 0);
-			// where the blade is now: the swing trail is drawn from these (DrawBlessTrails)
-			if (zMax > zMin) {
-				const XMMATRIX world = XMLoadFloat4x4(&g_bless.world);
-				XMFLOAT3       base{}, tip{};
-				XMStoreFloat3(&base, XMVector3TransformCoord(XMVectorSet(0.0f, 0.0f, std::max(zMin, zMax * 0.35f), 1.0f), world));
-				XMStoreFloat3(&tip, XMVector3TransformCoord(XMVectorSet(0.0f, 0.0f, zMax, 1.0f), world));
-				auto& trail = g_blessTrails[g_bless.key];
-				trail.element = g_bless.element;
-				trail.points.push_back({ BlessClock(), RE::NiPoint3{ base.x + a_cam.x, base.y + a_cam.y, base.z + a_cam.z }, RE::NiPoint3{ tip.x + a_cam.x, tip.y + a_cam.y, tip.z + a_cam.z } });
-			}
-			static bool told = false;
-			if (!told) {
-				told = true;
-				logger::info("blessings: the first blessed weapon is drawn ({}, {:.0f} points, {:.0f} cm along)", sheets::kBlessings[g_bless.element].id, points, zMax);
-			}
-		}
-
-		// Demon Horde's blessing on Skyrim's OWN weapon models where they are shown (the eye view's Skyrim body, an enemy keeping
-		// its Skyrim weapon): the glow over each of the weapon's shapes, sparks and smoke along them, and the blade for the trail.
-		// (Seen in play: an enchanted Skyrim greatsword in the eye view had none of it - only MORDHAU's own models had it.)
-		void DrawBlessOnSkyrimWeapons(RE::PlayerCharacter* player, ID3D11Device* device, ID3D11DeviceContext* context, const RE::NiPoint3& cam, const XMMATRIX& viewProj, bool reversed)
-		{
-			if (!g_blessGlowPs || !g_blessGs || !g_blessPointSkyVs || !g_blessPointPs || !g_skyVs || !g_skyVsBlob || !g_blessCb || !g_blendAdd || !g_blessRaster[0] || BlessValue("bless_on") < 0.5f) {
-				return;
-			}
-			// (who holds a blessed weapon is found on the game thread, UpdateBlessings: walking Skyrim's actor lists from
-			// here, while the inventory was open, locked the game up)
-			if (auto* ui = RE::UI::GetSingleton(); !ui || ui->GameIsPaused()) {
-				return;
-			}
-			std::vector<RE::Actor*> holders;
-			for (const auto id : BlessedHolders()) {
-				if (auto* actor = RE::TESForm::LookupByID<RE::Actor>(id); actor && actor->Is3DLoaded()) {
-					holders.push_back(actor);
-				}
-			}
-			(void)player;
-			const auto rowsOf = [](const RE::NiTransform& a_t) {
-				XMFLOAT4X4 m{};
-				for (int r = 0; r < 3; ++r) {
-					for (int c = 0; c < 3; ++c) {
-						m.m[r][c] = a_t.rotate.entry[c][r] * a_t.scale;
-					}
-				}
-				m.m[3][0] = a_t.translate.x, m.m[3][1] = a_t.translate.y, m.m[3][2] = a_t.translate.z;
-				m.m[3][3] = 1.0f;
-				return XMLoadFloat4x4(&m);
-			};
-			struct Shape
-			{
-				RE::BSTriShape*           shape;
-				ID3D11InputLayout*        layout;
-				UINT                      stride;
-			};
-			for (auto* holder : holders) {
-				if (!holder->AsActorState()->IsWeaponDrawn()) {
-					continue;
-				}
-				const int element = BlessingOf(holder);
-				auto*     root = element >= 0 ? holder->Get3D(false) : nullptr;
-				auto*     object = root ? root->GetObjectByName("WEAPON") : nullptr;
-				auto*     node = object ? object->AsNode() : nullptr;
-				if (!node || node->GetAppCulled()) {
-					continue;
-				}
-				// the weapon's visible shapes (not its blood layer or scabbard)
-				std::vector<Shape>           shapes;
-				float                        points = 0.0f;
-				const RE::NiAVObject*        biggest = nullptr;
-				std::vector<RE::NiAVObject*> pending{ node };
-				while (!pending.empty()) {
-					auto* at = pending.back();
-					pending.pop_back();
-					if (at->GetAppCulled()) {
-						continue;
-					}
-					if (auto* inner = at->AsNode()) {
-						for (auto& child : inner->GetChildren()) {
-							if (child) {
-								pending.push_back(child.get());
-							}
-						}
-						continue;
-					}
-					auto* geometry = at->AsGeometry();
-					auto* shape = geometry ? netimmerse_cast<RE::BSTriShape*>(geometry) : nullptr;
-					if (!shape) {
-						continue;
-					}
-					std::string name = at->name.c_str();
-					std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-					if (name.find("blood") != std::string::npos || name.find("scb") != std::string::npos) {
-						continue;
-					}
-					auto& data = geometry->GetGeometryRuntimeData();
-					auto* buffers = data.rendererData;
-					auto  desc = data.vertexDesc;
-					const UINT stride = desc.GetSize();
-					if (!buffers || !buffers->vertexBuffer || !buffers->indexBuffer || !desc.HasFlag(RE::BSGraphics::Vertex::VF_UV) || !desc.HasFlag(RE::BSGraphics::Vertex::VF_NORMAL) || stride == 0) {
-						continue;
-					}
-					const bool          full = desc.HasFlag(RE::BSGraphics::Vertex::VF_FULLPREC);
-					const UINT          uvAt = desc.GetAttributeOffset(RE::BSGraphics::Vertex::VA_TEXCOORD0), normalAt = desc.GetAttributeOffset(RE::BSGraphics::Vertex::VA_NORMAL);
-					const std::uint64_t key = (static_cast<std::uint64_t>(full) << 32) | (uvAt << 8) | normalAt;
-					auto&               layout = g_skyLayouts[key];
-					if (!layout) {
-						const D3D11_INPUT_ELEMENT_DESC elements[] = {
-							{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-							{ "TEXCOORD", 0, DXGI_FORMAT_R16G16_FLOAT, 0, uvAt, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-							{ "NORMAL", 0, DXGI_FORMAT_R8G8B8A8_UNORM, 0, normalAt, D3D11_INPUT_PER_VERTEX_DATA, 0 },
-						};
-						device->CreateInputLayout(elements, 3, g_skyVsBlob->GetBufferPointer(), g_skyVsBlob->GetBufferSize(), &layout);
-					}
-					if (!layout) {
-						continue;
-					}
-					shapes.push_back({ shape, layout, stride });
-					points += static_cast<float>(shape->GetTrishapeRuntimeData().triangleCount) * 3.0f;
-					if (!biggest || at->worldBound.radius > biggest->worldBound.radius) {
-						biggest = at;
-					}
-				}
-				if (shapes.empty()) {
-					continue;
-				}
-				LoadBlessTextures(device);
-				FillBlessConstants(context, element, points, BlessValue("bless_glow_strength"), viewProj);
-				const FLOAT factor[4]{ 0, 0, 0, 0 };
-				context->OMSetBlendState(g_blendAdd, factor, 0xFFFFFFFF);
-				context->OMSetDepthStencilState(reversed ? g_depthGreaterTest : g_depthLessTest, 0);
-				context->PSSetConstantBuffers(3, 1, &g_blessCb);
-				context->GSSetConstantBuffers(3, 1, &g_blessCb);
-				context->GSSetConstantBuffers(0, 1, &g_frameCb);
-				for (const auto& [shape, layout, stride] : shapes) {
-					D3D11_MAPPED_SUBRESOURCE map{};
-					if (SUCCEEDED(context->Map(g_frameCb, 0, D3D11_MAP_WRITE_DISCARD, 0, &map))) {
-						auto* fc = static_cast<FrameConstants*>(map.pData);
-						std::memset(fc, 0, sizeof(FrameConstants));
-						XMStoreFloat4x4(&fc->world, rowsOf(shape->world) * XMMatrixTranslation(-cam.x, -cam.y, -cam.z));
-						XMStoreFloat4x4(&fc->viewProj, viewProj);
-						context->Unmap(g_frameCb, 0);
-					}
-					auto&      data = shape->GetGeometryRuntimeData();
-					auto*      vb = reinterpret_cast<ID3D11Buffer*>(data.rendererData->vertexBuffer);
-					const UINT zero = 0, count = static_cast<UINT>(shape->GetTrishapeRuntimeData().triangleCount) * 3;
-					context->IASetInputLayout(layout);
-					context->IASetVertexBuffers(0, 1, &vb, &stride, &zero);
-					context->IASetIndexBuffer(reinterpret_cast<ID3D11Buffer*>(data.rendererData->indexBuffer), DXGI_FORMAT_R16_UINT, 0);
-					// the glow, drawn over Skyrim's own surface (pulled a hair towards the camera so it is not lost in it)
-					if (g_blessTex[0]) {
-						context->RSSetState(g_blessRaster[reversed ? 1 : 0]);
-						context->PSSetShaderResources(8, 1, &g_blessTex[0]);
-						context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-						context->VSSetShader(g_skyVs, nullptr, 0);
-						context->PSSetShader(g_blessGlowPs, nullptr, 0);
-						context->DrawIndexed(count, 0, 0);
-						context->RSSetState(g_raster);
-					}
-					// sparks and smoke
-					if (g_blessTex[1]) {
-						context->PSSetShaderResources(8, 1, &g_blessTex[1]);
-						context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_POINTLIST);
-						context->VSSetShader(g_blessPointSkyVs, nullptr, 0);
-						context->GSSetShader(g_blessGs, nullptr, 0);
-						context->PSSetShader(g_blessPointPs, nullptr, 0);
-						context->DrawIndexed(count, 0, 0);
-						context->GSSetShader(nullptr, nullptr, 0);
-					}
-				}
-				// back to our own meshes' state
-				context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-				context->IASetInputLayout(g_layout);
-				context->VSSetShader(g_vs, nullptr, 0);
-				context->PSSetShader(g_ps, nullptr, 0);
-				context->OMSetBlendState(g_blend, factor, 0xFFFFFFFF);
-				context->OMSetDepthStencilState(reversed ? g_depthGreater : g_depthLess, 0);
-				// the blade for the swing trail: from the weapon's node out through the middle of its biggest shape and as far again
-				if (biggest) {
-					const RE::NiPoint3 grip = node->world.translate;
-					const RE::NiPoint3 middle = biggest->worldBound.center;
-					auto& trail = g_blessTrails[holder->GetFormID()];
-					trail.element = element;
-					trail.points.push_back({ BlessClock(), grip + (middle - grip) * 0.7f, grip + (middle - grip) * 2.0f });
-				}
-				static bool told = false;
-				if (!told) {
-					told = true;
-					logger::info("blessings: the first blessed Skyrim weapon is drawn ({} on {}, {} shapes, {:.0f} points)", sheets::kBlessings[element].id, holder->GetDisplayFullName(), shapes.size(), points);
-				}
-			}
-		}
-
-		// The swing trails behind blessed weapons (MORDHAU's P_WeaponTrailGlow): a band from the middle of the blade to its
-		// tip at each of the last moments it was drawn, fading with age, only where the tip moved as fast as a swing.
-		void DrawBlessTrails(ID3D11DeviceContext* context, const RE::NiPoint3& cam, const XMMATRIX& viewProj, const UINT stride, const UINT offset, bool a_reversed)
-		{
-			if (BlessValue("bless_trail_on") < 0.5f) {
-				g_blessTrails.clear();  // (sheets/builds.json bless_trail_on: no trails)
-				return;
-			}
-			const float now = BlessClock(), life = std::max(BlessValue("bless_trail_life"), 0.02f);
-			const float fast = BlessValue("bless_trail_speed") * kCmToUnits;
-			std::vector<Vertex> shape;
-			for (auto it = g_blessTrails.begin(); it != g_blessTrails.end();) {
-				auto& points = it->second.points;
-				while (!points.empty() && (now - points.front().t > life || now < points.front().t)) {
-					points.pop_front();
-				}
-				if (points.empty()) {
-					it = g_blessTrails.erase(it);
-					continue;
-				}
-				const auto& colour = sheets::kBlessings[std::clamp(it->second.element, 0, static_cast<int>(std::size(sheets::kBlessings)) - 1)].trail;
-				for (std::size_t i = 1; i < points.size() && shape.size() + 6 <= kBlessTrailVertices; ++i) {
-					const auto& a = points[i - 1];
-					const auto& b = points[i];
-					const float dt = b.t - a.t;
-					if (dt <= 0.0f || (b.tip - a.tip).Length() / dt < fast) {
-						continue;
-					}
-					const auto add = [&](const RE::NiPoint3& p, float age, float along) {
-						Vertex v{};
-						v.pos[0] = p.x - cam.x, v.pos[1] = p.y - cam.y, v.pos[2] = p.z - cam.z;
-						v.nrm[0] = colour[0], v.nrm[1] = colour[1], v.nrm[2] = colour[2];
-						v.uv[0] = std::clamp(age / life, 0.0f, 1.0f), v.uv[1] = along;
-						shape.push_back(v);
-					};
-					const float ageA = now - a.t, ageB = now - b.t;
-					add(a.base, ageA, 0.0f), add(a.tip, ageA, 1.0f), add(b.tip, ageB, 1.0f);
-					add(a.base, ageA, 0.0f), add(b.tip, ageB, 1.0f), add(b.base, ageB, 0.0f);
-				}
-				++it;
-			}
-			D3D11_MAPPED_SUBRESOURCE map{};
-			if (shape.empty() || !g_blessVb || !g_blessTrailVs || !g_blessTrailPs || !g_blessTex[2] || FAILED(context->Map(g_blessVb, 0, D3D11_MAP_WRITE_DISCARD, 0, &map))) {
-				return;
-			}
-			std::memcpy(map.pData, shape.data(), shape.size() * sizeof(Vertex));
-			context->Unmap(g_blessVb, 0);
-			FillBlessConstants(context, 0, 0.0f, BlessValue("bless_trail_strength"), viewProj);
-			const FLOAT factor[4]{ 0, 0, 0, 0 };
-			context->OMSetBlendState(g_blendAdd, factor, 0xFFFFFFFF);
-			context->OMSetDepthStencilState(a_reversed ? g_depthGreaterTest : g_depthLessTest, 0);
-			context->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			context->IASetInputLayout(g_layout);
-			context->IASetVertexBuffers(0, 1, &g_blessVb, &stride, &offset);
-			context->VSSetShader(g_blessTrailVs, nullptr, 0);
-			context->PSSetShader(g_blessTrailPs, nullptr, 0);
-			context->PSSetConstantBuffers(3, 1, &g_blessCb);
-			context->PSSetShaderResources(8, 1, &g_blessTex[2]);
-			context->Draw(static_cast<UINT>(shape.size()), 0);
-			context->OMSetBlendState(g_blend, factor, 0xFFFFFFFF);
-			context->OMSetDepthStencilState(a_reversed ? g_depthGreater : g_depthLess, 0);
-			static bool told = false;
-			if (!told) {
-				told = true;
-				logger::info("blessings: the first swing trail is drawn");
-			}
-		}
-
-		// Streaks behind arrows in flight (still with the scene's depth: walls hide them). One narrow triangle each, full width and solid at the arrow, a point and clear at its end.
-		void DrawArrowTrails(ID3D11DeviceContext* context, D3D11_TEXTURE2D_DESC& sd, const RE::NiPoint3& cam, const XMMATRIX& viewProj, D3D11_MAPPED_SUBRESOURCE& map, const UINT stride, const UINT offset)
-		{
-		if (!g_trails.empty() && g_trailVs && g_trailPs && g_hudVb && g_blendAlpha) {
-			std::vector<Vertex> shape;
-			const float         w = static_cast<float>(sd.Width), h = static_cast<float>(sd.Height);
-			for (const auto& trail : g_trails) {
-				if (shape.size() + 3 > 6 * 16) {
-					break;
-				}
-				XMFLOAT4 head{}, tail{};
-				XMStoreFloat4(&head, XMVector4Transform(XMVectorSet(trail.head.x - cam.x, trail.head.y - cam.y, trail.head.z - cam.z, 1.0f), viewProj));
-				XMStoreFloat4(&tail, XMVector4Transform(XMVectorSet(trail.tail.x - cam.x, trail.tail.y - cam.y, trail.tail.z - cam.z, 1.0f), viewProj));
-				if (head.w < 6.0f) {
-					continue;  // (the arrow itself is behind or at the camera)
-				}
-				if (tail.w < 5.0f) {
-					// (its end is behind the camera - every arrow just loosed, every one about to hit you: the streak is
-					// cut where it passes the camera instead of being left out, which hid it exactly when it matters)
-					const float t = (head.w - 5.0f) / (head.w - tail.w);
-					tail.x = head.x + (tail.x - head.x) * t, tail.y = head.y + (tail.y - head.y) * t;
-					tail.z = head.z + (tail.z - head.z) * t, tail.w = 5.0f;
-				}
-				const float hx = head.x / head.w, hy = head.y / head.w, hz = head.z / head.w;
-				const float tx = tail.x / tail.w, ty = tail.y / tail.w, tz = tail.z / tail.w;
-				// across the streak, on screen (in pixels, so it is as wide sideways as upright)
-				float       dx = (hx - tx) * w, dy = (hy - ty) * h;
-				const float len = std::sqrt(dx * dx + dy * dy);
-				if (len < 1.0f) {
-					dx = 1.0f, dy = 0.0f;  // (seen end on: a small upright wedge)
-				} else {
-					dx /= len, dy /= len;
-				}
-				// half the width in pixels: the world width at the arrow's distance, never under one pixel
-				XMFLOAT4 side{};
-				XMStoreFloat4(&side, XMVector4Transform(XMVectorSet(trail.width, 0.0f, 0.0f, 0.0f), XMMatrixIdentity()));
-				const float pixels = std::clamp(trail.width * 0.5f * h / head.w, 0.8f, 3.0f);
-				const float nx = -dy * pixels * 2.0f / w, ny = dx * pixels * 2.0f / h;
-				const auto  add = [&](float x, float y, float z, float alpha) {
-					Vertex v{};
-					v.pos[0] = x, v.pos[1] = y, v.pos[2] = z;
-					v.nrm[0] = 0.93f, v.nrm[1] = 0.93f, v.nrm[2] = 0.88f;
-					v.uv[0] = alpha;
-					shape.push_back(v);
-				};
-				add(hx + nx, hy + ny, hz, trail.alpha);
-				add(hx - nx, hy - ny, hz, trail.alpha);
-				add(tx, ty, tz, 0.0f);
-			}
-			if (!shape.empty() && SUCCEEDED(context->Map(g_hudVb, 0, D3D11_MAP_WRITE_DISCARD, 0, &map))) {
-				std::memcpy(map.pData, shape.data(), shape.size() * sizeof(Vertex));
-				context->Unmap(g_hudVb, 0);
-				const float factor[4]{ 0.0f, 0.0f, 0.0f, 0.0f };
-				context->OMSetBlendState(g_blendAlpha, factor, 0xFFFFFFFF);
-				context->IASetInputLayout(g_layout);
-				context->IASetVertexBuffers(0, 1, &g_hudVb, &stride, &offset);
-				context->VSSetShader(g_trailVs, nullptr, 0);
-				context->PSSetShader(g_trailPs, nullptr, 0);
-				context->Draw(static_cast<UINT>(shape.size()), 0);
-				static bool told = false;
-				if (!told) {
-					told = true;
-					logger::info("trails: the first streak behind an arrow is drawn");
-				}
-			}
-		}
-		}
 
 		// The eye view and Skyrim's own first person: Skyrim's first-person arms are hidden and MORDHAU's view of the character is laid onto Skyrim's camera. Returns true when nothing more is to be drawn this frame.
 		bool ShowFirstPersonView(RE::PlayerCharacter* player, const bool firstPerson, const RE::NiPoint3& forward, std::vector<XMFLOAT4X4>& boneMatrices, XMMATRIX& placement, const Link::State& link, bool& armsHidden, const auto& hideArms)
@@ -1716,7 +1269,7 @@ namespace dm::CharacterRender
 						piece[20] = std::cos(ev[4] * 6.2831853f), piece[21] = std::sin(ev[4] * 6.2831853f), piece[22] = piece[23] = 0.0f;
 						piece[24] = ev[5], piece[25] = ev[6], piece[26] = ev[7], piece[27] = 1.0f;
 						piece[28] = ev[8], piece[29] = ev[9], piece[30] = ev[10], piece[31] = 1.0f;
-						piece[32] = section.skin[0], piece[33] = section.skin[1], piece[34] = section.skin[2], piece[35] = g_woodNow ? 1.0f : 0.0f;
+						piece[32] = section.skin[0], piece[33] = section.skin[1], piece[34] = section.skin[2], piece[35] = 0.0f;
 						context->Unmap(g_pieceCb, 0);
 					}
 					ID3D11ShaderResourceView* maps[7]{ section.srv, section.mask ? section.mask : section.srv, section.emblem ? section.emblem : section.srv,
@@ -1724,9 +1277,6 @@ namespace dm::CharacterRender
 						section.beard ? section.beard : section.srv };
 					context->PSSetShaderResources(0, 7, maps);
 					context->DrawIndexed(section.count, section.first, 0);
-				}
-				if (g_bless.element >= 0) {
-					DrawBlessPasses(device, context, a_sections, reversed, cam, viewProj);  // (an enchanted weapon: Demon Horde's blessing on it)
 				}
 			};
 			LoadBloodPattern(device);
@@ -1802,17 +1352,11 @@ namespace dm::CharacterRender
 			// MORDHAU's stand-ins, drawn where their Skyrim characters stand (whose own models are hidden meanwhile):
 			// the enemy you fight is the MORDHAU fighter whose attacks MORDHAU is actually resolving.
 			DrawWorldFigures(player, device, context, skyrimBody, cam, viewProj, link, playerDropModel, playerDropWorld, map, stride, offset, drawSections, drawProp);
-			// the swing trails behind blessed weapons (sheets/blessings.json), and the blessing on Skyrim's own weapon models
-			DrawBlessOnSkyrimWeapons(player, device, context, cam, viewProj, reversed);
-			DrawBlessTrails(context, cam, viewProj, stride, offset, reversed);
 			// MORDHAU's two bars at the bottom centre while the weapon is out: stamina (MORDHAU's own value) on the left,
 			// health (Skyrim's) on the right, each emptying away from the middle. Plain shapes; no MORDHAU art.
 			// MORDHAU's OWN health / stamina display, streamed from its window, at the bottom centre like in MORDHAU
 			// (it shows itself only when one of the two is not full, as MORDHAU does). The plain bars below are the
 			// fallback for when no picture of MORDHAU's window can be had.
-			// Streaks behind arrows in flight (still with the scene's depth: walls hide them). One narrow triangle each,
-			// full width and solid at the arrow, a point and clear at its end.
-			DrawArrowTrails(context, sd, cam, viewProj, map, stride, offset);
 			// MORDHAU's hit marker: four short slanted ticks around the crosshair for a quarter of a second (for hits Skyrim
 			// judges - creatures; MORDHAU shows its own for the fighters it judges). sheets/builds.json hit_marker_*
 			DrawHitMarker(context, sd, map, stride, offset);

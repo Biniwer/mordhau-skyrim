@@ -4,6 +4,128 @@ namespace dm::Combat
 {
 	inline namespace internal
 	{
+		// Hybrid movement's own bookkeeping per character (see WalkAfterStandIn): whether its Skyrim movement is MORDHAU's
+		// AI's now. Kept here so that a character that loses its stand-in gets its movement back (a guard that lost its
+		// stand-in while walked stood frozen, play-test 2026-10-16).
+		std::unordered_set<std::uint32_t> g_walked;
+		// (where each walked body should be - its stand-in's shown place, in Skyrim's world; Skyrim's own
+		// movement step takes it there)
+		struct MoveWant
+		{
+			RE::NiPoint3      place, speed;  // the stand-in's shown place and its speed there (units, units/s)
+			Clock::time_point at = Clock::now();
+		};
+		std::mutex                                   g_moveWantLock;
+		std::unordered_map<std::uint32_t, MoveWant> g_moveWant;
+
+		// (dev, measure=1: what Skyrim is about to move a fought character by in its own movement step - to learn the space
+		// and units of the step before replacing it; logged twice a second per character)
+		void OnMovementData(RE::Actor* a_actor, float a_delta, RE::NiPoint3& a_translation, RE::NiPoint3& a_rotation)
+		{
+			if (!a_actor) {
+				return;
+			}
+			const auto id = a_actor->GetFormID();
+			{
+				// (the step Skyrim was about to take is replaced by the way to the
+				// stand-in's place, in the character's own frame - x right, y forward; Skyrim's physics then moves it)
+				std::scoped_lock lock(g_moveWantLock);
+				if (const auto want = g_moveWant.find(id); want != g_moveWant.end() && a_delta > 0.0f) {
+					const RE::NiPoint3 here = a_actor->GetPosition();
+					// (the whole gap to the stand-in's shown place in this step; its own speed plus a share of the gap was tried,
+					// 2026-10-17 - no more even at the gate, less even in the inn)
+					const auto&        target = want->second;
+					RE::NiPoint3       way{ target.place.x - here.x, target.place.y - here.y, 0.0f };
+					const float        most = 900.0f * a_delta;
+					if (const float length = way.Length(); length > most) {
+						way = way * (most / length);
+					}
+					const float heading = a_actor->GetAngleZ();
+					const float c = std::cos(heading), s = std::sin(heading);
+					a_translation.x = way.x * c - way.y * s;
+					a_translation.y = way.x * s + way.y * c;
+					a_rotation.z = 0.0f;  // (its heading is MORDHAU's, set each frame)
+				}
+			}
+			if (!g_dev.measure) {
+				return;
+			}
+			if (!std::any_of(g_mirrored.begin(), g_mirrored.end(), [&](const Mirrored& a_m) { return a_m.id == id; })) {
+				return;
+			}
+			static std::unordered_map<std::uint32_t, Clock::time_point> told;
+			static std::unordered_map<std::uint32_t, RE::NiPoint3>      last;
+			auto& when = told[id];
+			const RE::NiPoint3 here = a_actor->GetPosition();
+			const RE::NiPoint3 before = last.contains(id) ? last[id] : here;
+			last[id] = here;
+			if (Seconds(when) < 0.5f) {
+				return;
+			}
+			when = Clock::now();
+			RE::hkVector4 velocity;
+			if (auto* controller = a_actor->GetCharController()) {
+				controller->GetLinearVelocityImpl(velocity);
+			}
+			alignas(16) float v[4];
+			_mm_store_ps(v, velocity.quad);
+			const float scale = RE::bhkWorld::GetWorldScale();
+			logger::info("movement step: {} delta {:.4f} translation ({:.2f}, {:.2f}, {:.2f}) rotation ({:.3f}, {:.3f}, {:.3f}) heading {:.3f}; moved since its last step ({:.2f}, {:.2f}, {:.2f}); controller speed ({:.0f}, {:.0f}, {:.0f}) units/s; walked {}",
+				a_actor->GetDisplayFullName(), a_delta, a_translation.x, a_translation.y, a_translation.z, a_rotation.x, a_rotation.y, a_rotation.z, a_actor->GetAngleZ(),
+				here.x - before.x, here.y - before.y, here.z - before.z, v[0] / scale, v[1] / scale, v[2] / scale, g_walked.contains(id));
+		}
+
+		// A ray against the world only: it passes through characters, living or dead, and small loose things. Its hit
+		// fraction along the whole segment and the surface's normal.
+		bool WorldRayHit(RE::Actor* a_actor, const RE::NiPoint3& a_from, const RE::NiPoint3& a_to, float& a_fraction, RE::NiPoint3* a_normal)
+		{
+			auto* cell = a_actor->GetParentCell();
+			auto* world = cell ? cell->GetbhkWorld() : nullptr;
+			a_fraction = 1.0f;
+			if (!world) {
+				return false;
+			}
+			const float  scale = RE::bhkWorld::GetWorldScale();
+			RE::NiPoint3 start = a_from;
+			const float  total = (a_to - a_from).Length();
+			for (int tries = 0; tries < 5 && total > 0.01f; ++tries) {
+				RE::bhkPickData pick;
+				pick.rayInput.from = RE::hkVector4(start.x * scale, start.y * scale, start.z * scale, 0.0f);
+				pick.rayInput.to = RE::hkVector4(a_to.x * scale, a_to.y * scale, a_to.z * scale, 0.0f);
+				RE::CFilter filter;
+				a_actor->GetCollisionFilterInfo(filter);
+				filter.SetCollisionLayer(RE::COL_LAYER::kLOS);
+				pick.rayInput.filterInfo = filter;
+				{
+					RE::BSReadLockGuard lock(world->worldLock);
+					world->PickObject(pick);
+				}
+				if (!pick.rayOutput.HasHit()) {
+					return false;
+				}
+				const RE::NiPoint3 hit = start + (a_to - start) * pick.rayOutput.hitFraction;
+				using L = RE::COL_LAYER;
+				const L    layer = pick.rayOutput.rootCollidable->GetCollisionLayer();
+				const bool passes = layer == L::kBiped || layer == L::kCharController || layer == L::kDeadBip || layer == L::kBipedNoCC || layer == L::kClutter || layer == L::kWeapon ||
+									layer == L::kProjectile || layer == L::kDebrisSmall || layer == L::kTransparentSmall || layer == L::kTransparentSmallAnim || layer == L::kNonCollidable ||
+									layer == L::kTrigger || layer == L::kActorZone || layer == L::kSpell || layer == L::kWater || layer == L::kItemPick;
+				if (!passes) {
+					a_fraction = (hit - a_from).Length() / total;
+					if (a_normal) {
+						alignas(16) float n[4];
+						_mm_store_ps(n, pick.rayOutput.normal.quad);
+						*a_normal = RE::NiPoint3{ n[0], n[1], n[2] };
+					}
+					return true;
+				}
+				start = hit + (a_to - start) * (2.0f / std::max((a_to - start).Length(), 1.0f));
+				if ((start - a_from).Length() >= total) {
+					return false;
+				}
+			}
+			return false;
+		}
+
 		bool IsMirrored(const RE::Actor* a_actor)
 		{
 			const auto link = Link::Current();
@@ -179,84 +301,48 @@ namespace dm::Combat
 		}
 
 		// One fought character for this frame: where it stands goes to MORDHAU (or MORDHAU's AI walks it), its stand-in's hits on the player and the player's hits on it are applied, and what its stand-in may do is set.
-		// Hybrid movement: while MORDHAU's AI has this one's stand-in free, the Skyrim character is walked after it, a step at a time - never through a wall, never over a ledge - and turned the way the stand-in faces.
+		// Hybrid movement: while MORDHAU's AI has this one's stand-in free, the Skyrim character is walked after it by Skyrim's own movement and physics, and turned the way the stand-in faces.
 		void WalkAfterStandIn(Mirrored& m, RE::PlayerCharacter* a_player, const Link::State& a_link, const float kCm, RE::NiPointer<RE::Actor>& actor, Link::Ghost& g)
 		{
 		{
 			// Hybrid movement (sheets/builds.json hybrid_movement): MORDHAU's AI has set this one's stand-in free
-			// near its opponent. The Skyrim character is walked after it - a step at a time, never through a wall
-			// (a line-of-sight ray at chest height) and never over a ledge (the ground under the step may differ by
-			// hybrid_step_units at most) - and turned the way the stand-in faces. Skyrim's own AI is kept from
-			// walking it meanwhile.
+			// near its opponent. Skyrim's own movement step takes the character to its stand-in's place (OnMovementData),
+			// and it is turned the way the stand-in faces.
 			const Link::State::GhostMove* move = nullptr;
+			bool                          freeNow = false;
 			for (const auto& candidate : a_link.moves) {
-				if (candidate.id == m.id && candidate.free) {
+				if (candidate.id == m.id) {
 					move = &candidate;
+					freeNow = candidate.free != 0;
 				}
 			}
-			const bool hybrid = move && BuildValue("hybrid_movement") > 0.5f && !a_player->IsDead() && !(RE::UI::GetSingleton() && RE::UI::GetSingleton()->GameIsPaused()) && !actor->IsDead() && !actor->IsInRagdollState() && !actor->AsActorState()->IsBleedingOut() &&
+			// (its place and heading shown the same moment in the past as its pose, blended: sheets/builds.json
+			// standin_interp_seconds; whether it is free stays the newest report's)
+			static Link::State::GhostMove shown;
+			if (move && Link::GhostMoveAt(m.id, shown)) {
+				move = &shown;
+			}
+			const bool hybrid = move && freeNow && BuildValue("hybrid_movement") > 0.5f && !a_player->IsDead() && !(RE::UI::GetSingleton() && RE::UI::GetSingleton()->GameIsPaused()) && !actor->IsDead() && !actor->IsInRagdollState() && !actor->AsActorState()->IsBleedingOut() &&
 				!g_skyrimHasBody.contains(m.id);  // (Skyrim's alone - yielding, fleeing: Skyrim walks it; sheets/builds.json yield_after_seconds)
 			auto&      flags = actor->GetActorRuntimeData().boolFlags;
-			static std::unordered_set<std::uint32_t> walked;
 			if (hybrid) {
-				if (walked.insert(m.id).second) {
+				if (g_walked.insert(m.id).second) {
 					logger::info("hybrid: {} is moved by MORDHAU's AI now", actor->GetDisplayFullName());
 				}
-				flags.set(RE::Actor::BOOL_FLAGS::kMovementBlocked);
+				// (with Skyrim's physics moving it, the body's own movement is not blocked: blocked, Skyrim set its controller's
+				// speed back - D: test 2026-10-17: it moved at most 112 units/s, 27 of 61 frames not at all)
+				if (actor->GetCharController()) {
+					flags.reset(RE::Actor::BOOL_FLAGS::kMovementBlocked);
+				} else {
+					flags.set(RE::Actor::BOOL_FLAGS::kMovementBlocked);
+				}
 				const RE::NiPoint3 here = actor->GetPosition();
 				RE::NiPoint3       want{ move->right / kCm, move->forward / kCm, here.z };  // (told in Skyrim's own world coordinates)
 				static std::unordered_map<std::uint32_t, Clock::time_point> lastStep;
 				auto&        when = lastStep[m.id];
 				const float  dt = std::clamp(Seconds(when), 0.0f, 0.1f);
 				when = Clock::now();
-				// (sheets/builds.json hybrid_smooth: MORDHAU's frames are of uneven length and not in step with Skyrim's,
-				// so a stand-in walking at an even pace is reported in uneven steps, and each report was shown for exactly
-				// one Skyrim frame - a jerky walk. Every report carries MORDHAU's own game time. From two reports the
-				// stand-in's true speed is known; the character is walked to where the stand-in is at the MORDHAU time
-				// that belongs to this Skyrim frame.)
-				struct Track
-				{
-					RE::NiPoint3 place, speed;             // the last report (Skyrim units) and the speed between the last two (units/s)
-					float        yaw = 0.0f, turn = 0.0f;  // the same for its heading (degrees, degrees/s)
-					float        clock = 0.0f;             // MORDHAU's game time of that report
-					bool         known = false;
-					RE::NiPoint3 mine;                     // where the plugin last put the character (x, y)
-					bool         mineKnown = false;
-				};
-				static std::unordered_map<std::uint32_t, Track> tracks;
-				static const auto began = Clock::now();
-				static float      ahead = 0.0f;       // Skyrim's clock less MORDHAU's, eased (the two run at the same rate)
-				static bool       aheadKnown = false;
-				static float      aheadClock = -1.0f;
-				const bool  smooth = BuildValue("hybrid_smooth") > 0.5f;
-				const float skyNow = Seconds(began);
-				float       headingNow = move->yaw;
-				if (smooth) {
-					if (a_link.clock != aheadClock) {  // (a new report: once per report, whoever is asked first)
-						aheadClock = a_link.clock;
-						const float sample = skyNow - a_link.clock;
-						ahead = aheadKnown && std::abs(sample - ahead) < 0.25f ? ahead + (sample - ahead) * 0.03f : sample;
-						aheadKnown = true;
-					}
-					auto&              track = tracks[m.id];
-					const RE::NiPoint3 told{ want.x, want.y, 0.0f };
-					const float        passed = a_link.clock - track.clock;  // (MORDHAU's time between the two reports)
-					if (!track.known || passed < 0.0f || passed > 0.25f) {
-						track = { told, {}, move->yaw, 0.0f, a_link.clock, true };  // (the first report, or after a gap: no speed yet)
-					} else if (passed > 0.002f) {
-						const RE::NiPoint3 fresh = (told - track.place) / passed;
-						float              turned = move->yaw - track.yaw;
-						turned -= 360.0f * std::round(turned / 360.0f);
-						// (a jump - the script set the stand-in somewhere - is not a speed)
-						track.speed = fresh.Length() < 900.0f ? fresh : RE::NiPoint3{};
-						track.turn = std::abs(turned / passed) < 720.0f ? turned / passed : 0.0f;
-						track.place = told, track.yaw = move->yaw, track.clock = a_link.clock;
-					}
-					const float lead = std::clamp((skyNow - ahead) - track.clock, -0.03f, BuildValue("hybrid_lead_seconds"));
-					want.x = track.place.x + track.speed.x * lead;
-					want.y = track.place.y + track.speed.y * lead;
-					headingNow = track.yaw + track.turn * lead;
-				}
+				const float headingNow = move->yaw;
 				if (g_dev.measure) {
 					// (dev, measure=1: every frame's numbers of the walk, for looking at them afterwards)
 					static std::ofstream raw(std::filesystem::temp_directory_path() / "mordhauskyrim_steps.csv");
@@ -264,134 +350,143 @@ namespace dm::Combat
 					raw << Seconds(began) << ',' << m.id << ',' << move->right / kCm << ',' << move->forward / kCm << ',' << want.x << ',' << want.y << ',' << here.x << ',' << here.y << ',' << a_player->GetPosition().x << ','
 						<< a_player->GetPosition().y << ',' << move->yaw << ',' << a_link.clock << '\n';
 				}
-				// (the walk goes on from where the PLUGIN last put the character, not from where Skyrim has it now: between two
-				// frames Skyrim shifts it a little by itself (measured: 0.7 units in the middle, against steps of 3), and
-				// reckoned from there each frame's step took that up - the character stepped back against its own walk in
-				// one frame of nine)
-				// (sheets/builds.json hybrid_player_gap: never put into the player - Skyrim pushes it out again, it falls behind its
-				// stand-in and the script sets the stand-in back: a fighter that lunges and is snapped back, over and over)
-				{
-					const RE::NiPoint3 fromPlayer{ want.x - a_player->GetPosition().x, want.y - a_player->GetPosition().y, 0.0f };
-					const float        gap = BuildValue("hybrid_player_gap");
-					if (const float nearNow = fromPlayer.Length(); nearNow < gap && nearNow > 1.0f) {
-						want.x = a_player->GetPosition().x + fromPlayer.x * (gap / nearNow);
-						want.y = a_player->GetPosition().y + fromPlayer.y * (gap / nearNow);
-					}
-				}
-				RE::NiPoint3 from = here;
-				if (smooth) {
-					const auto& track = tracks[m.id];
-					if (track.mineKnown && std::abs(track.mine.x - here.x) < 10.0f && std::abs(track.mine.y - here.y) < 10.0f) {  // (further off: Skyrim really has it elsewhere)
-						from.x = track.mine.x, from.y = track.mine.y;
-					}
-				}
-				RE::NiPoint3 step = want - from;
-				float        length = step.Length();
-				const float reachNow = std::max(700.0f * dt, 2.0f);  // (MORDHAU's sprint is about 540 cm/s = 380 units/s; some slack to catch up)
-				if (length > reachNow) {
-					step = step * (reachNow / length);
-					length = reachNow;
-				}
-				static std::unordered_map<std::uint32_t, int> refused;
-				if (length > 0.5f) {
-					auto* cell = actor->GetParentCell();
-					auto* world = cell ? cell->GetbhkWorld() : nullptr;
-					bool  ok = world != nullptr;
-					float ground = here.z;
-					if (world) {
-						const float scale = RE::bhkWorld::GetWorldScale();
-						const auto  ray = [&](const RE::NiPoint3& a_from, const RE::NiPoint3& a_to, float& a_fraction, RE::COL_LAYER a_layer = RE::COL_LAYER::kLOS) {
-							RE::bhkPickData pick;
-							pick.rayInput.from = RE::hkVector4(a_from.x * scale, a_from.y * scale, a_from.z * scale, 0.0f);
-							pick.rayInput.to = RE::hkVector4(a_to.x * scale, a_to.y * scale, a_to.z * scale, 0.0f);
-							RE::CFilter filter;
-							actor->GetCollisionFilterInfo(filter);
-							filter.SetCollisionLayer(a_layer);
-							pick.rayInput.filterInfo = filter;
-							RE::BSReadLockGuard lock(world->worldLock);
-							world->PickObject(pick);
-							a_fraction = pick.rayOutput.hitFraction;
-							return pick.rayOutput.HasHit();
-						};
-						const RE::NiPoint3 next = from + step;
-						const RE::NiPoint3 chest{ 0.0f, 0.0f, actor->GetHeight() * 0.55f };
-						const RE::NiPoint3 ahead = step * ((length + 18.0f) / length);  // (and a body's half width beyond)
-						float              fraction = 1.0f;
-						int                why = 0;  // (dev, measure=1: what refused the step - 1 something in the way, 2 the ground's height, 3 no ground)
-						if (ray(from + chest, from + ahead + chest, fraction)) {
-							ok = false;  // a wall, a pillar, a door
-							why = 1;
-						} else {
-							const float allowed = BuildValue("hybrid_step_units");
-							if (ray(next + RE::NiPoint3{ 0.0f, 0.0f, allowed + 30.0f }, next - RE::NiPoint3{ 0.0f, 0.0f, allowed + 30.0f }, fraction)) {
-								ground = next.z + allowed + 30.0f - fraction * 2.0f * (allowed + 30.0f);
-								ok = std::abs(ground - here.z) <= allowed;
-								why = ok ? 0 : 2;
-							} else {
-								ok = false;  // nothing to stand on there
-								why = 3;
-							}
-						}
-						if (g_dev.measure && !ok) {
-							static int told = 0;
-							if (++told <= 400) {
-								const RE::NiPoint3 toPlayer = a_player->GetPosition() - from;
-								const float        away = std::sqrt(toPlayer.x * toPlayer.x + toPlayer.y * toPlayer.y);
-								// (the same ground probe with other layers, and a longer one: which of them finds what the first did not)
-								const RE::NiPoint3 top = next + RE::NiPoint3{ 0.0f, 0.0f, 60.0f }, bottom = next - RE::NiPoint3{ 0.0f, 0.0f, 60.0f };
-								float              f1 = 1.0f, f2 = 1.0f, f3 = 1.0f, f4 = 1.0f;
-								const bool         h1 = ray(top, bottom, f1, RE::COL_LAYER::kCharController), h2 = ray(top, bottom, f2, RE::COL_LAYER::kUnidentified);
-								const bool         h3 = ray(next + RE::NiPoint3{ 0.0f, 0.0f, 150.0f }, next - RE::NiPoint3{ 0.0f, 0.0f, 300.0f }, f3), h4 = ray(here + RE::NiPoint3{ 0.0f, 0.0f, 60.0f }, here - RE::NiPoint3{ 0.0f, 0.0f, 60.0f }, f4);
-								logger::info("refused: why={} away={:.0f} towards={:.2f} step={:.1f} fraction={:.2f} ground={:.1f} here={:.1f} mine={} at {:.0f},{:.0f} charctl={} {:.1f} unid={} {:.1f} long={} {:.1f} underfeet={} {:.1f}", why, away,
-									away > 1.0f ? (step.x * toPlayer.x + step.y * toPlayer.y) / (length * away) : 0.0f, length, fraction, ground, here.z, tracks[m.id].mineKnown ? 1 : 0, here.x, here.y,
-									h1, 60.0f - f1 * 120.0f, h2, 60.0f - f2 * 120.0f, h3, 150.0f - f3 * 450.0f, h4, 60.0f - f4 * 120.0f);
-							}
-						}
-						if (ok) {
-							// (the height follows the ground at a rate instead of jumping to it: a small jolt at every step on uneven ground)
-							const float climb = BuildValue("hybrid_height_rate") * dt;
-							const float height = smooth ? here.z + std::clamp(ground - here.z, -climb, climb) : ground;
-							actor->SetPosition(RE::NiPoint3{ next.x, next.y, height }, true);
-							if (smooth) {
-								tracks[m.id].mine = RE::NiPoint3{ next.x, next.y, 0.0f }, tracks[m.id].mineKnown = true;
-							}
-							refused[m.id] = 0;
-						} else {
-							g.refused = true;  // (told to the script: the stand-in is set back and held for a moment)
-							if (smooth) {
-								tracks[m.id].mineKnown = false;
-							}
-						}
-						if (!ok && ++refused[m.id] == 30) {
-							logger::info("hybrid: {}'s steps after its stand-in are refused (a wall or a ledge in the way)", actor->GetDisplayFullName());
-						}
-					}
-				}
-				if (g_dev.measure) {
-					// (dev, measure=1: how even the steps are - once a second per walked character)
-					struct Steps
+				// (Skyrim's own character physics moves the body: its movement step is given the way to the stand-in's place
+				// (OnMovementData); walls, stairs, slopes and gravity are Skyrim's. Put at each step's place instead, walked
+				// characters had climbed low walls and gone through them, 2026-10-16)
+				if (actor->GetCharController()) {
+					struct Follow
 					{
+						RE::NiPoint3      want, here;
+						bool              known = false;
+						Clock::time_point offSince{};
+						bool              off = false;
 						int               frames = 0, still = 0;
-						float             sum = 0.0f, squares = 0.0f, most = 0.0f;
+						float             sum = 0.0f, squares = 0.0f, most = 0.0f, offSum = 0.0f, offMost = 0.0f;
 						Clock::time_point since = Clock::now();
+						Clock::time_point at = Clock::now();
 					};
-					static std::unordered_map<std::uint32_t, Steps> measured;
-					auto&       steps = measured[m.id];
-					const RE::NiPoint3 went = actor->GetPosition() - here;
-					const float        moved = std::sqrt(went.x * went.x + went.y * went.y);
-					const float        speedNow = dt > 0.0005f ? moved / dt : 0.0f;
-					++steps.frames, steps.sum += speedNow, steps.squares += speedNow * speedNow, steps.most = std::max(steps.most, speedNow);
-					steps.still += moved < 0.05f ? 1 : 0;
-					if (Seconds(steps.since) > 1.0f) {
-						const float mean = steps.sum / static_cast<float>(steps.frames);
-						const float spread = std::sqrt(std::max(steps.squares / static_cast<float>(steps.frames) - mean * mean, 0.0f));
-						logger::info("steps: {} walked {} frames, speed {:.0f} units/s on average, spread {:.0f} ({:.0f}% of it), fastest {:.0f}, {} frames without a step; smoothing {}", actor->GetDisplayFullName(),
-							steps.frames, mean, spread, mean > 1.0f ? 100.0f * spread / mean : 0.0f, steps.most, steps.still, smooth ? "on" : "off");
-						steps = {};
+					static std::unordered_map<std::uint32_t, Follow> follows;
+					auto&              follow = follows[m.id];
+					if (Seconds(follow.at) > 0.2f) {
+						follow.known = false;  // (not walked for a while: no speed from an old place)
 					}
+					follow.at = Clock::now();
+					const RE::NiPoint3 feed = follow.known && dt > 0.0005f ? (want - follow.want) / dt : RE::NiPoint3{};
+					const RE::NiPoint3 gap{ want.x - here.x, want.y - here.y, 0.0f };
+					if (gap.Length() > BuildValue("hybrid_physics_far")) {
+						// (its stand-in is far off - just given one, not yet on its body: the body is not sent after it, the
+						// stand-in is set back onto it)
+						g.refused = true;
+						{
+							std::scoped_lock lock(g_moveWantLock);
+							g_moveWant.erase(m.id);
+						}
+						follow.want = want, follow.here = here, follow.known = false;
+						actor->SetHeading(headingNow / 57.29578f);
+						return;
+					}
+					if (const float reach = BuildValue("standin_wall_reach"); reach > 0.0f) {
+						// the nearest wall around the body, told to MORDHAU with the stand-in's place (sheets/builds.json
+						// standin_wall_reach): its stand-in is kept from walking past it there
+						const RE::NiPoint3 chestAt = here + RE::NiPoint3{ 0.0f, 0.0f, actor->GetHeight() * 0.55f };
+						float              nearest = 2.0f;
+						RE::NiPoint3       away;
+						for (int k = 0; k < 8; ++k) {
+							const float        angle = static_cast<float>(k) * 0.785398f;
+							const RE::NiPoint3 dir{ std::sin(angle), std::cos(angle), 0.0f };
+							float              fraction = 1.0f;
+							RE::NiPoint3       normal;
+							if (WorldRayHit(actor.get(), chestAt, chestAt + dir * reach, fraction, &normal) && fraction < nearest) {
+								RE::NiPoint3 flat{ normal.x, normal.y, 0.0f };
+								if (flat.Length() < 0.1f) {
+									flat = dir * -1.0f;
+								}
+								flat = flat / flat.Length();
+								if (flat.x * dir.x + flat.y * dir.y > 0.0f) {
+									flat = flat * -1.0f;  // (pointing away from the wall, towards the body)
+								}
+								nearest = fraction, away = flat;
+							}
+						}
+						if (nearest <= 1.0f) {
+							const float facingNow = a_player->GetAngleZ();
+							g.hasWall = true;
+							g.wallForward = away.x * std::sin(facingNow) + away.y * std::cos(facingNow);
+							g.wallRight = away.x * std::cos(facingNow) - away.y * std::sin(facingNow);
+							g.wallCm = nearest * reach * kCm;
+							g.wallMarginCm = BuildValue("standin_wall_margin_cm");
+						}
+					}
+					{
+						std::scoped_lock lock(g_moveWantLock);
+						g_moveWant[m.id] = { want, feed, Clock::now() };  // (Skyrim's own movement step takes it there: OnMovementData)
+					}
+					// a wall it cannot pass: the stand-in back onto its body after a moment
+					const float gapLength = gap.Length();
+					if (gapLength > BuildValue("hybrid_physics_snap")) {
+						if (!follow.off) {
+							follow.off = true, follow.offSince = Clock::now();
+						} else if (Seconds(follow.offSince) > BuildValue("hybrid_physics_snap_seconds")) {
+							g.refused = true;
+							follow.offSince = Clock::now();
+						}
+					} else {
+						follow.off = false;
+					}
+					if (g_dev.measure && follow.known) {
+						// (dev, measure=1: how even the body really moved since the last frame, and how far off its stand-in's place)
+						const RE::NiPoint3 went{ here.x - follow.here.x, here.y - follow.here.y, 0.0f };
+						const float        moved = went.Length();
+						const float        speedNow = dt > 0.0005f ? moved / dt : 0.0f;
+						++follow.frames, follow.sum += speedNow, follow.squares += speedNow * speedNow, follow.most = std::max(follow.most, speedNow);
+						follow.still += moved < 0.05f ? 1 : 0;
+						follow.offSum += gapLength, follow.offMost = std::max(follow.offMost, gapLength);
+						if (Seconds(follow.since) > 1.0f) {
+							const float mean = follow.sum / static_cast<float>(follow.frames);
+							const float spread = std::sqrt(std::max(follow.squares / static_cast<float>(follow.frames) - mean * mean, 0.0f));
+							logger::info("steps: {} walked {} frames, speed {:.0f} units/s on average, spread {:.0f} ({:.0f}% of it), fastest {:.0f}, {} frames without a step; physics, off its stand-in {:.0f} on average, {:.0f} at most",
+								actor->GetDisplayFullName(), follow.frames, mean, spread, mean > 1.0f ? 100.0f * spread / mean : 0.0f, follow.most, follow.still, follow.offSum / static_cast<float>(follow.frames), follow.offMost);
+							follow.frames = follow.still = 0, follow.sum = follow.squares = follow.most = follow.offSum = follow.offMost = 0.0f, follow.since = Clock::now();
+						}
+					}
+					follow.want = want, follow.here = here, follow.known = true;
+					actor->SetHeading(headingNow / 57.29578f);
+					return;
+				}
+				// (a body without a character controller: put at its stand-in's place, its height following the ground where a
+				// probe finds it within hybrid_step_units)
+				auto* cell = actor->GetParentCell();
+				auto* world = cell ? cell->GetbhkWorld() : nullptr;
+				if ((want - here).Length() > 0.0f && !world) {
+					g.refused = true;  // (told to the script: the stand-in is set back onto its body)
+				} else if ((want - here).Length() > 0.0f) {
+					const float        scale = RE::bhkWorld::GetWorldScale();
+					const float        allowed = BuildValue("hybrid_step_units");
+					const RE::NiPoint3 top = want + RE::NiPoint3{ 0.0f, 0.0f, allowed + 30.0f }, bottom = want - RE::NiPoint3{ 0.0f, 0.0f, allowed + 30.0f };
+					RE::bhkPickData    pick;
+					pick.rayInput.from = RE::hkVector4(top.x * scale, top.y * scale, top.z * scale, 0.0f);
+					pick.rayInput.to = RE::hkVector4(bottom.x * scale, bottom.y * scale, bottom.z * scale, 0.0f);
+					RE::CFilter filter;
+					actor->GetCollisionFilterInfo(filter);
+					filter.SetCollisionLayer(RE::COL_LAYER::kLOS);
+					pick.rayInput.filterInfo = filter;
+					{
+						RE::BSReadLockGuard lock(world->worldLock);
+						world->PickObject(pick);
+					}
+					float ground = here.z;
+					if (pick.rayOutput.HasHit()) {
+						const float found = want.z + allowed + 30.0f - pick.rayOutput.hitFraction * 2.0f * (allowed + 30.0f);
+						ground = std::abs(found - here.z) <= allowed ? found : here.z;
+					}
+					actor->SetPosition(RE::NiPoint3{ want.x, want.y, ground }, true);
 				}
 				actor->SetHeading(headingNow / 57.29578f);
-			} else if (walked.erase(m.id) > 0) {
+			} else if (g_walked.erase(m.id) > 0) {
+				{
+					std::scoped_lock lock(g_moveWantLock);
+					g_moveWant.erase(m.id);
+				}
 				flags.reset(RE::Actor::BOOL_FLAGS::kMovementBlocked);
 				logger::info("hybrid: {} is moved by Skyrim again", actor->GetDisplayFullName());
 			}
@@ -651,11 +746,6 @@ namespace dm::Combat
 			if (!actor->AsActorState()->IsWeaponDrawn()) {
 				g.passive = true;
 			}
-			if (shoots) {
-				// (a bow in Skyrim = a bow in MORDHAU's hands too: with a bow out MORDHAU's character cannot parry - the
-				// user: "just make them hold a bow in mordhau too when they hold a bow in skyrim")
-				g.weapon = inHandWeapon->IsCrossbow() ? "Ranged/BP_Crossbow" : "Ranged/BP_RecurveBow";
-			}
 			LeaveYieldingBodyToSkyrim(m, actor, g);
 			if (BuildValue("fought_press") > 0.5f) {
 				// A fought character presses the attack: its way of fighting (shared by everyone of its kind) is set to
@@ -702,6 +792,14 @@ namespace dm::Combat
 			g.attacks = m.attacks;
 			g.blocking = actor->IsBlocking();
 			g.weapon = MordhauWeaponFor(actor.get());
+			if (shoots) {
+				// (a bow in Skyrim = a bow in MORDHAU's hands too: with a bow out MORDHAU's character cannot parry. This was set before
+				// the line above and overwritten by it, so archers' stand-ins held a melee weapon and parried - play-test
+				// note 2026-10-16: "archer are still parrying with bows")
+				std::string name = inHandWeapon->GetName() ? inHandWeapon->GetName() : "";
+				std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+				g.weapon = inHandWeapon->IsCrossbow() ? "Ranged/BP_Crossbow" : name.find("long") != std::string::npos ? "Ranged/BP_Longbow" : "Ranged/BP_RecurveBow";
+			}
 			if (auto foe = actor->GetActorRuntimeData().currentCombatTarget.get(); foe && foe.get() != a_player && !foe->IsDead()) {
 				g.target = foe->GetFormID();  // (it fights someone else: its stand-in aims there, not at the player)
 			}
@@ -735,20 +833,6 @@ namespace dm::Combat
 			g.shield = BuildValue("mordhau_shield") > 0.5f ? MordhauShieldOf(actor->GetWornArmor(RE::BGSBipedObjectForm::BipedObjectSlot::kShield)) : "";
 			if (m.id == g_demonId) {
 				g.weapon = "Demon/Troll";  // not a weapon: its stand-in is MORDHAU's Troll itself
-			} else if (const auto* fighter = FighterFor(actor.get())) {
-				// (sheets/creature_fighters.json: its stand-in is that Demon Horde creature, with its own brain and moves)
-				// ("own": the MORDHAU weapon for the Skyrim weapon it holds, as for a person - so per creature, not per kind)
-				static std::unordered_map<std::uint32_t, std::string> names;
-				const bool  own = std::string_view(fighter->weapon) == "own";
-				const char* held = own ? MordhauWeaponFor(actor.get()) : fighter->weapon;
-				auto&       name = names[m.id];
-				name = std::string("Demon/") + fighter->demon + (held && held[0] ? std::string("/") + held : std::string());
-				g.weapon = name.c_str();
-				g.shield = "";
-				CharacterRender::SetOwnHips(m.id, fighter->skyrimBones);
-				g.passive = !actor->IsInCombat() && !actor->IsHostileToActor(a_player);  // (a creature has no weapon to put away)
-				// as tall in MORDHAU as the creature stands in Skyrim (its head at nine tenths of its height)
-				g.size = fighter->headCm > 1.0f ? std::clamp(actor->GetHeight() * kCm * 0.9f / fighter->headCm, 0.3f, 1.5f) : 1.0f;
 			}
 			{
 				auto* av = actor->AsActorValueOwner();
@@ -757,7 +841,7 @@ namespace dm::Combat
 					// at equal level") at equal levels, and from there smoothly all the way to Duelist (5) at 19 levels above the
 					// player and to Peasant (1) at 19 below, whatever level is chosen (a level 1 player against a level 20 enemy: the
 					// hardest) - plus one for a named enemy; between 1 and 5, in tenths. (First made as two levels either way: from
-					// Recruit a level 19 marauder came to 3.9 - "he didnt seem much better at dueling".)
+					// Recruit a level 19 marauder came to 3.9, hardly better than the rest.)
 					const auto* base = actor->GetActorBase();
 					const float chosen = static_cast<float>(g_aiLevel);
 					const float t = std::clamp((static_cast<float>(actor->GetLevel()) - static_cast<float>(a_player->GetLevel())) / 19.0f, -1.0f, 1.0f);
@@ -802,45 +886,53 @@ namespace dm::Combat
 				// only people (MORDHAU has no wolves or dragons: creatures keep Skyrim's own attacks, which a MORDHAU parry
 				// can still stop) and only ones actually fighting the player (bystanders stay themselves)
 				// ...or each other: two people fighting near the player fight by MORDHAU's rules too
-				if (a_actor && a_actor != a_player && !a_actor->IsDead() && a_actor->Is3DLoaded() && (Humanoid(a_actor) || FighterFor(a_actor)) &&
+				if (a_actor && a_actor != a_player && !a_actor->IsDead() && a_actor->Is3DLoaded() && Humanoid(a_actor) &&
 					(a_actor->IsHostileToActor(a_player) || a_actor->IsInCombat() || attacked.contains(a_actor->GetFormID()) ||
 						(a_actor->IsPlayerTeammate() && a_player->IsInCombat()))) {  // (a follower keeps its stand-in between opponents)
 					// melee fighters only: an archer or a mage keeps fighting Skyrim's way
 					const auto* held = a_actor->GetEquippedObject(false);
 					const auto* heldWeapon = held ? held->As<RE::TESObjectWEAP>() : nullptr;
-					// (a spell or a staff in either hand: that one is Skyrim's own altogether - its moves, its path, its fight.
-					// With a spell in one hand and a blade in the other its stand-in pointed at the ground. It is still hit:
-					// the player's blade is checked against it as against a creature.)
+					// (a spell in the right hand, a staff in either, or a spell in the left with no weapon in the right: that one
+					// is Skyrim's own altogether - its moves, its path, its fight. It is still hit: the player's blade is checked
+					// against it as against a creature. A melee weapon in the right hand with a spell in the left fights by
+					// MORDHAU's rules like the player does, its left arm Skyrim's while it casts - play-test note, 2026-10-17)
 					const auto* off = a_actor->GetEquippedObject(true);
 					const auto* offWeapon = off ? off->As<RE::TESObjectWEAP>() : nullptr;
-					const bool  casts = (held && !heldWeapon && held->Is(RE::FormType::Spell)) || (off && off->Is(RE::FormType::Spell)) || (heldWeapon && heldWeapon->IsStaff()) ||
-										(offWeapon && offWeapon->IsStaff());
+					const bool  casts = (held && !heldWeapon && held->Is(RE::FormType::Spell)) || (off && off->Is(RE::FormType::Spell) && !heldWeapon) ||
+										(heldWeapon && heldWeapon->IsStaff()) || (offWeapon && offWeapon->IsStaff());
 					// (nor one still lying, sitting or getting up - a draugr climbing out of its coffin: Skyrim's own animation
 					// has it until it stands; with a stand-in already it swung and parried unseen through that)
 					const bool  rising = a_actor->AsActorState()->GetSitSleepState() != RE::SIT_SLEEP_STATE::kNormal;  // (not 'animation driven': a stagger is that too)
 					const bool  melee = !casts && !rising && (!held || (heldWeapon && !heldWeapon->IsBow() && !heldWeapon->IsCrossbow() && !heldWeapon->IsStaff()));
 					const float d = a_actor->GetPosition().GetDistance(a_player->GetPosition());
 					// (the creature is twice a person's size: so is its reach)
-					const bool archer = heldWeapon && (heldWeapon->IsBow() || heldWeapon->IsCrossbow()) && d < BuildValue("archer_standin_reach");
-					if (a_actor->GetFormID() == g_demonId ? d < 1300.0f : ((melee && d < 700.0f) || archer)) {
-						// (one that has a stand-in already counts as nearer: sheets/builds.json standin_keep_margin)
-						const bool has = std::any_of(g_mirrored.begin(), g_mirrored.end(), [&](const Mirrored& a_m) { return a_m.id == a_actor->GetFormID(); });
-						nearby.push_back({ a_actor, has ? d - BuildValue("standin_keep_margin") : d });
+					// (sheets/builds.json standin_radius_m, from the settings menu: everyone fighting within that many metres; one
+					// that has a stand-in keeps it until 2 m beyond - stand-ins had jumped between people crossing a fixed line)
+					const bool  has = std::any_of(g_mirrored.begin(), g_mirrored.end(), [&](const Mirrored& a_m) { return a_m.id == a_actor->GetFormID(); });
+					const float radius = std::clamp(BuildValue("standin_radius_m"), 1.0f, 50.0f) * 70.0f + (has ? 140.0f : 0.0f);
+					const bool  archer = heldWeapon && (heldWeapon->IsBow() || heldWeapon->IsCrossbow()) && !casts && !rising && d < radius;
+					if (a_actor->GetFormID() == g_demonId ? d < 1300.0f : ((melee && d < radius) || archer)) {
+						// (one that has a stand-in already keeps it ahead of anyone nearer while it is within the radius and still
+						// fighting; else it counts as standin_keep_margin nearer)
+						const bool  keeps = has && d < radius && (a_actor->IsInCombat() || a_actor->AsActorState()->IsBleedingOut());
+						nearby.push_back({ a_actor, keeps ? d - 1.0e7f : has ? d - BuildValue("standin_keep_margin") : d });
 					}
 				}
 				return RE::BSContainer::ForEachResult::kContinue;
 			});
 			std::sort(nearby.begin(), nearby.end(), [](const Candidate& a, const Candidate& b) { return a.distance < b.distance; });
-			if (nearby.size() > static_cast<std::size_t>(Link::kGhosts)) {
-				nearby.resize(static_cast<std::size_t>(Link::kGhosts));
+			// (how many at once: sheets/builds.json standin_limit, from the settings menu; never more than the link's places)
+			const auto limit = static_cast<std::size_t>(std::clamp(static_cast<int>(BuildValue("standin_limit") + 0.5f), 1, Link::kGhosts));
+			if (nearby.size() > limit) {
+				nearby.resize(limit);
 			}
 			// (sheets/builds.json creature_standin: the places people leave over go to the nearest creatures that fight the
 			// player - a stand-in that only stands to be hit)
 			const std::size_t people = nearby.size();
-			if (BuildValue("creature_standin") > 0.5f && people < static_cast<std::size_t>(Link::kGhosts)) {
+			if (BuildValue("creature_standin") > 0.5f && people < limit) {
 				std::vector<Candidate> creatures;
 				RE::ProcessLists::GetSingleton()->ForEachHighActor([&](RE::Actor* a_actor) {
-					if (a_actor && a_actor != a_player && !a_actor->IsDead() && a_actor->Is3DLoaded() && !Humanoid(a_actor) && !FighterFor(a_actor) && !SkyrimsAlone(a_actor) && a_actor->GetFormID() != g_demonId && !a_actor->IsPlayerTeammate() &&
+					if (a_actor && a_actor != a_player && !a_actor->IsDead() && a_actor->Is3DLoaded() && !Humanoid(a_actor) && a_actor->GetFormID() != g_demonId && !a_actor->IsPlayerTeammate() &&
 						a_actor->IsHostileToActor(a_player) && a_actor->IsInCombat() && CreatureTall(a_actor) <= BuildValue("creature_standin_tallest")) {
 						const bool  has = std::any_of(g_mirrored.begin(), g_mirrored.end(), [&](const Mirrored& a_m) { return a_m.id == a_actor->GetFormID(); });
 						const float d = a_actor->GetPosition().GetDistance(a_player->GetPosition());
@@ -852,7 +944,7 @@ namespace dm::Combat
 				});
 				std::sort(creatures.begin(), creatures.end(), [](const Candidate& a, const Candidate& b) { return a.distance < b.distance; });
 				for (const auto& c : creatures) {
-					if (nearby.size() < static_cast<std::size_t>(Link::kGhosts)) {
+					if (nearby.size() < limit) {
 						nearby.push_back(c);
 					}
 				}
@@ -877,6 +969,53 @@ namespace dm::Combat
 					}
 				}
 				next.push_back(m);
+			}
+			// whoever lost its stand-in: its movement is Skyrim's again at once, and its hand-over starts afresh next time
+			static int changes = 0;
+			for (const auto& old : g_mirrored) {
+				if (std::any_of(next.begin(), next.end(), [&](const Mirrored& a_m) { return a_m.id == old.id; })) {
+					continue;
+				}
+				auto actor = old.handle.get();
+				{
+					std::scoped_lock lock(g_moveWantLock);
+					g_moveWant.erase(old.id);
+				}
+				if (g_walked.erase(old.id) > 0 && actor) {
+					actor->GetActorRuntimeData().boolFlags.reset(RE::Actor::BOOL_FLAGS::kMovementBlocked);
+				}
+				// (why, by the same tests the choice above makes - 2026-10-16: people lost their stand-in with places free)
+				std::string why = "the places were full: others nearer";
+				if (!actor || actor->IsDead()) {
+					why = "dead or gone";
+				} else if (!actor->Is3DLoaded()) {
+					why = "not loaded";
+				} else if (!(actor->IsHostileToActor(a_player) || actor->IsInCombat() || attacked.contains(old.id) || (actor->IsPlayerTeammate() && a_player->IsInCombat()))) {
+					why = "out of the fight (not hostile, not in combat)";
+				} else {
+					const auto* held = actor->GetEquippedObject(false);
+					const auto* heldWeapon = held ? held->As<RE::TESObjectWEAP>() : nullptr;
+					const auto* off = actor->GetEquippedObject(true);
+					const auto* offWeapon = off ? off->As<RE::TESObjectWEAP>() : nullptr;
+					const float d = actor->GetPosition().GetDistance(a_player->GetPosition());
+					const float radius = std::clamp(BuildValue("standin_radius_m"), 1.0f, 50.0f) * 70.0f + 140.0f;
+					if ((held && !heldWeapon && held->Is(RE::FormType::Spell)) || (off && off->Is(RE::FormType::Spell) && !heldWeapon) || (heldWeapon && heldWeapon->IsStaff()) || (offWeapon && offWeapon->IsStaff())) {
+						why = std::format("a spell or a staff in its hand (right: {}, left: {})", held && held->GetName() ? held->GetName() : "nothing", off && off->GetName() ? off->GetName() : "nothing");
+					} else if (actor->AsActorState()->GetSitSleepState() != RE::SIT_SLEEP_STATE::kNormal) {
+						why = "sitting, lying or getting up";
+					} else if (held && !heldWeapon) {
+						why = std::format("holds {} (not a weapon)", held->GetName() ? held->GetName() : "something");
+					} else if (d >= radius) {
+						why = std::format("{:.1f} m away (kept to {:.0f} m)", d / 70.0f, radius / 70.0f);
+					}
+				}
+				logger::info("stand-ins: {} lost its stand-in ({}; {} changes so far)", actor ? actor->GetDisplayFullName() : "someone", why, ++changes);
+			}
+			for (const auto& m : next) {
+				if (!std::any_of(g_mirrored.begin(), g_mirrored.end(), [&](const Mirrored& a_m) { return a_m.id == m.id; })) {
+					auto actor = m.handle.get();
+					logger::info("stand-ins: {} gets a stand-in ({} of {} places)", actor ? actor->GetDisplayFullName() : "someone", next.size(), limit);
+				}
 			}
 			g_mirrored = std::move(next);
 
@@ -918,35 +1057,7 @@ namespace dm::Combat
 						PushDown(a_player, actor.get(), 3.0f);
 					}
 				}
-				bool playerFallen = a_link.stage == kFallen;
-				{
-					// (sheets/builds.json creature_knockdown_every: a MORDHAU creature's blows throw the player down only
-					// now and then - the Centurion's every move did)
-					static bool wasFallen = false, spared = false;
-					static int  creatureFalls = 0;
-					if (playerFallen && !wasFallen) {
-						RE::Actor* by = nullptr;
-						for (auto& m : g_mirrored) {
-							if (m.id == a_link.playerAttacker) {
-								by = m.handle.get().get();
-							}
-						}
-						spared = false;
-						if (by && FighterFor(by)) {
-							const int every = std::max(static_cast<int>(BuildValue("creature_knockdown_every")), 1);
-							spared = ++creatureFalls % every != 0;
-							logger::info("fall: {} threw the player down in MORDHAU ({} so far): {}", by->GetDisplayFullName(), creatureFalls,
-								spared ? "undone, the player stays on his feet" : "the player goes down");
-							if (spared) {
-								Link::Request("StandUp");
-							}
-						}
-					}
-					wasFallen = playerFallen;
-					if (spared && playerFallen) {
-						playerFallen = false;
-					}
-				}
+				const bool playerFallen = a_link.stage == kFallen;
 				if (FallFromMordhau(g_falls[0x14], a_player, playerFallen)) {
 					logger::info("fall: MORDHAU knocked the player down: Skyrim's body goes down too");
 					PushDown(nullptr, a_player, 3.0f);

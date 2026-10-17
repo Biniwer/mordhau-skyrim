@@ -61,7 +61,7 @@
    "id": "first_person_eye",
    "value": "1.0",
    "unit": "1 = on",
-   "source": "play-test note, 2026-10-11 (first person, side swings). Measured at the user's own hits: Skyrim's first-person camera is 171-172 cm above the player's feet, MORDHAU's 182-183 cm above its character's. MORDHAU's first-person body is drawn from MORDHAU's camera laid onto Skyrim's, so the blade MORDHAU judges with was 11 cm higher on the enemy than the blade seen: an upper-chest swing was a neck / head hit. While MORDHAU is live and in first person Skyrim's camera is raised to MORDHAU's eye height above the player's feet (never lowered, at most 25 units).",
+   "source": "play-test note, 2026-10-11 (first person, side swings). Measured at the play-tester's own hits: Skyrim's first-person camera is 171-172 cm above the player's feet, MORDHAU's 182-183 cm above its character's. MORDHAU's first-person body is drawn from MORDHAU's camera laid onto Skyrim's, so the blade MORDHAU judges with was 11 cm higher on the enemy than the blade seen: an upper-chest swing was a neck / head hit. While MORDHAU is live and in first person Skyrim's camera is raised to MORDHAU's eye height above the player's feet (never lowered, at most 25 units).",
    "verified": true,
    "verified_how": "play-test note, playing, 2026-10-11; log: Skyrim's camera 177-181 cm against MORDHAU's 171-181 at the hits"
   },
@@ -117,15 +117,15 @@
   {
    "id": "eye_head_hidden_looking_down",
    "value": 0.45,
-   "meaning": "eye view: the head (with helmet and hair) is not drawn while the view looks down more than this (0 level ... 1 straight down). Play-test note 2026-10-15: 'i can see the horns of my helmet when looking down'.",
-   "source": "the user, 2026-10-15; the value by eye",
+   "meaning": "eye view: the head (with helmet and hair) is not drawn while the view looks down more than this (0 level ... 1 straight down). Play-test note 2026-10-15.",
+   "source": "play-test note, 2026-10-15; the value by eye",
    "verified": false
   },
   {
    "id": "eye_lower",
    "value": "5.0",
    "unit": "cm",
-   "source": "play-test note, 2026-10-12 (eye view, Riverwood duel): 'i am quite a bit taller than the enemy ... lower me down to eye level with skyrims enemies'. The eye view's camera is set this far lower than the player's own head would have it. 0 until measured: the log line 'eye level:' (every few seconds while someone is fought) gives the player's head and each fought character's head above their own feet. 10 since 2026-10-13 ('just lower the eyes to skyrim eye height'): the eye view stood 180-182 cm above the player's feet (MORDHAU's eye height), Skyrim's own first-person camera 171-172 (see first_person_eye) - 10 cm lower puts it at Skyrim's. Back to 0 the same night ('cancel the camera move'), before it was ever installed. 5 since 2026-10-13 00:25, by eye, in the Riverwood duel ('i am still taller than the guy, lower camera 5 cm').",
+   "source": "play-test note, 2026-10-12 (eye view, Riverwood duel). The eye view's camera is set this far lower than the player's own head would have it. 0 until measured: the log line 'eye level:' (every few seconds while someone is fought) gives the player's head and each fought character's head above their own feet. 10 since 2026-10-13 : the eye view stood 180-182 cm above the player's feet (MORDHAU's eye height), Skyrim's own first-person camera 171-172 (see first_person_eye) - 10 cm lower puts it at Skyrim's. Back to 0 the same night , before it was ever installed. 5 since 2026-10-13 00:25, by eye, in the Riverwood duel .",
    "verified": false
   }
  ]

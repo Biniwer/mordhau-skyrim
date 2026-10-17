@@ -38,24 +38,18 @@ namespace dm::Combat
 					g_dev.duelHealth = std::stof(value);
 				} else if (key == "duelweapon") {
 					g_dev.duelWeapon = value;
+				} else if (key == "duelname") {
+					g_dev.duelName = value;
+				} else if (key == "duelspell") {
+					g_dev.duelSpell = static_cast<std::uint32_t>(std::strtoul(value.c_str(), nullptr, 16));
 				} else if (key == "give") {
 					g_dev.give = value != "0";
 				} else if (key == "types") {
 					g_dev.types = value != "0";
 				} else if (key == "arsenal") {
 					g_dev.arsenal = value != "0";
-				} else if (key == "bowdown") {
-					g_dev.bowDown = std::strtof(value.c_str(), nullptr);
-				} else if (key == "bowkind") {
-					g_dev.bowKind = std::atoi(value.c_str());
-				} else if (key == "bowslow") {
-					g_dev.bowSlow = std::strtof(value.c_str(), nullptr);
-				} else if (key == "bowhold") {
-					g_dev.bowHold = std::strtof(value.c_str(), nullptr);
 				} else if (key == "hybridoff") {
 					g_dev.hybridOff = value != "0";
-				} else if (key == "pauldronsoff") {
-					g_dev.pauldronsOff = value != "0";
 				} else if (key == "unarmedtest") {
 					g_dev.unarmedTest = value != "0";
 				} else if (key == "throwtest") {
@@ -89,8 +83,6 @@ namespace dm::Combat
 					g_dev.measure = value != "0";
 				} else if (key == "god") {
 					g_dev.god = value != "0";
-				} else if (key == "bowtest") {
-					g_dev.bowTest = value != "0";
 				} else if (key == "pushtest") {
 					g_dev.pushTest = value != "0";
 					g_dev.pushMode = std::atoi(value.c_str());
@@ -195,84 +187,6 @@ namespace dm::Combat
 
 		// Side-by-side mode, once a frame: tell MORDHAU what the player is doing, and while MORDHAU's attack is in its
 		// release, sweep MORDHAU's own blade through Skyrim's world.
-		// Test scene (dev key bowtest): the player gets a bow and shoots every few seconds.
-		void DevBowTest(RE::PlayerCharacter* a_player)
-		{
-		if (g_dev.bowTest) {
-			if (g_dev.bowDown > 0.0f) {
-				a_player->data.angle.x = g_dev.bowDown;  // (held: the view looks at where the arrows land)
-			}
-			static Clock::time_point since = Clock::now();
-			static int               step = 0;
-			if (step == 0 && Seconds(since) > 6.0f) {
-				step = 1;
-				since = Clock::now();
-				auto* bowForm = RE::TESForm::LookupByID<RE::TESObjectWEAP>(g_dev.bowKind == 1 ? 0x0003B562 : 0x00013985);  // Long Bow (bowkind=1) / Hunting Bow
-				auto* arrows = RE::TESForm::LookupByID<RE::TESAmmo>(0x0001397D);          // Iron Arrow
-				if (g_dev.bowKind == 2) {
-					// bowkind=2: Dawnguard's crossbow and steel bolts
-					if (auto* handler = RE::TESDataHandler::GetSingleton()) {
-						bowForm = handler->LookupForm<RE::TESObjectWEAP>(0x000801, "Dawnguard.esm");
-						arrows = handler->LookupForm<RE::TESAmmo>(0x000BB3, "Dawnguard.esm");
-					}
-				}
-				if (bowForm && arrows) {
-					a_player->AddObjectToContainer(bowForm, nullptr, 1, nullptr);
-					a_player->AddObjectToContainer(arrows, nullptr, 50, nullptr);
-					RE::ActorEquipManager::GetSingleton()->EquipObject(a_player, bowForm);
-					RE::ActorEquipManager::GetSingleton()->EquipObject(a_player, arrows, nullptr, 50);
-					logger::info("bowtest: {} and {} equipped", bowForm->GetName(), arrows->GetName());
-					// (a look in daylight: noon and clear sky for the test)
-					if (auto* calendar = RE::Calendar::GetSingleton(); calendar && calendar->gameHour) {
-						calendar->gameHour->value = 12.0f;
-					}
-					if (auto* sky = RE::Sky::GetSingleton()) {
-						if (auto* clear = RE::TESForm::LookupByID<RE::TESWeather>(0x0000081A)) {
-							sky->ForceWeather(clear, true);
-						}
-					}
-				} else {
-					logger::info("bowtest: bow or arrows not found");
-				}
-			} else if (step >= 1 && step % 2 == 1 && Seconds(since) > 7.0f + g_dev.bowHold) {
-				++step;
-				since = Clock::now();
-				if (auto* root3 = a_player->Get3D(false)) {
-					std::string where;
-					for (const char* name : { "WEAPON", "SHIELD", "WeaponBow", "QUIVER" }) {
-						auto* object = root3->GetObjectByName(name);
-						auto* node = object ? object->AsNode() : nullptr;
-						int   shapes = 0, culled = 0;
-						if (node) {
-							for (auto& child : node->GetChildren()) {
-								if (child) {
-									++shapes;
-									culled += child->GetAppCulled() ? 1 : 0;
-								}
-							}
-						}
-						where += std::format(" {}:{}{}", name, node ? std::to_string(shapes) : "none", culled ? std::format("(culled {})", culled) : "");
-					}
-					logger::info("bowtest: Skyrim's nodes hold{} | weapon drawn {}", where, a_player->AsActorState()->IsWeaponDrawn());
-				}
-				logger::info("bowtest: draw (wish {}, ammo {})", RangedWish(a_player) ? RangedWish(a_player) : "none", a_player->GetCurrentAmmo() ? a_player->GetCurrentAmmo()->GetName() : "none");
-				if (RangedWish(a_player) && a_player->GetCurrentAmmo()) {
-					if ((step == 2 || step == 6) && g_dev.bowHold < 0.0f) {
-						FaceNearestActor(a_player);  // (bowhold=-1: now and then from close up, at somebody)
-					}
-					if (g_dev.bowDown > 0.0f) {
-						a_player->data.angle.x = g_dev.bowDown;  // (bowdown=0.3: aim at the ground some steps ahead, to look at the arrows that stick)
-					}
-					Link::Request("FirePress");
-				}
-			} else if (step >= 2 && step % 2 == 0 && Seconds(since) > (g_dev.bowHold > 0.0f ? g_dev.bowHold : 2.2f)) {
-				++step;
-				since = Clock::now();
-				Link::Request("FireRelease");
-			}
-		}
-		}
-
 		// Test (dev key pushtest): every few seconds the nearest person, then the player, is thrown as a shout would.
 		// dev (measure=1): the bone names of every kind of creature that comes near, once per kind - for setting them
 		// against the skeletons of MORDHAU's creatures
@@ -737,6 +651,16 @@ namespace dm::Combat
 							}
 						}
 					}
+					if (!g_dev.duelName.empty()) {
+						// (duelname=<name>: the first ordinary character of that name - duelname=Vampire: a vampire with its own
+						// weapon and its life drain)
+						for (auto* npc : RE::TESDataHandler::GetSingleton()->GetFormArray<RE::TESNPC>()) {
+							if (npc && !npc->IsUnique() && npc->GetName() && g_dev.duelName == npc->GetName()) {
+								base = npc;
+								break;
+							}
+						}
+					}
 					// (a different weapon each time: any plain melee weapon of the game, so every MORDHAU counterpart shows up)
 					static std::vector<RE::TESObjectWEAP*> armoury;
 					if (armoury.empty()) {
@@ -839,6 +763,14 @@ namespace dm::Combat
 									av->SetActorValue(RE::ActorValue::kHealth, g_dev.duelHealth);
 								}
 								actor->StartCombat(a_player);
+								// (duelspell=<form id>: that spell in the opponent's left hand, a spellsword)
+								if (auto* spell = g_dev.duelSpell ? RE::TESForm::LookupByID<RE::SpellItem>(g_dev.duelSpell) : nullptr) {
+									actor->AddSpell(spell);
+									const auto* left = RE::TESForm::LookupByID<RE::BGSEquipSlot>(0x00013F43);  // (Skyrim.esm LeftHand)
+									RE::ActorEquipManager::GetSingleton()->EquipSpell(actor, spell, left);
+									av->SetActorValue(RE::ActorValue::kMagicka, 500.0f);
+									logger::info("duel: opponent {} has {} in the left hand", fought + 1, spell->GetName());
+								}
 								duelist = actor->GetFormID();
 								deadSince = {};
 								++fought;
@@ -1356,7 +1288,7 @@ namespace dm::Combat
 						sky->ForceWeather(clear, true);
 					}
 				}
-				// Unrelenting Force, all three words, ready to shout (the user asked for it in the scene)
+				// Unrelenting Force, all three words, ready to shout
 				if (auto* shout = RE::TESForm::LookupByID<RE::TESShout>(0x00013E07)) {
 					a_player->AddShout(shout);
 					for (auto& variation : shout->variations) {

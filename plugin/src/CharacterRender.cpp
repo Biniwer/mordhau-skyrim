@@ -47,101 +47,6 @@ namespace dm::CharacterRender
 			return found == g_mordhauHeld.end() ? std::string{} : found->second;
 		}
 
-		float BlessValue(std::string_view a_id)
-		{
-			for (const auto& row : sheets::kBuilds) {
-				if (a_id == row.id) {
-					return row.value;
-				}
-			}
-			return 0.0f;
-		}
-
-		float BlessClock()
-		{
-			static const auto start = std::chrono::steady_clock::now();
-			return std::fmod(std::chrono::duration<float>(std::chrono::steady_clock::now() - start).count(), 3600.0f);
-		}
-
-		// what the game thread found (UpdateBlessings): the drawing does not read inventories itself. (Seen in play: it did,
-		// and opening the inventory froze the game - the inventory was held by the menu while the drawing waited for it.)
-		std::mutex                                 g_blessingsLock;
-		std::unordered_map<std::uint32_t, int>     g_blessingsFound;
-
-		int BlessingOf(RE::Actor* a_actor)
-		{
-			if (!a_actor) {
-				return -1;
-			}
-			std::scoped_lock lock(g_blessingsLock);
-			const auto       found = g_blessingsFound.find(a_actor->GetFormID());
-			return found == g_blessingsFound.end() ? -1 : found->second;
-		}
-
-		std::vector<std::uint32_t> BlessedHolders()
-		{
-			std::scoped_lock           lock(g_blessingsLock);
-			std::vector<std::uint32_t> ids;
-			for (const auto& [id, element] : g_blessingsFound) {
-				ids.push_back(id);
-			}
-			return ids;
-		}
-
-		int BlessingFromInventory(RE::Actor* a_actor)
-		{
-			if (!a_actor || BlessValue("bless_on") < 0.5f) {
-				return -1;
-			}
-			RE::EnchantmentItem* enchantment = nullptr;
-			if (auto* entry = a_actor->GetEquippedEntryData(false)) {
-				enchantment = entry->GetEnchantment();
-			}
-			if (!enchantment) {
-				const auto* held = a_actor->GetEquippedObject(false);
-				const auto* weapon = held ? held->As<RE::TESObjectWEAP>() : nullptr;
-				enchantment = weapon ? weapon->formEnchanting : nullptr;
-			}
-			if (!enchantment) {
-				return -1;
-			}
-			int fallback = -1;
-			for (int row = 0; row < static_cast<int>(std::size(sheets::kBlessings)); ++row) {
-				const std::string_view resist = sheets::kBlessings[row].resist;
-				if (resist.empty()) {
-					fallback = fallback < 0 ? row : fallback;
-					continue;
-				}
-				for (const auto* effect : enchantment->effects) {
-					const auto* base = effect ? effect->baseEffect : nullptr;
-					const auto  value = base ? base->data.resistVariable : RE::ActorValue::kNone;
-					if ((resist == "ResistFire" && value == RE::ActorValue::kResistFire) || (resist == "ResistFrost" && value == RE::ActorValue::kResistFrost) ||
-						(resist == "ResistShock" && value == RE::ActorValue::kResistShock)) {
-						return row;
-					}
-				}
-			}
-			return fallback;
-		}
-
-		void LoadBlessTextures(ID3D11Device* a_device)
-		{
-			if (g_blessTexTried) {
-				return;
-			}
-			g_blessTexTried = true;
-			std::ifstream in(g_cache / "effects" / "textures.txt");
-			std::string   id, file;
-			while (in >> id >> file) {
-				const int slot = id == "noise" ? 0 : id == "smoke" ? 1 : id == "trail" ? 2 : -1;
-				if (slot >= 0 && !g_blessTex[slot]) {
-					const auto hr = CreateDDSTextureFromFileEx(a_device, (g_cache / "effects" / file).wstring().c_str(), 0, D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0,
-						DDS_LOADER_DEFAULT, nullptr, &g_blessTex[slot]);
-					logger::info("blessings: MORDHAU's {} texture {}", id, SUCCEEDED(hr) ? "loaded" : "FAILED");
-				}
-			}
-		}
-
 		XMMATRIX LocalMatrix(const float* a_rot, const float* a_pos)
 		{
 			return XMMatrixRotationQuaternion(XMVectorSet(a_rot[0], a_rot[1], a_rot[2], a_rot[3])) * XMMatrixTranslation(a_pos[0], a_pos[1], a_pos[2]);
@@ -361,17 +266,6 @@ namespace dm::CharacterRender
 				if (Compile("VSSkyrim", "vs_5_0", &g_skyVsBlob)) {
 					a_device->CreateVertexShader(g_skyVsBlob->GetBufferPointer(), g_skyVsBlob->GetBufferSize(), nullptr, &g_skyVs);
 				}
-				ID3DBlob *trailVs = nullptr, *trailPs = nullptr;
-				if (Compile("VSTrail", "vs_5_0", &trailVs) && Compile("PSTrail", "ps_5_0", &trailPs)) {
-					a_device->CreateVertexShader(trailVs->GetBufferPointer(), trailVs->GetBufferSize(), nullptr, &g_trailVs);
-					a_device->CreatePixelShader(trailPs->GetBufferPointer(), trailPs->GetBufferSize(), nullptr, &g_trailPs);
-				}
-				if (trailVs) {
-					trailVs->Release();
-				}
-				if (trailPs) {
-					trailPs->Release();
-				}
 				ID3DBlob* hudPicturePs = nullptr;
 				if (Compile("PSHudPicture", "ps_5_0", &hudPicturePs)) {
 					a_device->CreatePixelShader(hudPicturePs->GetBufferPointer(), hudPicturePs->GetBufferSize(), nullptr, &g_hudPicturePs);
@@ -381,65 +275,6 @@ namespace dm::CharacterRender
 				if (Compile("PSHudTex", "ps_5_0", &hudTexPs)) {
 					a_device->CreatePixelShader(hudTexPs->GetBufferPointer(), hudTexPs->GetBufferSize(), nullptr, &g_hudTexPs);
 					hudTexPs->Release();
-				}
-				{
-					// Demon Horde's weapon blessings (sheets/blessings.json)
-					ID3DBlob *glowPs = nullptr, *pointVs = nullptr, *gs = nullptr, *pointPs = nullptr, *trailVsB = nullptr, *trailPsB = nullptr;
-					if (Compile("PSBlessGlow", "ps_5_0", &glowPs) && Compile("VSBlessPoint", "vs_5_0", &pointVs) && Compile("GSBless", "gs_5_0", &gs) &&
-						Compile("PSBlessPoint", "ps_5_0", &pointPs) && Compile("VSBlessTrail", "vs_5_0", &trailVsB) && Compile("PSBlessTrail", "ps_5_0", &trailPsB)) {
-						a_device->CreatePixelShader(glowPs->GetBufferPointer(), glowPs->GetBufferSize(), nullptr, &g_blessGlowPs);
-						a_device->CreateVertexShader(pointVs->GetBufferPointer(), pointVs->GetBufferSize(), nullptr, &g_blessPointVs);
-						a_device->CreateGeometryShader(gs->GetBufferPointer(), gs->GetBufferSize(), nullptr, &g_blessGs);
-						a_device->CreatePixelShader(pointPs->GetBufferPointer(), pointPs->GetBufferSize(), nullptr, &g_blessPointPs);
-						a_device->CreateVertexShader(trailVsB->GetBufferPointer(), trailVsB->GetBufferSize(), nullptr, &g_blessTrailVs);
-						a_device->CreatePixelShader(trailPsB->GetBufferPointer(), trailPsB->GetBufferSize(), nullptr, &g_blessTrailPs);
-					}
-					ID3DBlob* pointSkyVs = nullptr;
-					if (Compile("VSBlessPointSky", "vs_5_0", &pointSkyVs)) {
-						a_device->CreateVertexShader(pointSkyVs->GetBufferPointer(), pointSkyVs->GetBufferSize(), nullptr, &g_blessPointSkyVs);
-						pointSkyVs->Release();
-					}
-					for (int reversedDepth = 0; reversedDepth < 2; ++reversedDepth) {
-						D3D11_RASTERIZER_DESC pulled{};
-						pulled.FillMode = D3D11_FILL_SOLID;
-						pulled.CullMode = D3D11_CULL_NONE;
-						pulled.DepthClipEnable = TRUE;
-						pulled.DepthBias = reversedDepth ? 2000 : -2000;
-						pulled.SlopeScaledDepthBias = reversedDepth ? 2.0f : -2.0f;
-						a_device->CreateRasterizerState(&pulled, &g_blessRaster[reversedDepth]);
-					}
-					for (auto* blob : { glowPs, pointVs, gs, pointPs, trailVsB, trailPsB }) {
-						if (blob) {
-							blob->Release();
-						}
-					}
-					D3D11_BUFFER_DESC cb{};
-					cb.Usage = D3D11_USAGE_DYNAMIC;
-					cb.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-					cb.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-					cb.ByteWidth = 16 * 9;
-					a_device->CreateBuffer(&cb, nullptr, &g_blessCb);
-					cb.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-					cb.ByteWidth = sizeof(Vertex) * kBlessTrailVertices;
-					a_device->CreateBuffer(&cb, nullptr, &g_blessVb);
-					D3D11_BLEND_DESC add{};
-					add.RenderTarget[0].BlendEnable = TRUE;
-					add.RenderTarget[0].SrcBlend = D3D11_BLEND_ONE;
-					add.RenderTarget[0].DestBlend = D3D11_BLEND_ONE;
-					add.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;
-					add.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ZERO;
-					add.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ONE;
-					add.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
-					add.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_RED | D3D11_COLOR_WRITE_ENABLE_GREEN | D3D11_COLOR_WRITE_ENABLE_BLUE;
-					a_device->CreateBlendState(&add, &g_blendAdd);
-					D3D11_DEPTH_STENCIL_DESC test{};
-					test.DepthEnable = TRUE;
-					test.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;
-					test.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
-					a_device->CreateDepthStencilState(&test, &g_depthLessTest);
-					test.DepthFunc = D3D11_COMPARISON_GREATER_EQUAL;
-					a_device->CreateDepthStencilState(&test, &g_depthGreaterTest);
-					logger::info("blessings: effects {}", g_blessGlowPs && g_blessGs && g_blessTrailPs && g_blessCb && g_blessVb && g_blendAdd ? "ready" : "NOT available");
 				}
 				D3D11_BLEND_DESC alpha{};
 				alpha.RenderTarget[0].BlendEnable = TRUE;
@@ -488,12 +323,6 @@ namespace dm::CharacterRender
 	{
 		g_menuShown.store(a_menu > 0 ? 1 : 0);
 		(void)a_page;
-	}
-
-	bool PlayerWeaponOnGround(RE::NiPoint3& a_at)
-	{
-		a_at = g_playerWeaponAt;
-		return g_playerWeaponDown.load();
 	}
 
 	bool WeaponOnGroundNear(const RE::NiPoint3& a_from, float a_reach, std::uint32_t& a_owner, std::string& a_model, bool a_take)
@@ -574,6 +403,12 @@ namespace dm::CharacterRender
 		g_looseHeads.push_back(head);
 	}
 
+	void SetCastArm(bool a_on, float a_linger)
+	{
+		g_castArmSkyrim.store(a_on);
+		g_castArmLinger.store(a_linger);
+	}
+
 	void SetLeftCasting(bool a_on)
 	{
 		g_leftCasting.store(a_on);
@@ -618,37 +453,18 @@ namespace dm::CharacterRender
 		g_mordhauHeld = a_models;
 	}
 
+	void SetDrawSmoothing(float a_perSecond, float a_most, bool a_measure)
+	{
+		g_drawSmooth.store(a_perSecond);
+		g_drawSmoothMost.store(a_most);
+		g_drawMeasure.store(a_measure);
+	}
+
 	void SetUnsheatheWait(float a_seconds)
 	{
 		g_unsheatheWait.store(a_seconds);
 	}
 
-	void UpdateBlessings(RE::PlayerCharacter* a_player)
-	{
-		// (on the game thread, a few times a second: the player and everyone near with a weapon out)
-		static auto last = std::chrono::steady_clock::now();
-		if (!a_player || std::chrono::steady_clock::now() - last < std::chrono::milliseconds(250)) {
-			return;
-		}
-		last = std::chrono::steady_clock::now();
-		std::unordered_map<std::uint32_t, int> found;
-		const auto                             look = [&](RE::Actor* a_actor) {
-			if (a_actor && a_actor->Is3DLoaded() && a_actor->AsActorState()->IsWeaponDrawn()) {
-				if (const int element = BlessingFromInventory(a_actor); element >= 0) {
-					found[a_actor->GetFormID()] = element;
-				}
-			}
-		};
-		look(a_player);
-		RE::ProcessLists::GetSingleton()->ForEachHighActor([&](RE::Actor* a_actor) {
-			if (a_actor && a_actor != a_player && a_actor->GetPosition().GetDistance(a_player->GetPosition()) < 4000.0f) {
-				look(a_actor);
-			}
-			return RE::BSContainer::ForEachResult::kContinue;
-		});
-		std::scoped_lock lock(g_blessingsLock);
-		g_blessingsFound = std::move(found);
-	}
 
 	void ShowHitMarker(bool a_kill)
 	{
@@ -671,15 +487,6 @@ namespace dm::CharacterRender
 		g_skyrimWeaponWanted.store(a_show);
 	}
 
-	void PlayDraw(int a_kind)
-	{
-		g_drawBegan.store(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count());
-		g_drawKind.store(a_kind);
-	}
-	void SetPelvisAlign(bool a_on)
-	{
-		g_pelvisAlign.store(a_on);
-	}
 	void SetAltSlide(float a_cm)
 	{
 		g_altSlide.store(a_cm);
@@ -694,18 +501,6 @@ namespace dm::CharacterRender
 		g_halfTurn.store(a_halfTurn);
 	}
 
-	void SetOwnHips(std::uint32_t a_id, const char* a_skyrimBones)
-	{
-		std::scoped_lock lock(g_ownHipsLock);
-		if (g_ownHips.insert(a_id).second && a_skyrimBones && a_skyrimBones[0]) {
-			std::stringstream parts(a_skyrimBones);
-			for (std::string part; std::getline(parts, part, '|');) {
-				if (!part.empty()) {
-					g_skyrimBones[a_id].push_back(part);
-				}
-			}
-		}
-	}
 
 	void SetSkyrimHasBody(std::uint32_t a_id, bool a_on)
 	{
@@ -726,19 +521,11 @@ namespace dm::CharacterRender
 	{
 		g_skyrimShieldLook.store(a_on);
 	}
-	void SetPauldronsFollow(bool a_on)
-	{
-		g_pauldronsFollow.store(a_on);
-	}
 	void SetProps(const std::vector<Prop>& a_props)
 	{
 		g_props = a_props;
 	}
 
-	void SetTrails(const std::vector<Trail>& a_trails)
-	{
-		g_trails = a_trails;
-	}
 
 	void PlaceEnemyWeapons()
 	{

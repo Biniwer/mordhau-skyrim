@@ -294,32 +294,6 @@ namespace dm::CharacterRender
 			}
 			if (LivePose(livePose, dt)) {
 				pose = livePose;
-				// MORDHAU's own draw animation over the live pose's upper body (sheets/builds.json mordhau_draw_clips): the
-				// arm reaches for the hip or the back and brings the weapon out; backwards, it puts it away. Third person.
-				if (const int kind = g_drawKind.load(); kind != 0) {
-					const long long now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
-					const float     t = static_cast<float>(now - g_drawBegan.load()) / 1000.0f;
-					auto*           camera = RE::PlayerCamera::GetSingleton();
-					const auto      clip = camera && camera->IsInFirstPerson() ? nullptr : GetClip(std::abs(kind) == 2 ? "Draw_Right_Back" : "Draw_Right_LeftHip");
-					if (!clip || t < 0.0f || t > clip->length) {
-						g_drawKind.store(0);
-					} else {
-						// (the upper body: everything that hangs from the lower back)
-						static std::vector<bool> upper;
-						if (upper.size() != g_bones.size()) {
-							upper.assign(g_bones.size(), false);
-							for (std::size_t i = 0; i < g_bones.size(); ++i) {
-								const int parent = g_bones[i].parent;
-								upper[i] = g_bones[i].name == "LowerBack" || g_bones[i].name == "Spine" || (parent >= 0 && static_cast<std::size_t>(parent) < i && upper[static_cast<std::size_t>(parent)]);
-							}
-						}
-						static LocalPose layer;
-						RestPose(layer);
-						SampleClip(*clip, kind > 0 ? t : clip->length - t, false, layer);
-						const float weight = std::clamp(std::min(t / 0.12f, (clip->length - t) / 0.18f), 0.0f, 1.0f);
-						Blend(pose, layer, weight, &upper);
-					}
-				}
 			} else {
 				livePose = pose;
 			}
@@ -427,13 +401,9 @@ namespace dm::CharacterRender
 					RE::NiPoint3 ds = dirNode->pos - node->pos;
 					RE::NiPoint3 dm = restPos(dirBone) - restPos(bone);
 					if (ds.Length() > 1e-3f && dm.Length() > 1e-3f) {
-						const bool pelvis = std::string_view(row.id) == "pelvis";
-						if (pelvis) {
-							const float turn = std::acos(std::clamp((ds / ds.Length()).Dot(dm / dm.Length()), -1.0f, 1.0f)) * 57.29578f;
-							logger::info("everyone: pelvis: Skyrim's rest direction to its spine ({:.1f}, {:.1f}, {:.1f}; {:.1f} units long) is {:.0f} degrees off MORDHAU's ({:.1f}, {:.1f}, {:.1f}): {}",
-								ds.x, ds.y, ds.z, ds.Length(), turn, dm.x, dm.y, dm.z, g_pelvisAlign.load() ? "turned to agree" : "left as the rest poses are (sheets/builds.json pelvis_align 0)");
-						}
-						if (!pelvis || g_pelvisAlign.load()) {
+						// (not the pelvis: in Skyrim's skeleton the spine does not hang from it, and that direction is a few units
+						// long and points oddly - Skyrim's rest pelvis is used as it is)
+						if (std::string_view(row.id) != "pelvis") {
 							align = ToMatrix(Between(ds / ds.Length(), dm / dm.Length()));
 						}
 					}
@@ -564,8 +534,23 @@ namespace dm::CharacterRender
 			bool         spineSet = false;
 			const auto*  pelvisRest = g_skyrimRest.Find("NPC Pelvis [Pelv]");
 			const auto*  spineRest = g_skyrimRest.Find("NPC Spine [Spn0]");
-			std::vector<std::string> skyrimsOwn;
-			const bool               leftArmSkyrims = a_actor->IsPlayerRef() && g_leftCasting.load();
+			// (the player's left hand casting: told by Combat; anyone else's: its own left-hand caster, until a moment after
+			// the cast - sheets/builds.json cast_arm_skyrim, cast_arm_linger)
+			bool leftArmSkyrims = a_actor->IsPlayerRef() && g_leftCasting.load();
+			if (!a_actor->IsPlayerRef() && g_castArmSkyrim.load()) {
+				static std::unordered_map<std::uint32_t, std::chrono::steady_clock::time_point> castSeen;
+				auto* caster = a_actor->GetMagicCaster(RE::MagicSystem::CastingSource::kLeftHand);
+				const auto now = std::chrono::steady_clock::now();
+				if (caster && caster->state.get() != RE::MagicCaster::State::kNone) {
+					castSeen[a_actor->GetFormID()] = now;
+				}
+				if (const auto it = castSeen.find(a_actor->GetFormID()); it != castSeen.end()) {
+					leftArmSkyrims = std::chrono::duration<float>(now - it->second).count() < g_castArmLinger.load();
+					if (!leftArmSkyrims && castSeen.size() > 64) {
+						castSeen.erase(it);
+					}
+				}
+			}
 			// (the casting arm: how Skyrim's animation has the upper arm against the whole body, taken before MORDHAU's
 			// pose turns the chest - kept against the chest, the arm pointed out sideways with MORDHAU's chest turned)
 			RE::NiMatrix3 castArm{};
@@ -579,12 +564,6 @@ namespace dm::CharacterRender
 						castArm = up->local.rotate * castArm;
 					}
 					castArmKnown = true;
-				}
-			}
-			{
-				std::scoped_lock lock(g_ownHipsLock);
-				if (const auto it = g_skyrimBones.find(a_actor->GetFormID()); it != g_skyrimBones.end()) {
-					skyrimsOwn = it->second;
 				}
 			}
 			for (const int r : order) {
@@ -601,14 +580,6 @@ namespace dm::CharacterRender
 						node->UpdateDownwardPass(update, 0);
 					}
 					continue;
-				}
-				// (sheets/creature_fighters.json skyrim_bones: left in Skyrim's own pose)
-				if (!skyrimsOwn.empty()) {
-					const std::string_view name = row.node;
-					const std::string_view plain = name.substr(0, name.find(" ["));
-					if (std::find(skyrimsOwn.begin(), skyrimsOwn.end(), plain) != skyrimsOwn.end()) {
-						continue;
-					}
 				}
 				if (spineSet && pelvisRest && spineRest && std::string_view(row.node).substr(0, 9) == "NPC Spine" && std::string_view(row.node).substr(0, 10) != "NPC Spine1" && std::string_view(row.node).substr(0, 10) != "NPC Spine2") {
 					// (where the pelvis now is, plus the rest skeleton's step from pelvis to spine, turned with the pelvis)
@@ -630,22 +601,7 @@ namespace dm::CharacterRender
 				const RE::NiMatrix3 world = root->world.rotate * (MirrorX(mordhau) * row.post.Transpose());
 				const auto&         parent = node->parent->world;
 				node->local.rotate = parent.rotate.Transpose() * world;
-				bool ownHips = false;
 				if (row.bone == g_retarget.hips) {
-					std::scoped_lock lock(g_ownHipsLock);
-					ownHips = g_ownHips.contains(a_actor->GetFormID());
-				}
-				if (row.bone == g_retarget.hips && ownHips) {
-					// (a creature on a MORDHAU creature's moves - sheets/creature_fighters.json: the hip height above was
-					// worked out for a PERSON's hips in MORDHAU; scaled from an Ogre's, a Dwarven Centurion stood in the
-					// ground to below its knees. Its hips stay where Skyrim's own animation has them; the turns are MORDHAU's.)
-					{
-						std::scoped_lock lock(g_bodyLiftLock);
-						g_bodyLift[a_actor->GetFormID()] = RE::NiPoint3{};
-					}
-					spineBase = node->world.translate;
-					spineSet = true;
-				} else if (row.bone == g_retarget.hips) {
 					// (a skeleton with other legs than a person's - a draugr - stands by its OWN hip height: with a
 					// person's it stood in the ground to its ankles. Its rest skeleton is read once per race and sex.)
 					static std::unordered_map<std::string, float> legFactor;
@@ -689,42 +645,6 @@ namespace dm::CharacterRender
 			dm::ApplyTwist(root, g_skyrimRest);
 			RE::NiUpdateData update;
 			root->UpdateDownwardPass(update, 0);
-			// The shoulder plates of an armour hang from the upper spine, not from the collar bone, and Skyrim's animation
-			// moves them along with the shoulder. With the collar bone in MORDHAU's pose they were left behind, hovering
-			// over the shoulder: each is put where it sits on the collar bone in the rest skeleton
-			// (sheets/builds.json pauldrons_follow).
-			if (g_pauldronsFollow.load()) {
-				// (First tried: the plate rigidly on the collar bone - it tipped outward with MORDHAU's collar-bone turn.
-				// Now it keeps its rest-skeleton attitude on the spine and is only MOVED, by as much as the shoulder
-				// joint - the head of the upper arm - is away from its rest place on the spine.)
-				static const char* pairs[2][2]{ { "NPC L Pauldron", "NPC L UpperArm [LUar]" }, { "NPC R Pauldron", "NPC R UpperArm [RUar]" } };
-				for (const auto& pair : pairs) {
-					auto*       plate = root->GetObjectByName(pair[0]);
-					auto*       joint = root->GetObjectByName(pair[1]);
-					const auto* plateRest = g_skyrimRest.Find(pair[0]);
-					const auto* jointRest = g_skyrimRest.Find(pair[1]);
-					const auto* upRest = plate && plate->parent ? g_skyrimRest.Find(plate->parent->name.c_str()) : nullptr;
-					if (!plate || !joint || !plateRest || !jointRest || !upRest) {
-						continue;
-					}
-					const auto&         up = plate->parent->world;
-					const RE::NiMatrix3 upBack = ToMatrix(upRest->rot).Transpose();
-					const RE::NiPoint3  jointNow = (up.rotate.Transpose() * (joint->world.translate - up.translate)) / std::max(up.scale, 1e-4f);
-					const RE::NiPoint3  moved = jointNow - upBack * (jointRest->pos - upRest->pos);
-					const RE::NiPoint3  place = upBack * (plateRest->pos - upRest->pos) + moved;
-					{
-						static std::chrono::steady_clock::time_point told{};
-						if (std::chrono::steady_clock::now() - told > std::chrono::seconds(4)) {
-							told = std::chrono::steady_clock::now();
-							logger::info("pauldrons: {} of {:08X}: the shoulder joint is {:.1f} units from its rest place on the spine; the plate was {:.1f} units from where it is put", pair[0],
-								a_actor->GetFormID(), moved.Length(), plate->local.translate.GetDistance(place));
-						}
-					}
-					plate->local.rotate = upBack * ToMatrix(plateRest->rot);
-					plate->local.translate = place;
-					plate->UpdateDownwardPass(update, 0);
-				}
-			}
 		}
 
 		// Skyrim's own bodies in MORDHAU's movement: the fought ones and the player (third person), each frame.
@@ -801,6 +721,58 @@ namespace dm::CharacterRender
 						const XMVECTOR pos = streamed && i <= 2 ? XMVectorSet(b[4], b[5], b[6], 0.0f) : XMLoadFloat3(&bone.restPos);
 						const XMMATRIX local = XMMatrixRotationQuaternion(rot) * XMMatrixTranslationFromVector(pos);
 						comp[i] = bone.parent >= 0 && static_cast<std::size_t>(bone.parent) < i ? local * comp[static_cast<std::size_t>(bone.parent)] : local;
+					}
+					// (drawn at a smoothed place following the physics place: sheets/builds.json standin_draw_smooth - the
+					// physics moves the body in uneven jumps; only the drawing is moved)
+					if (auto* root = actor->Get3D(false); root && g_drawSmooth.load() > 0.0f) {
+						struct Drawn
+						{
+							RE::NiPoint3                          at, physics;
+							std::chrono::steady_clock::time_point when = std::chrono::steady_clock::now();
+							bool                                  known = false;
+							int                                   frames = 0, stillDrawn = 0, stillPhysics = 0;
+							float                                 sumD = 0.0f, sqD = 0.0f, sumP = 0.0f, sqP = 0.0f;
+							std::chrono::steady_clock::time_point since = std::chrono::steady_clock::now();
+						};
+						static std::unordered_map<std::uint32_t, Drawn> drawn;
+						auto&              d = drawn[actor->GetFormID()];
+						const auto         nowTime = std::chrono::steady_clock::now();
+						const float        dtDraw = std::clamp(std::chrono::duration<float>(nowTime - d.when).count(), 0.0f, 0.1f);
+						const RE::NiPoint3 physics = actor->GetPosition();  // (the place itself, not the drawn root: that may still carry last frame's shift)
+						const RE::NiPoint3 before = d.at, physicsBefore = d.physics;
+						const float        most = g_drawSmoothMost.load();
+						if (!d.known || dtDraw >= 0.1f || (physics - d.at).Length() > most) {
+							d.at = physics;
+						} else {
+							const float share = 1.0f - std::exp(-dtDraw * g_drawSmooth.load());
+							d.at.x += (physics.x - d.at.x) * share;
+							d.at.y += (physics.y - d.at.y) * share;
+							d.at.z = physics.z;  // (height as the physics has it: on the ground)
+						}
+						if (g_drawMeasure.load() && d.known && dtDraw > 0.0005f) {
+							const float movedDrawn = std::hypot(d.at.x - before.x, d.at.y - before.y), movedPhysics = std::hypot(physics.x - physicsBefore.x, physics.y - physicsBefore.y);
+							++d.frames, d.sumD += movedDrawn / dtDraw, d.sqD += (movedDrawn / dtDraw) * (movedDrawn / dtDraw), d.sumP += movedPhysics / dtDraw, d.sqP += (movedPhysics / dtDraw) * (movedPhysics / dtDraw);
+							d.stillDrawn += movedDrawn < 0.05f ? 1 : 0, d.stillPhysics += movedPhysics < 0.05f ? 1 : 0;
+							if (std::chrono::duration<float>(nowTime - d.since).count() > 1.0f && d.frames > 10) {
+								const float n = static_cast<float>(d.frames);
+								const float meanD = d.sumD / n, meanP = d.sumP / n;
+								const float spreadD = std::sqrt(std::max(d.sqD / n - meanD * meanD, 0.0f)), spreadP = std::sqrt(std::max(d.sqP / n - meanP * meanP, 0.0f));
+								if (meanP > 20.0f) {
+									logger::info("drawn: {} {} frames: physics speed {:.0f} spread {:.0f}% ({} frames still), drawn speed {:.0f} spread {:.0f}% ({} frames still)", actor->GetDisplayFullName(), d.frames, meanP,
+										100.0f * spreadP / meanP, d.stillPhysics, meanD, meanD > 1.0f ? 100.0f * spreadD / meanD : 0.0f, d.stillDrawn);
+								}
+								d.frames = d.stillDrawn = d.stillPhysics = 0, d.sumD = d.sqD = d.sumP = d.sqP = 0.0f, d.since = nowTime;
+							}
+						}
+						d.physics = physics, d.when = nowTime, d.known = true;
+						const RE::NiPoint3 shown{ d.at.x, d.at.y, root->world.translate.z };
+						if (std::abs(shown.x - root->world.translate.x) > 0.001f || std::abs(shown.y - root->world.translate.y) > 0.001f) {
+							const RE::NiPoint3 shift = shown - root->world.translate;
+							root->local.translate += shift;
+							root->world.translate = shown;
+							RE::NiUpdateData update;
+							root->UpdateDownwardPass(update, 0);
+						}
 					}
 					PoseSkyrimBody(actor, comp);
 					// The Skyrim weapon follows what MORDHAU did with its counterpart: in the hand (Skyrim's own place for it),

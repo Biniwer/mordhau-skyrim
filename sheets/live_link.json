@@ -4,7 +4,7 @@
   {
    "id": "transport",
    "direction": "both",
-   "carries": "cache/live_pose.bin (65536 bytes, MORDHAU -> Skyrim) and cache/live_input.mem (8192 bytes, Skyrim -> MORDHAU): fixed size, never truncated or replaced, kept open by both games. live_input.mem: uint32 sequence, uint32 length, the text line, uint32 sequence again.",
+   "carries": "cache/live_pose.bin (131072 bytes (room for 24 stand-ins; the pose block is written up to the places in use, its closing sequence at the fixed end), MORDHAU -> Skyrim) and cache/live_input.mem (16384 bytes, Skyrim -> MORDHAU): fixed size, never truncated or replaced, kept open by both games. live_input.mem: uint32 sequence, uint32 length, the text line, uint32 sequence again.",
    "used_for": "shared memory: Skyrim's plugin maps both files (CreateFileMapping / MapViewOfFile) and reads / writes its own memory; MORDHAU's script keeps one Lua file handle on each and writes / reads in place (seek to 0, one write or read). Windows backs the mapping and the handle with the same pages, so nothing is opened, renamed or re-read from disk per frame. A reader takes a block only when the sequence at its start equals the one at its end.",
    "verified": false
   },
@@ -116,13 +116,6 @@
    "verified": false
   },
   {
-   "id": "ranged",
-   "direction": "Skyrim -> MORDHAU",
-   "carries": "\" w:<MORDHAU item path>\" while the player has a bow or crossbow out in Skyrim; actions FirePress / FireRelease (the attack button)",
-   "used_for": "MORDHAU's character takes that bow (handed over once), MORDHAU's own draw and release (FirePressed / FireReleased)",
-   "verified": false
-  },
-  {
    "id": "shot",
    "direction": "MORDHAU -> Skyrim",
    "carries": "after the camera block, 56 bytes: uint32 shots, float[3] direction (right, forward, up in character space), float speed cm/s, float gravity scale, float[4] damage by armour tier (none, light, medium, heavy), float[4] head bonus",
@@ -140,7 +133,7 @@
   {
    "id": "player_weapon",
    "direction": "both",
-   "carries": "Skyrim -> MORDHAU: ' pw:<weapon path>' = the MORDHAU weapon for what the player has equipped in Skyrim (sheets/weapon_map.json); the script hands it to the character when it changes. MORDHAU -> Skyrim: 32 bytes after the builds block = the class name of the weapon the character holds or last held (state block is 408 bytes now).",
+   "carries": "Skyrim -> MORDHAU: ' pw:<weapon path>' = the MORDHAU weapon for what the player has equipped in Skyrim (sheets/weapon_map.json); the script hands it to the character when it changes. MORDHAU -> Skyrim: 32 bytes after the builds block = the class name of the weapon the character holds or last held (the fixed state block is 408 bytes).",
    "used_for": "the player fights with the MORDHAU counterpart of the equipped Skyrim weapon, drawn with that weapon's own model (cache/props/w_<name>); the mercenary's own weapon only when nothing maps",
    "verified": false
   },
@@ -159,13 +152,6 @@
    "verified": true
   },
   {
-   "id": "bow_pose",
-   "direction": "MORDHAU -> Skyrim",
-   "carries": "428 bytes after the held weapon's class name (state block is 836 bytes now): bone count (0 = no bow in the left hand), 12 x 7 floats = the bow's bones in the bow's own space, int = MORDHAU shows the arrow on the string, 7 floats = the arrow part in the bow's space, 2 x 7 floats = the arrow's two bones",
-   "used_for": "the bow's limbs bend and its string comes back with the draw, and the arrow lies on the string, as in MORDHAU (the bow was drawn rigid, with no arrow)",
-   "verified": false
-  },
-  {
    "id": "stamina_gain",
    "direction": "Skyrim -> MORDHAU",
    "carries": "' sg:<n>,<percent>' = the n-th stamina gain Skyrim gave the player (potion, food), in percent of full stamina; the script adds it to the character's Stamina once per n",
@@ -182,9 +168,10 @@
   {
    "id": "stand_ins",
    "direction": "both",
-   "carries": "five enemies at once fight by MORDHAU's rules (three before): the states of the fourth and fifth (28 bytes each) follow the bow's pose (state block 892 bytes), their poses follow the first three's",
+   "carries": "up to 24 places (Link::kGhosts, the script's MAX_GHOSTS); how many are used is builds.json standin_limit (settings menu, default 12). The first three's states (28 bytes each) sit where they always did, the others follow the bow's pose; poses in slot order after the state block. The script writes only the places in use and blanks a place once when it is freed (all places on its first write), then the closing sequence number at the block's fixed end; it asks MORDHAU for as many bots as Skyrim sends stand-ins plus two spare",
    "used_for": "crowd fights and battles: more of the enemies around the player are MORDHAU fighters",
-   "verified": false
+   "verified": false,
+   "source": "play-test note, 2026-10-16. 128 = the fixed size of the shared blocks (Link::kGhosts, the script's MAX_GHOSTS); more than Skyrim keeps fully running around the player. 2026-10-16 ~14:08, after a battle with 128: MORDHAU wrote all 128 slots (~570 KB) every pose, its pose rate fell from ~200 to 83 a second and the characters looked like a slideshow; play-testing. Then the limit went into the settings menu with 24 places"
   },
   {
    "id": "shield_pose",
@@ -218,7 +205,7 @@
    "id": "standin_target",
    "direction": "Skyrim -> MORDHAU",
    "carries": "' gt:<id>,<target id>' on the input line for a fought character whose Skyrim combat target is not the player",
-   "used_for": "its stand-in turns and aims (side and height) at that character's stand-in instead of at the player's character - two of Skyrim's people fighting each other both looked up at the player on higher ground and swung over each other (the user, 2026-10-09)",
+   "used_for": "its stand-in turns and aims (side and height) at that character's stand-in instead of at the player's character - two of Skyrim's people fighting each other both looked up at the player on higher ground and swung over each other (play-test note, 2026-10-09)",
    "verified": false
   },
   {
@@ -267,7 +254,7 @@
   {
    "id": "standin_height",
    "direction": "MORDHAU",
-   "carries": "A free stand-in walks MORDHAU's own ground in MORDHAU's walking mode (its AI's own pace). Its BODY (mesh) is shifted up or down against its capsule - through the character's BaseTranslationOffset, which MORDHAU sets the mesh back to every frame - by (player height + Skyrim's height difference) - its own capsule height, eased, at most 60 cm; a held stand-in has no shift. Back in on 2026-10-10 (\"fix the head being in the chest\") after the rollback; the 'flying' movement mode stays out.",
+   "carries": "A free stand-in walks MORDHAU's own ground in MORDHAU's walking mode (its AI's own pace). Its BODY (mesh) is shifted up or down against its capsule - through the character's BaseTranslationOffset, which MORDHAU sets the mesh back to every frame - by (player height + Skyrim's height difference) - its own capsule height, eased, at most 60 cm; a held stand-in has no shift. Back in on 2026-10-10  after the rollback; the 'flying' movement mode stays out.",
    "used_for": "swings meet the stand-in at the height Skyrim shows, without changing how MORDHAU's AI moves it",
    "verified": true,
    "verified_how": "2026-10-10 tools/height_test.py, D: copy, Whiterun bridge, 60 samples each: fix on - feet spread 82 cm, pelvis spread 13 cm (std dev 1.7); fix off - feet 96, pelvis 96 (std dev 30). Not yet played by a person."
@@ -292,11 +279,11 @@
    "id": "offline_stop",
    "direction": "MORDHAU -> Skyrim",
    "carries": "Every frame the script asks the engine whether the game is still a stand-alone local match. The frame it is not: (1) the script stops everything it does - no input applied, no stand-ins driven, no pose written (PS_stopped); (2) it writes cache/live_stop.txt with the reason; (3) it asks MORDHAU to quit and calls the hard exit with no grace period. The plugin looks for live_stop.txt five times a second: it ends MORDHAU's process with TerminateProcess, waits until the process is really gone and logs how long that took from the signal; then deletes the file. The plugin also deletes a stale live_stop.txt before every start.",
-   "used_for": "the user, 2026-10-11 (pasted review): immediate response when a session stops being offline - before: checked once a second, then a three-second grace period, and the script's own exit left the process around (~1 min seen at start-up).",
+   "used_for": "play-test note, 2026-10-11: immediate response when a session stops being offline - before: checked once a second, then a three-second grace period, and the script's own exit left the process around (~1 min seen at start-up).",
    "verified": true,
    "verified_how": "2026-10-11, D: copy, mid-fight, PS_testNotAlone forced three times (tools/stop_test.py, timed on the process handle): the script's last pose 31-34 ms after the trigger was handed over; MORDHAU's process gone after 1014 / 792 / 993 ms. Plugin log: signal seen after ~140 ms, process gone 755-989 ms after the signal. A real server join was not used as the trigger.",
    "unknown_state": "If the engine's answer is not a clear yes (the call fails, or returns anything but true / false) the state is UNKNOWN: the script does nothing that frame (no input applied, no stand-ins driven, no pose written), and after one second of unknown it stops as for 'not offline'. It never assumes offline.",
-   "unverified_boundary": "UNVERIFIED INTEGRATION BOUNDARY (the user, 2026-10-11). The whole runtime check rests on one engine query, KismetSystemLibrary:IsStandalone, asked from the player controller's tick. Verified: the shutdown path once the script believes the state is 'not offline' or 'unknown' (forced by test switches). NOT verified, and deliberately not tested with a real online transition: (a) that every way a session can stop being local - joining by server browser, by Steam invite, by console, hosting a listen server, a seamless or a hard map travel - makes that query answer false or fail; (b) that the script's frame keeps running through such a transition (it is driven by the controller's tick; during a level change there may be no controller, and the outer loop has ended by then); (c) how early in a connection attempt the answer changes - a handshake with a server may precede it. What does not depend on this boundary: the loader's launch check, -insecure on the mod's own MORDHAU, and that MORDHAU's window takes no meaningful input (observed by the user, cause unknown)."
+   "unverified_boundary": "UNVERIFIED INTEGRATION BOUNDARY (play-test note, 2026-10-11). The whole runtime check rests on one engine query, KismetSystemLibrary:IsStandalone, asked from the player controller's tick. Verified: the shutdown path once the script believes the state is 'not offline' or 'unknown' (forced by test switches). NOT verified, and deliberately not tested with a real online transition: (a) that every way a session can stop being local - joining by server browser, by Steam invite, by console, hosting a listen server, a seamless or a hard map travel - makes that query answer false or fail; (b) that the script's frame keeps running through such a transition (it is driven by the controller's tick; during a level change there may be no controller, and the outer loop has ended by then); (c) how early in a connection attempt the answer changes - a handshake with a server may precede it. What does not depend on this boundary: the loader's launch check, -insecure on the mod's own MORDHAU, and that MORDHAU's window takes no meaningful input (observed by play-testing, cause unknown)."
   },
   {
    "id": "script_watchdog",
@@ -308,7 +295,22 @@
    },
    "used_for": "play-test note, 2026-10-11 The explicit unsafe states (not offline, unknown: offline_stop) stay immediate and are the script's own; this is for a script that has stopped reporting at all.",
    "verified": true,
-   "verified_how": "2026-10-11, D: copy, mid-fight (tools/stall_test.py): whole process frozen 3 s and 12 s - survived, the 12 s one logged UNVERIFIED and 'reports again after 12.0 s', the fight went on; script silenced with the game running - ended by the plugin after 31.2 s (process gone 948 ms after the kill), then restarted. Not tested: a Skyrim loading screen of over 30 s with MORDHAU minimised."
+   "verified_how": "2026-10-11, D: copy, mid-fight (tools/stall_test.py): whole process frozen 3 s and 12 s - survived, the 12 s one logged UNVERIFIED, the fight went on; script silenced with the game running - ended by the plugin after 31.2 s (process gone 948 ms after the kill), then restarted. Not tested: a Skyrim loading screen of over 30 s with MORDHAU minimised."
+  },
+  {
+   "id": "standin_wall",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "' gw:<id>,<right>,<forward>,<cm>,<margin cm>' per walked stand-in that has a wall near its body: the wall's normal (pointing away from the wall) in the player's frame (right, forward; as g:'s place), the distance from the body to the wall in cm, and how far short of it to keep the stand-in",
+   "used_for": "the script pushes a free stand-in back out to that line in MORDHAU, so it does not walk into a wall its Skyrim body cannot pass (sheets/builds.json standin_wall_reach)",
+   "verified": false
+  },
+  {
+   "id": "standin_bones_read",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "a stand-in's pose: only the bones the Skyrim body is posed from are read each pose - the mordhau_bone and dir_mordhau_bone of every row of sheets/bone_map.json and every bone above them up to the root (found once with GetParentBone); the rest stay zero (not streamed: the plugin takes their rest pose); fingers as before every 45th pose. The player's own pose is read in full as before",
+   "used_for": "fewer calls into MORDHAU per pose (measured 2026-10-17: 25 of the 28 body bones - I had guessed about 80; it saves next to nothing, the pose rate's cost lies elsewhere): a higher pose rate with many stand-ins. Only for Skyrim bodies (sheets/builds.json skyrim_bodies 1); MORDHAU-drawn stand-ins would need the rest",
+   "source": "play-test note, 2026-10-17 (item 5, first part: read only the bones the Skyrim body uses)",
+   "verified": false
   }
  ]
 }

@@ -13,7 +13,7 @@ namespace mbake
 	{
 		const char* const kSingleton = "Mordhau/Blueprints/BP_MordhauSingleton";
 		const char* const kBody = "UMA/UMA/Master/UMA_Master";
-		// MORDHAU's slot order in a profile's wearable list (the last three: inferred, see tools/character_spec.py)
+		// MORDHAU's slot order in a profile's wearable list (the last three: inferred from the profiles)
 		const char* const kOrder[9]{ "Head", "Coif", "UpperChest", "LowerChest", "Shoulders", "Arms", "Hands", "Legs", "Feet" };
 
 		std::int32_t Int(const std::vector<char>& a_bytes, std::size_t a_at)

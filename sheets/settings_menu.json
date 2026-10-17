@@ -1,5 +1,5 @@
 {
- "_about": "DRAFT for the user's review, nothing built yet. The in-game settings menu (SkyUI MCM through MCM Helper; a hidden quest in MordhauWeapons.esp, its one-line script compiled with the Creation Kit). MCM Helper finds the menu by the plugin's name: the pages are Data/MCM/Config/MordhauWeapons/config.json with the defaults in settings.ini beside it (tools/make_mcm.py makes both from this sheet), and the player's choices are kept in Data/MCM/Settings/MordhauWeapons.ini; the plugin reads them when the menu closes and at each load, and each one replaces the sheet value named in 'acts_on' (the sheet value stays the default). The user, 2026-10-15: 'make a configuration menu using mcm, it needs to adjust damage, armor, what mordhau sounds people want, the characters voice, and any others you would deem fitting'. 'new' = the setting does not exist in the mod yet and has to be added; 'to find out' = how it can be done is not known yet.",
+ "_about": "DRAFT for the play-tester's review, nothing built yet. The in-game settings menu (SkyUI MCM through MCM Helper; a hidden quest in MordhauWeapons.esp, its one-line script compiled with the Creation Kit). MCM Helper finds the menu by the plugin's name: the pages are Data/MCM/Config/MordhauWeapons/config.json with the defaults in settings.ini beside it (tools/make_mcm.py makes both from this sheet), and the player's choices are kept in Data/MCM/Settings/MordhauWeapons.ini; the plugin reads them when the menu closes and at each load, and each one replaces the sheet value named in 'acts_on' (the sheet value stays the default). play-test note, 2026-10-15. 'new' = the setting does not exist in the mod yet and has to be added; = how it can be done is not known yet.",
  "pages": [
   {
    "page": "Combat",
@@ -109,7 +109,7 @@
       "Duelist"
      ],
      "default": 2,
-     "acts_on": "the F8 menu's enemy skill level (CombatStandIns SetAiLevel, cache/ai_level.txt): changed here, it is taken; the last one changed, F8 or this, counts. The user, 2026-10-15: 'also add the f8 menu to the mcm menu'.",
+     "acts_on": "the F8 menu's enemy skill level (CombatStandIns SetAiLevel, cache/ai_level.txt): changed here, it is taken; the last one changed, F8 or this, counts. play-test note, 2026-10-15.",
      "help": "How well enemies of your own level fight: parrying, feinting, how soon they attack. The same choice as the F8 menu in game."
     },
     {
@@ -119,6 +119,28 @@
      "default": 1,
      "acts_on": "sheets/enemy_ai.json level_skill: on = from the chosen level at equal levels to Duelist at 19 above and Peasant at 19 below, blended between the five levels; off = the chosen level for everyone. Named enemies one level up either way.",
      "help": "On: enemies 19 or more levels above you fight like duelists, 19 or more below like peasants, at your own level as chosen above, smoothly in between. Off: everyone fights at the level chosen above. Named enemies are one level better either way."
+    },
+    {
+     "id": "standin_radius_m",
+     "label": "MORDHAU fighters within (metres)",
+     "type": "slider",
+     "min": 5,
+     "max": 20,
+     "step": 1,
+     "default": 10,
+     "acts_on": "builds.json standin_radius_m. play-test note, 2026-10-16",
+     "help": "Everyone fighting within this distance of you fights by MORDHAU's rules (up to the number below), allies included. Larger makes more of a battle MORDHAU's but costs both games speed."
+    },
+    {
+     "id": "standin_limit",
+     "label": "MORDHAU fighters at once",
+     "type": "slider",
+     "min": 1,
+     "max": 24,
+     "step": 1,
+     "default": 12,
+     "acts_on": "builds.json standin_limit (the plugin takes the nearest that many; MORDHAU's script writes only the places in use). play-test note, 2026-10-16",
+     "help": "How many of the people around you fight by MORDHAU's rules at the same time, nearest first. More makes big battles feel more like MORDHAU but costs both games speed; if characters start to move in jerks, lower it."
     }
    ]
   },
@@ -172,7 +194,7 @@
       "Only Skyrim"
      ],
      "default": 0,
-     "acts_on": "new: picks MORDHAU's volume and Skyrim's weapon sounds at once (plugin SoundMix); 'Custom' takes the sliders. The user, 2026-10-15: 'make it very customizable, make it so you can have just pure skyrim sounds or just pure mordhau sounds, and anything inbetween'. 2026-10-15: 'Both in full' (then the default) taken out - the sliders did nothing until 'Custom' was chosen ('i have skyrim parries set to 0 but still hear them'); the sliders always count unless one of the two 'Only' styles is chosen.",
+     "acts_on": "new: picks MORDHAU's volume and Skyrim's weapon sounds at once (plugin SoundMix); 'Custom' takes the sliders. play-test note, 2026-10-15. 2026-10-15: 'Both in full' (then the default) taken out - the sliders did nothing until 'Custom' was chosen ; the sliders always count unless one of the two 'Only' styles is chosen.",
      "help": "Only MORDHAU: Skyrim's weapon sounds are silent. Only Skyrim: MORDHAU is silent (also its voices). Otherwise the sliders below count."
     },
     {
@@ -183,7 +205,7 @@
      "max": 100,
      "step": 5,
      "default": 100,
-     "acts_on": "MORDHAU's script (main.lua PS_apply_volume), sent as Volume<percent>: GameplayStatics SetSoundMixClassOverride on MORDHAU's GlobalMasterSoundClass through its GlobalMasterSoundMix, in the mod's session only - MORDHAU's saved sound settings are never touched. Tried in the D: test 2026-10-15 (20%: 'mordhau is quieter'). With a sound style other than Custom: the style's own (both / only MORDHAU: 100%, only Skyrim: 0) - plugin SoundMix::MordhauVolume.",
+     "acts_on": "MORDHAU's script (main.lua PS_apply_volume), sent as Volume<percent>: GameplayStatics SetSoundMixClassOverride on MORDHAU's GlobalMasterSoundClass through its GlobalMasterSoundMix, in the mod's session only - MORDHAU's saved sound settings are never touched. Tried in the D: test 2026-10-15 (20%). With a sound style other than Custom: the style's own (both / only MORDHAU: 100%, only Skyrim: 0) - plugin SoundMix::MordhauVolume.",
      "help": "How loud MORDHAU is: its swings, clashes, hits and voices."
     },
     {
@@ -266,7 +288,7 @@
       "Young"
      ],
      "default": 4,
-     "acts_on": "MORDHAU's script (main.lua PS_apply_voice; its list PS_VOICES must be voice_assets, in this order): the player's character's CharacterVoiceComponent.CharacterVoice = /Game/Mordhau/Blueprints/Voices/BP_<asset>. The names shown are MORDHAU's own (each voice's ItemName, read from the game 2026-10-15; '(female)' added where a female voice shares a male one's name). The user, 2026-10-15, on a first entry 'Your mercenary's own': removed - only MORDHAU's voices are listed, Eager first chosen (the default mercenary's voice). Sent with the others as VoiceSet<n>, as the list position + 1.",
+     "acts_on": "MORDHAU's script (main.lua PS_apply_voice; its list PS_VOICES must be voice_assets, in this order): the player's character's CharacterVoiceComponent.CharacterVoice = /Game/Mordhau/Blueprints/Voices/BP_<asset>. The names shown are MORDHAU's own (each voice's ItemName, read from the game 2026-10-15; '(female)' added where a female voice shares a male one's name). play-test note, 2026-10-15, on a first entry 'Your mercenary's own': removed - only MORDHAU's voices are listed, Eager first chosen (the default mercenary's voice). Sent with the others as VoiceSet<n>, as the list position + 1.",
      "help": "Your character's MORDHAU voice, by MORDHAU's own names.",
      "voice_assets": [
       "Barbarian",
@@ -321,7 +343,7 @@
       "Hold, like MORDHAU"
      ],
      "default": 0,
-     "acts_on": "the input handler (CombatInternal.h, sneak): Toggle = Skyrim's sneak untouched; Hold = held to crouch, let go to stand (live_input.json crouch_hold). MORDHAU's character follows Skyrim's sneaking either way. 2026-10-16: a streamer hammered Ctrl - with hold every tap crouched and stood up at once ('he cant crouch').",
+     "acts_on": "the input handler (CombatInternal.h, sneak): Toggle = Skyrim's sneak untouched; Hold = held to crouch, let go to stand (live_input.json crouch_hold). MORDHAU's character follows Skyrim's sneaking either way. 2026-10-16: a streamer hammered Ctrl - with hold every tap crouched and stood up at once .",
      "help": "Toggle: tap your Sneak key to crouch and tap again to stand, as in Skyrim. Hold: crouched while the key is held, as in MORDHAU."
     },
     {

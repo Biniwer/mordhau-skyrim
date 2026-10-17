@@ -7,7 +7,7 @@ namespace dm
 	class Stats
 	{
 	public:
-		// Loads "<family>.<strike|stab>.<Property>=<value>" lines (tools/bake_stats.py for now).
+		// Loads "<family>.<strike|stab>.<Property>=<value>" lines (written at the first start).
 		void Load(const std::filesystem::path& a_file);
 
 		// a_statId is a row id of sheets/attack_stats.json, e.g. "windup". Negative = no value anywhere.

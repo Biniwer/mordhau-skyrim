@@ -173,51 +173,6 @@ namespace dm::Combat
 
 		// Who can have a MORDHAU stand-in: people, and (sheets/builds.json undead_fight) draugr and skeletons - they
 		// stand on Skyrim's human skeleton and swing weapons. Never animals, giants, dragons.
-		// (sheets/creature_fighters.json: by pieces of the race's name; looked up once per race)
-		static const sheets::CreatureFighterRow* RowFor(RE::Actor* a_actor);
-
-		const sheets::CreatureFighterRow* FighterFor(RE::Actor* a_actor)
-		{
-			const auto* row = RowFor(a_actor);
-			return row && row->demon[0] ? row : nullptr;
-		}
-
-		bool SkyrimsAlone(RE::Actor* a_actor)
-		{
-			const auto* row = RowFor(a_actor);
-			return row && !row->demon[0];
-		}
-
-		static const sheets::CreatureFighterRow* RowFor(RE::Actor* a_actor)
-		{
-			const auto* race = a_actor ? a_actor->GetRace() : nullptr;
-			if (!race || BuildValue("creature_fighters") < 0.5f || a_actor->HasKeywordString("ActorTypeNPC")) {
-				return nullptr;
-			}
-			static std::unordered_map<std::uint32_t, const sheets::CreatureFighterRow*> known;
-			if (const auto it = known.find(race->GetFormID()); it != known.end()) {
-				return it->second;
-			}
-			const char* id = race->GetFormEditorID();
-			std::string name = id && id[0] ? id : (race->GetName() ? race->GetName() : "");
-			std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-			const sheets::CreatureFighterRow* found = nullptr;
-			for (const auto& row : sheets::kCreatureFighters) {
-				std::stringstream parts(row.raceContains);
-				for (std::string part; !found && std::getline(parts, part, '|');) {
-					if (!part.empty() && name.find(part) != std::string::npos) {
-						found = &row;
-					}
-				}
-				if (found) {
-					break;
-				}
-			}
-			known[race->GetFormID()] = found;
-			logger::info("fought: creatures of the kind '{}' {}", name, found && found->demon[0] ? std::format("fight with the moves of MORDHAU's {}", found->demon) : found ? std::string("are Skyrim's alone (no MORDHAU stand-in)") : std::string("have no MORDHAU creature's moves"));
-			return found;
-		}
-
 		bool Humanoid(RE::Actor* a_actor)
 		{
 			if (a_actor->HasKeywordString("ActorTypeNPC")) {
@@ -265,7 +220,7 @@ namespace dm::Combat
 					return "drawing or putting away a weapon";
 				}
 			}
-			// magic and (while MORDHAU archery is off) bows are Skyrim's own: its body, arms and animations, untouched
+			// magic and bows are Skyrim's own: its body, arms and animations, untouched
 			if (const auto* right = a_player->GetEquippedObject(false)) {
 				const auto* weapon = right->As<RE::TESObjectWEAP>();
 				if (!weapon) {
@@ -274,7 +229,7 @@ namespace dm::Combat
 				if (weapon->IsStaff()) {
 					return "a staff in the hand (magic is Skyrim's own)";
 				}
-				if ((weapon->IsBow() || weapon->IsCrossbow()) && BuildValue("mordhau_archery") < 0.5f) {
+				if (weapon->IsBow() || weapon->IsCrossbow()) {
 					return "a bow in the hand (archery is Skyrim's own)";
 				}
 			}
@@ -445,7 +400,6 @@ namespace dm::Combat
 		}
 		if (g_dev.character && !g_dev.cache.empty()) {
 			Link::SetCache(g_dev.cache);
-			CharacterRender::SetPelvisAlign(BuildValue("pelvis_align") > 0.5f);
 			CharacterRender::Install(g_dev.cache, g_dev.charOffset, g_dev.charLight, CurrentPose);
 		}
 		if (g_hitSite) {
@@ -458,6 +412,12 @@ namespace dm::Combat
 			REL::Relocation<std::uintptr_t> hudVtbl{ RE::VTABLE_HUDMenu[0] };
 			HudMovieHook::func = hudVtbl.write_vfunc(0x5, HudMovieHook::thunk);  // IMenu::AdvanceMovie
 			logger::info("combat: HUD calls run on the HUD's own thread");
+		}
+		{
+			// (Skyrim's own movement step of a non-player character - measured first, sheets/builds.json hybrid_movement_hook)
+			REL::Relocation<std::uintptr_t> characterVtbl{ RE::VTABLE_Character[0] };
+			MovementDataHook::func = characterVtbl.write_vfunc(0x11A, MovementDataHook::thunk);
+			logger::info("combat: characters' movement step hooked (Actor::ModifyMovementData)");
 		}
 		REL::Relocation<std::uintptr_t> firstPersonVtbl{ RE::VTABLE_FirstPersonState[0] };
 		FirstPersonUpdateHook::func = firstPersonVtbl.write_vfunc(0x3, FirstPersonUpdateHook::thunk);

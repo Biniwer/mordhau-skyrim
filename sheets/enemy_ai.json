@@ -91,7 +91,7 @@
   }
  ],
  "level_skill": {
-  "_about": "The user, 2026-10-15: 'i want the range to be a level 1 player vs level 20 character has the hardest ai and viceversa'. Each stand-in's skill: the level chosen (F8 / settings menu 'Enemy skill at equal level') at equal levels; t = (its level - the player's) / 19, kept within -1..1; above: chosen + (5 - chosen) x t (19 levels above: Duelist whatever is chosen), below: chosen + (chosen - 1) x t (19 below: Peasant); + 1 for a named (unique) enemy; kept within 1..5 and sent in tenths (' gb:<id>,<10..50>'); the script blends the two nearest of the five skill_levels. First made as two levels either way: from Recruit a level 19 marauder against a level 1 player came to 3.9 ('he didnt seem much better at dueling'). Off in the settings menu ('Enemy skill follows the level gap'): the chosen level, + 1 for a named enemy. Replaces boss_skill.",
+  "_about": "play-test note, 2026-10-15. Each stand-in's skill: the level chosen (F8 / settings menu 'Enemy skill at equal level') at equal levels; t = (its level - the player's) / 19, kept within -1..1; above: chosen + (5 - chosen) x t (19 levels above: Duelist whatever is chosen), below: chosen + (chosen - 1) x t (19 below: Peasant); + 1 for a named (unique) enemy; kept within 1..5 and sent in tenths (' gb:<id>,<10..50>'); the script blends the two nearest of the five skill_levels. First made as two levels either way: from Recruit a level 19 marauder against a level 1 player came to 3.9 . Off in the settings menu ('Enemy skill follows the level gap'): the chosen level, + 1 for a named enemy. Replaces boss_skill.",
   "levels_for_two_steps": 19,
   "unique_steps": 1,
   "replaced": {

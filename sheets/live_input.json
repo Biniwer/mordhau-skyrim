@@ -22,7 +22,7 @@
    "device": 1,
    "code": 2,
    "request": "CastLeft",
-   "mordhau_default": "middle mouse (not a MORDHAU key): casts the spell in Skyrim's left hand, by Skyrim's own casting (its charge, magicka, perks and effects), while a one-handed weapon in the right hand fights as MORDHAU's. The right button stays MORDHAU's parry. Without a spell in the left hand the button does nothing. (2026-10-14, the user: 'use middle mouse to cast remove kick from middle mouse' - the kick stays on F.)",
+   "mordhau_default": "middle mouse (not a MORDHAU key): casts the spell in Skyrim's left hand, by Skyrim's own casting (its charge, magicka, perks and effects), while a one-handed weapon in the right hand fights as MORDHAU's. The right button stays MORDHAU's parry. Without a spell in the left hand the button does nothing. (2026-10-14, play-testing: the kick stays on F.)",
    "verified": false
   },
   {
@@ -30,7 +30,7 @@
    "device": 1,
    "code": 3,
    "request": "Feint",
-   "mordhau_default": "Q (taken by Skyrim's favourites; thumb button here) Only while an attack of the player's is winding up; at any other time the key is Skyrim's own (Q: the favourites / quick menu) - the user, 2026-10-09.",
+   "mordhau_default": "Q (taken by Skyrim's favourites; thumb button here) Only while an attack of the player's is winding up; at any other time the key is Skyrim's own (Q: the favourites / quick menu) - play-test note, 2026-10-09.",
    "verified": false
   },
   {
@@ -38,7 +38,7 @@
    "device": 0,
    "code": 16,
    "request": "Feint",
-   "mordhau_default": "Q, as in MORDHAU (Skyrim's favourites menu does not open on Q while a melee weapon is drawn in this mode) Only while an attack of the player's is winding up; at any other time the key is Skyrim's own (Q: the favourites / quick menu) - the user, 2026-10-09.",
+   "mordhau_default": "Q, as in MORDHAU (Skyrim's favourites menu does not open on Q while a melee weapon is drawn in this mode) Only while an attack of the player's is winding up; at any other time the key is Skyrim's own (Q: the favourites / quick menu) - play-test note, 2026-10-09.",
    "verified": false
   },
   {

@@ -25,56 +25,17 @@ put(os.path.join(ROOT, 'build', 'dist', 'DirectionalMelee.asi'), os.path.join(PL
 put(os.path.join(ROOT, 'installer', 'modmanager', 'MordhauSkyrim.ini'), os.path.join(PLUGINS, 'MordhauSkyrim.ini'))
 put(os.path.join(SKYRIM, 'Data', 'MordhauWeapons.esp'), 'MordhauWeapons.esp')
 put(os.path.join(ROOT, 'mordhau_side', 'PoseStream', 'Scripts', 'main.lua'), os.path.join(SIDE, 'mordhau', 'Mods', 'PoseStream', 'Scripts', 'main.lua'))
+# (its native helper: reads a stand-in's bones in one call - mordhau_side/bones; only ever loaded by main.lua, from the mod's
+# cache folder where the plugin copies it each session - it is never put into MORDHAU's folder)
+put(os.path.join(ROOT, 'build', 'dist', 'MordhauBones.dll'), os.path.join(SIDE, 'MordhauBones.dll'))
 put(os.path.join(ROOT, 'installer', 'modmanager', 'README.md'), os.path.join(SIDE, 'README.md'))
 # the settings menu (sheets/settings_menu.json): the quest's script, compiled with the Creation Kit (papyrus/), and MCM
 # Helper's pages and defaults (tools/make_mcm.py); MCM Helper finds them by the plugin's name, MordhauWeapons
 put(os.path.join(ROOT, 'build', 'papyrus', 'MordhauSkyrimMCM.pex'), os.path.join('Scripts', 'MordhauSkyrimMCM.pex'))
 for name in ('config.json', 'settings.ini'):
     put(os.path.join(ROOT, 'build', 'mcm', 'MCM', 'Config', 'MordhauWeapons', name), os.path.join('MCM', 'Config', 'MordhauWeapons', name))
-# the play guide: HOW-TO-PLAY.md with the parts about the launcher script replaced (so the two never drift apart)
+# the play guide, as it is
 guide = open(os.path.join(ROOT, 'HOW-TO-PLAY.md'), encoding='utf-8').read()
-def swap(text, start, end, new):
-    a = text.index(start)
-    b = text.index(end, a) if end else len(text)
-    return text[:a] + new + text[b:]
-guide = swap(guide, '> **MORDHAU is run OFFLINE only**', '## Start', r"""> **MORDHAU is run OFFLINE only** - a local match on your PC, in a window behind Skyrim, started and closed by the
-> mod. This does not touch MORDHAU's anti-cheat and must never be used for online play.
-
-> **Before you play MORDHAU online again after a crash:** look into MORDHAU's `Mordhau\Binaries\Win64` folder and
-> delete `dwmapi.dll` if it is there. See the README.
-
-""")
-guide = swap(guide, '## Start', '## Controls', r"""## Start
-
-Start Skyrim the way you always do with mods (through SKSE, from your mod manager).
-
-1. MORDHAU opens by itself in a window; Skyrim keeps the keyboard. It needs one to four minutes to open its local
-   match and spawn your mercenary. Until then Skyrim plays as usual.
-2. **The very first start** prepares MORDHAU's models from your own MORDHAU first, once Skyrim's main menu is up (about
-   2 GB, under a minute on a fast disk). MORDHAU starts after that.
-3. In Skyrim: load a save (use a new one or one you do not mind losing). When *MORDHAU is live* appears at the top
-   left, **draw a melee weapon**.
-4. Keep MORDHAU's window open behind Skyrim. Do not minimise it and do not play in it. It closes with Skyrim.
-
-Your MORDHAU mercenary is the one whose arms you see in first person. In third person you see your Skyrim character,
-moving as MORDHAU moves.
-
-""")
-guide = swap(guide, "- **MORDHAU's character never appears / attacks do nothing:**", '- **Logs to send', r"""- **MORDHAU's character never appears / attacks do nothing:** look at MORDHAU's own window - if it shows a menu, join
-  the match and spawn by hand once. If there is no MORDHAU window at all, look into `MordhauSkyrim.log` (Documents\My Games\Skyrim Special Edition\SKSE).
-- **Everything is back to normal Skyrim combat in the middle of a session:** MORDHAU closed. The mod starts it again
-  by itself within a minute.
-""")
-guide = swap(guide, '- **To get rid of it:**', '## Settings', "- **To get rid of it:** see *Remove* in the README.\n\n")
-guide = swap(guide, '## Settings', None, r"""## Settings
-
-In game (with SkyUI and MCM Helper): Esc -> System -> Mod Configuration -> **MORDHAU x Skyrim** - combat, sound mix,
-your character's voice, crouch toggle or hold, enemy skill, and whether MORDHAU starts with Skyrim.
-
-`MordhauSkyrim.ini` beside the plugin (`Data\SKSE\Plugins`): MORDHAU somewhere Steam does not know, easier enemies
-(`SimpleEnemies=1`), the size of MORDHAU's window, or the mod switched off (`StartMordhau=0`). Which mercenary: put its
-name alone in a file `player.txt` in the cache folder (`%LOCALAPPDATA%\MordhauSkyrim\cache`).
-""")
 assert 'Play-Mashup' not in guide and '.ps1' not in guide, 'the guide still names a script'
 os.makedirs(os.path.join(OUT, SIDE), exist_ok=True)
 open(os.path.join(OUT, SIDE, 'HOW-TO-PLAY.md'), 'w', encoding='utf-8', newline='\n').write(guide)

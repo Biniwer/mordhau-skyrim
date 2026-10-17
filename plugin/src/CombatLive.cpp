@@ -41,7 +41,7 @@ namespace dm::Combat
 			const float     back = base * g_stats.Move("backpedal_factor");
 			const float     sprint = base * g_stats.Move("sprint_factor");
 			// MORDHAU's data has no separate walk speed; its walk clips do: the speed they are authored for, as measured
-			// by tools/bake_locomotion.py (line "lower;WalkFwd;..." of the cache's locomotion.txt)
+			// at the first start (line "lower;WalkFwd;..." of the cache's locomotion.txt)
 			float walk = 0.0f;
 			{
 				std::ifstream in(g_dev.cache / "locomotion.txt");
@@ -445,14 +445,14 @@ namespace dm::Combat
 				auto* pauseUi = RE::UI::GetSingleton();
 				Link::SetPaused(pauseUi && pauseUi->GameIsPaused());
 			}
-			Link::SetHybrid(BuildValue("hybrid_movement") > 0.5f && !g_dev.hybridOff && !a_player->IsDead() && !(RE::UI::GetSingleton() && RE::UI::GetSingleton()->GameIsPaused()), BuildValue("hybrid_engage_cm"), BuildValue("hybrid_snap_cm"), BuildValue("hybrid_hold_seconds"));
+			Link::SetInterpolation(BuildValue("standin_interp_seconds"));  // (stand-ins shown a little in the past, blended)
+			Link::SetHybrid(BuildValue("hybrid_movement") > 0.5f && !g_dev.hybridOff && !a_player->IsDead() && !(RE::UI::GetSingleton() && RE::UI::GetSingleton()->GameIsPaused()), BuildValue("hybrid_engage_cm"));
 			CharacterRender::SetThirdWeaponMordhau(BuildValue("third_person_weapon_mordhau") > 0.5f);
 			CharacterRender::SetStandinWeaponMordhau(BuildValue("standin_weapon_as_mordhau") > 0.5f);
 			CharacterRender::SetSkyrimShieldLook(BuildValue("skyrim_shield_look") > 0.5f);
 			CharacterRender::SetMordhauBars(BuildValue("mordhau_bars") > 0.5f);
 			InventoryModels::SetEnabled(BuildValue("inventory_mordhau_models") > 0.5f);
 			CharacterRender::SetArms(BuildValue("arms_to_mordhau_hands") > 0.5f, BuildValue("arms_stretch_max"), BuildValue("skyrim_weapon_grip_in_fist") > 0.5f, BuildValue("skyrim_weapon_half_turn") > 0.5f, BuildValue("alt_grip_hands_on_blade") > 0.5f);
-			CharacterRender::SetPauldronsFollow(BuildValue("pauldrons_follow") > 0.5f && !g_dev.pauldronsOff);
 		}
 		}
 
@@ -547,8 +547,6 @@ namespace dm::Combat
 					auto* who = ghost.id ? RE::TESForm::LookupByID<RE::Actor>(ghost.id) : nullptr;
 					if (const char* theirs = who ? Items::MordhauWeaponOf(who->GetEquippedObject(false)) : nullptr) {
 						mordhauHeld[ghost.id] = modelOf(theirs);
-					} else if (const auto* fighter = who ? FighterFor(who) : nullptr; fighter && fighter->weapon[0] && std::string_view(fighter->weapon) != "own") {
-						mordhauHeld[ghost.id] = modelOf(fighter->weapon);  // (sheets/creature_fighters.json weapon: drawn in place of its own)
 					}
 				}
 				CharacterRender::SetMordhauHeld(mordhauHeld);
@@ -621,28 +619,6 @@ namespace dm::Combat
 		}
 		}
 
-		// MORDHAU's own draw animation as Skyrim begins to draw or put away.
-		void PlayMordhauDrawClip(RE::PlayerCharacter* a_player, const Link::State& link)
-		{
-		{
-			// MORDHAU's own draw animation as Skyrim begins to draw or put away (sheets/builds.json mordhau_draw_clips)
-			static auto lastState = RE::WEAPON_STATE::kSheathed;
-			const auto  weaponState = a_player->AsActorState()->GetWeaponState();
-			if (weaponState != lastState) {
-				const auto* right = a_player->GetEquippedObject(false);
-				const auto* weapon = right ? right->As<RE::TESObjectWEAP>() : nullptr;
-				const int   kind = !weapon || weapon->IsBow() || weapon->IsCrossbow() || weapon->IsStaff() ? 0 : (weapon->IsTwoHandedSword() || weapon->IsTwoHandedAxe()) ? 2 : 1;
-				const bool  out = (weaponState == RE::WEAPON_STATE::kWantToDraw || weaponState == RE::WEAPON_STATE::kDrawing) && lastState == RE::WEAPON_STATE::kSheathed;
-				const bool  away = (weaponState == RE::WEAPON_STATE::kWantToSheathe || weaponState == RE::WEAPON_STATE::kSheathing) && lastState == RE::WEAPON_STATE::kDrawn;
-				if (kind != 0 && (out || away) && link.live && BuildValue("mordhau_draw_clips") > 0.5f) {
-					CharacterRender::PlayDraw(out ? kind : -kind);
-					logger::info("draw: MORDHAU's {} animation {} ({})", kind == 2 ? "from-the-back" : "from-the-hip", out ? "played" : "played backwards", weapon->GetName());
-				}
-				lastState = weaponState;
-			}
-		}
-		}
-
 		// Weapon out or put away: MORDHAU's character does the same.
 		void SyncWeaponDrawn(RE::PlayerCharacter* a_player, const Link::State& link)
 		{
@@ -658,10 +634,10 @@ namespace dm::Combat
 				was = now;
 			}
 			// (Skyrim drawing or putting away: MORDHAU's character is asked at once, so its own draw or holster plays while
-			// Skyrim's animation is the one shown. Asked afterwards, it played on its own once Skyrim's was over - seen in
-			// play: "the weapon disappears, then hands go down, hands up, hands down".)
+			// Skyrim's animation is the one shown. Asked afterwards, it played on its own once Skyrim's was over: the
+			// weapon vanished and the hands went down and up twice.)
 			// (bare fists - or a spell - in Skyrim's right hand: MORDHAU's character has no weapon to bring out. Asked anyway,
-			// every 2.5 s, its slot-1 switch ticked in MORDHAU all the time - "a menu ticking sound is coming from mordhau")
+			// every 2.5 s, its slot-1 switch ticked in MORDHAU all the time, a menu sound over and over)
 			{
 				const auto* right = a_player->GetEquippedObject(false);
 				const auto* weapon = right ? right->As<RE::TESObjectWEAP>() : nullptr;
@@ -672,7 +648,7 @@ namespace dm::Combat
 			const auto weaponState = a_player->AsActorState()->GetWeaponState();
 			const bool skyrimDraws = weaponState == RE::WEAPON_STATE::kWantToDraw || weaponState == RE::WEAPON_STATE::kDrawing;
 			const bool skyrimSheathes = weaponState == RE::WEAPON_STATE::kWantToSheathe || weaponState == RE::WEAPON_STATE::kSheathing;
-			if ((skyrimDraws || skyrimSheathes) && skyrimDraws != link.hasWeapon && link.weaponState != 2 && !RangedWish(a_player)) {
+			if ((skyrimDraws || skyrimSheathes) && skyrimDraws != link.hasWeapon && link.weaponState != 2) {
 				static bool askedFor = false;
 				static Clock::time_point askedAt{};
 				if (askedFor != skyrimDraws || Seconds(askedAt) > 2.5f) {
@@ -696,7 +672,7 @@ namespace dm::Combat
 			differs = differsNow;
 			// (only a difference that lasts: MORDHAU lets go of the weapon for a moment when its mode is switched,
 			// and an instant "Draw" then played a holster-and-draw on every R)
-			if (differsNow && Seconds(differsSince) > 1.2f && !RangedWish(a_player) && Seconds(lastAsk) > 2.5f) {
+			if (differsNow && Seconds(differsSince) > 1.2f && Seconds(lastAsk) > 2.5f) {
 				lastAsk = Clock::now();
 				Link::Request(drawn ? "Draw" : "Sheathe");
 			}
@@ -812,15 +788,14 @@ namespace dm::Combat
 					RE::UIMessageQueue::GetSingleton()->AddMessage(RE::TutorialMenu::MENU_NAME, RE::UI_MESSAGE_TYPE::kHide, nullptr);
 				}
 				// test scenes only: the test character does not defend itself, so it is kept alive
-				// (not in the duel scene: there the user plays, and can die)
+				// (not in the duel scene: there a person plays, and can die)
 				auto* av = a_player->AsActorValueOwner();
 				if (!g_dev.duel && av->GetActorValue(RE::ActorValue::kHealth) < av->GetPermanentActorValue(RE::ActorValue::kHealth) * 0.85f) {
 					av->RestoreActorValue(RE::ActorValue::kHealth, 1000.0f);
 				}
 			}
 			TrackMordhauShots(a_player);
-			FlyArrowsAndThrownWeapons(a_player);
-			DevBowTest(a_player);
+			FlyThrownWeapons(a_player);
 			DevPushTest(a_player);
 			if (g_dev.autotest != 0) {
 				static std::unordered_set<std::uint32_t> listed;
@@ -955,7 +930,7 @@ namespace dm::Combat
 			CalmBodies();
 			ThrowHeads();
 			CharacterRender::SetUnsheatheWait(BuildValue("unsheathe_wait"));
-			CharacterRender::UpdateBlessings(a_player);
+			CharacterRender::SetDrawSmoothing(BuildValue("standin_draw_smooth"), BuildValue("standin_draw_smooth_most"), g_dev.measure);
 			{
 				// the left hand casting (the cast key): its arm in Skyrim's own casting animation until a moment after the cast
 				static Clock::time_point castSeen{};
@@ -970,6 +945,7 @@ namespace dm::Combat
 				}
 				told = told || skyrims;
 				CharacterRender::SetLeftCasting(skyrims);
+				CharacterRender::SetCastArm(BuildValue("cast_arm_skyrim") > 0.5f, BuildValue("cast_arm_linger"));
 			}
 			CharacterRender::SetSkyrimBodies(g_dev.skyrimBodies >= 0 ? g_dev.skyrimBodies == 1 : BuildValue("skyrim_bodies") > 0.5f);
 			SendWalls(a_player, link);
@@ -1065,7 +1041,6 @@ namespace dm::Combat
 				Link::SetDown(false, {});
 			}
 			Link::Flush();
-			PlayMordhauDrawClip(a_player, link);
 
 			// weapon out or put away: MORDHAU's character does the same, with its own draw and holster animations
 			SyncWeaponDrawn(a_player, link);
@@ -1138,54 +1113,6 @@ namespace dm::Combat
 					SoundMix::PlaySkyrimSwing(a_player, motion.find("Kick") != motion.npos);
 				}
 			}
-			// Skyrim's world stops the blade as MORDHAU's own walls would: the outer part of the blade, and the path its
-			// tip took since the last frame, against walls, rocks, ground and trees
-			{
-				static Clock::time_point releaseBegan{};
-				static bool              wallDone = false;
-				if (lastStage != 1) {
-					releaseBegan = Clock::now();
-					wallDone = false;
-				}
-				auto* cell = a_player->GetParentCell();
-				auto* world = cell ? cell->GetbhkWorld() : nullptr;
-				if (!wallDone && !hitDone && world && Seconds(releaseBegan) > BuildValue("wall_hit_after")) {
-					const float scale = RE::bhkWorld::GetWorldScale();
-					int         struckLayer = -1;
-					const auto  struck = [&](const RE::NiPoint3& a_from, const RE::NiPoint3& a_to) {
-						RE::bhkPickData pick;
-						pick.rayInput.from = RE::hkVector4(a_from.x * scale, a_from.y * scale, a_from.z * scale, 0.0f);
-						pick.rayInput.to = RE::hkVector4(a_to.x * scale, a_to.y * scale, a_to.z * scale, 0.0f);
-						RE::CFilter filter;
-						a_player->GetCollisionFilterInfo(filter);
-						filter.SetCollisionLayer(RE::COL_LAYER::kLOS);
-						pick.rayInput.filterInfo = filter;
-						{
-							RE::BSReadLockGuard lock(world->worldLock);
-							world->PickObject(pick);
-						}
-						if (!pick.rayOutput.HasHit() || !pick.rayOutput.rootCollidable) {
-							return false;
-						}
-						const auto layer = pick.rayOutput.rootCollidable->GetCollisionLayer();
-						// (bodies - MORDHAU judges those - and things that are not solid do not stop a blade)
-						for (const auto soft : { RE::COL_LAYER::kBiped, RE::COL_LAYER::kCharController, RE::COL_LAYER::kDeadBip, RE::COL_LAYER::kBipedNoCC, RE::COL_LAYER::kProjectile,
-								 RE::COL_LAYER::kSpell, RE::COL_LAYER::kTrigger, RE::COL_LAYER::kNonCollidable, RE::COL_LAYER::kWeapon, RE::COL_LAYER::kClutter, RE::COL_LAYER::kActorZone }) {
-							if (layer == soft) {
-								return false;
-							}
-						}
-						struckLayer = static_cast<int>(layer);
-						return true;
-					};
-					const RE::NiPoint3 outer = hand + (tip - hand) * BuildValue("wall_blade_from");
-					if (BuildValue("wall_cut") > 0.5f && (struck(outer, tip) || (prevTip && struck(*prevTip, tip)))) {
-						wallDone = true;
-						Link::Request("WorldHit");
-						logger::info("live: the blade struck Skyrim's world (collision layer {}): MORDHAU stops the attack ({})", struckLayer, link.motion);
-					}
-				}
-			}
 			lastStage = 1;
 			if (!hitDone) {
 				constexpr float kBodyRadius = 22.0f, kBladeRadius = 6.0f;
@@ -1199,7 +1126,7 @@ namespace dm::Combat
 				float              foundTall = 0.0f;
 				RE::ProcessLists::GetSingleton()->ForEachHighActor([&](RE::Actor* a_target) {
 					// (mirrored characters: MORDHAU itself decides - but the super kick throws them too: MORDHAU's kick does no damage,
-					// so it never reports one as a hit - "super kick doesnt work ... doesnt launch anyone", all kicks at a stand-in's bandit)
+					// so it never reports one as a hit, and the super kick threw nobody who had a stand-in)
 					const bool superKickOnFought = kick && BuildValue("super_kick") > 0.5f;
 					if (!a_target || a_target == a_player || a_target->IsDead() || !a_target->Is3DLoaded() || (IsFought(a_target) && !superKickOnFought) ||
 						g_creatureHitRelease[a_target->GetFormID()] == g_releaseNumber) {

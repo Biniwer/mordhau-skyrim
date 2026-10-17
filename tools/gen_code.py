@@ -117,25 +117,6 @@ out += [T + '};', '',
 for r in rows('shield_map'):
     out.append(f'{T}{T}{{ {s(r["name_contains"])}, {s(r["armour"])}, {s(r["mordhau_shield"])} }},')
 out += [T + '};', '',
-        T + "// Skyrim creatures that fight with a MORDHAU Demon Horde creature's moves (sheets/creature_fighters.json); first match wins.",
-        T + 'struct CreatureFighterRow { const char* raceContains; const char* demon; float headCm; const char* banned; const char* weapon; const char* skyrimBones; };',
-        T + 'inline constexpr CreatureFighterRow kCreatureFighters[] = {']
-for r in rows('creature_fighters'):
-    out.append(f'{T}{T}{{ {s(r["race_contains"])}, {s(r["demon"])}, {float(r["head_cm"])}f, {s(r["banned"])}, {s(r.get("weapon", ""))}, {s(r.get("skyrim_bones", ""))} }},')
-out += [T + '};', '',
-        T + "// Demon Horde's weapon blessings on enchanted weapons (sheets/blessings.json); first row whose resist matches wins.",
-        T + 'struct BlessingRow { const char* id; const char* resist; float glow[3]; float spark[3]; float smoke[3]; float trail[3]; };',
-        T + 'inline constexpr BlessingRow kBlessings[] = {']
-bless = json.load(open(os.path.join(root, 'sheets', 'blessings.json'), encoding='utf-8'))
-for r in bless['rows']:
-    cols = ', '.join('{ ' + ', '.join(f'{float(x)}f' for x in r[k]) + ' }' for k in ('glow', 'spark', 'smoke', 'trail'))
-    out.append(f'{T}{T}{{ {s(r["id"])}, {s(r["resist"])}, {cols} }},')
-out += [T + '};',
-        T + 'struct BlessingTexture { const char* id; const char* path; };',
-        T + 'inline constexpr BlessingTexture kBlessingTextures[] = {']
-for r in bless['textures']:
-    out.append(f'{T}{T}{{ {s(r["id"])}, {s(r["path"])} }},')
-out += [T + '};', '',
         T + "// Blunt MORDHAU weapons whose killing head hit takes the head off (sheets/gore.json); names separated by |.",
         T + 'inline constexpr const char* kGoreBlunt = ' + s(next(r for r in rows('gore') if r['id'] == 'head_explodes')['weapons']) + ';',
         T + 'inline constexpr int kGoreDummy[] = {', T + T + '0,']

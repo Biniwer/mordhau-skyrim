@@ -19,6 +19,30 @@ if os.path.exists(SESSION):
     age = (time.time() - os.path.getmtime(SESSION)) / 60
 
 
+import ctypes, ctypes.wintypes as W
+
+
+def loaded_modules(pid):
+    """Names of the modules a process has loaded (read only)."""
+    k32, psapi = ctypes.WinDLL('kernel32'), ctypes.WinDLL('psapi')
+    k32.OpenProcess.restype = W.HANDLE
+    h = k32.OpenProcess(0x0410, False, pid)   # (query information, read memory)
+    names = set()
+    if not h:
+        return names
+    try:
+        mods = (W.HMODULE * 1024)()
+        need = W.DWORD()
+        if psapi.EnumProcessModulesEx(h, mods, ctypes.sizeof(mods), ctypes.byref(need), 3):
+            for i in range(min(need.value // ctypes.sizeof(W.HMODULE), 1024)):
+                buf = ctypes.create_unicode_buffer(260)
+                if psapi.GetModuleBaseNameW(h, W.HMODULE(mods[i]), buf, 260):
+                    names.add(buf.value.lower())
+    finally:
+        k32.CloseHandle(h)
+    return names
+
+
 def clean():
     for name in ('dwmapi.dll', 'MordhauSkyrim-closed-MORDHAU.txt'):
         try:
@@ -44,12 +68,16 @@ for name, loader, extra, key, limit in cases:
         env['MORDHAU_SKYRIM_SESSION'] = key
     t0 = time.time()
     p = subprocess.Popen([EXE, '-windowed', '-ResX=1280', '-ResY=720'] + extra, cwd=BIN, env=env)
-    try:
-        code = p.wait(timeout=limit)
-        lived = f'ended by itself after {time.time() - t0:.1f} s'
-    except subprocess.TimeoutExpired:
+    # (which modules it really loads, looked at every half second while it runs: UE4SS.dll and the mod's MordhauBones.dll)
+    seen = set()
+    while p.poll() is None and time.time() - t0 < limit:
+        seen |= loaded_modules(p.pid)
+        time.sleep(0.5)
+    if p.poll() is None:
         p.kill()
         lived = f'STILL RUNNING after {limit} s (ended by the test)'
+    else:
+        lived = f'ended by itself after {time.time() - t0:.1f} s'
     time.sleep(2)
     host = os.path.exists(LOG) and os.path.getmtime(LOG) > stamp
     lines = []
@@ -58,7 +86,8 @@ for name, loader, extra, key, limit in cases:
         text = text[size:] if len(text) > size else text
         lines = [l.split('[PoseStream] ', 1)[1][:150] for l in text.splitlines() if '[PoseStream]' in l]
     frames = sum(1 for l in lines if l.startswith(('alive:', 'the player', 'stand-in', 'linked', 'pose')))
-    print(f'--- {name}: {lived}; script host loaded: {host}; lines from the mod\'s script: {len(lines)}, of them from a running session: {frames}')
+    print(f'--- {name}: {lived}; script host loaded: {host}; lines from the mod\'s script: {len(lines)}, of them from a running session: {frames}; modules loaded: UE4SS.dll {"YES" if "ue4ss.dll" in seen else "no"}, MordhauBones.dll {"YES" if "mordhaubones.dll" in seen else "no"} ({len(seen)} modules seen)')
+    print(f'    MordhauBones.dll in MORDHAU\'s folder: {os.path.exists(os.path.join(BIN, "Mods", "PoseStream", "Scripts", "MordhauBones.dll"))}')
     for l in lines[:3] + (['...'] if len(lines) > 6 else []) + lines[-3:] if len(lines) > 3 else lines:
         print('     ', l.encode('ascii', 'replace').decode())
 clean()

@@ -90,10 +90,9 @@ write('TrueDirectionalMovement.txt', NL.join([
     '',
 ]))
 ue = read(os.path.join(out, 'UE4SS.txt'))
-if 'jsbProfiler' not in ue:
+if 'Included unchanged:' not in ue:
     head, rest = ue.split(NL, 1)
-    write('UE4SS.txt', 'UE4SS (RE-UE4SS) by the UE4SS-RE team - included unchanged: UE4SS.dll, UE4SS-settings.ini and the Lua mods that ship with it' + NL +
-          '(Mods/ConsoleEnablerMod, Mods/Keybinds, Mods/shared/UEHelpers, Mods/shared/jsbProfiler, Mods/mods.txt).' + NL +
+    write('UE4SS.txt', 'UE4SS (RE-UE4SS) by the UE4SS-RE team - Included unchanged: UE4SS.dll. With this mod\'s settings: UE4SS-settings.ini and Mods/mods.txt.' + NL +
           'UE4SS_Signatures/GUObjectArray.lua and Mods/PoseStream are this mod\'s own (see MordhauSkyrim.txt); the loader dwmapi.dll is this mod\'s own too, not UE4SS\'s.' + NL + rest)
 old = os.path.join(out, 'Ultimate-ASI-Loader.txt')
 print('kept for the old launcher package only:', os.path.basename(old), os.path.exists(old))

@@ -48,3 +48,14 @@ target_compile_definitions(mordhau_bake_test PRIVATE NOMINMAX WIN32_LEAN_AND_MEA
 if(MSVC)
 	target_compile_options(mordhau_bake_test PRIVATE /W4 /permissive- /utf-8)
 endif()
+
+# MordhauBones.dll: the MORDHAU-side script's native helper (reads bone transforms; mordhau_side/bones). Built with the
+# plugin, copied next to it in build/dist; the release tools put it into the script's folder.
+add_library(MordhauBones SHARED ${CMAKE_CURRENT_SOURCE_DIR}/../mordhau_side/bones/MordhauBones.cpp)
+target_compile_definitions(MordhauBones PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+if(MSVC)
+	target_compile_options(MordhauBones PRIVATE /W4 /permissive- /utf-8)
+endif()
+add_custom_command(TARGET MordhauBones POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:MordhauBones>" "${CMAKE_BINARY_DIR}/dist/MordhauBones.dll"
+	VERBATIM)

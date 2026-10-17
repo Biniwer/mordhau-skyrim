@@ -12,7 +12,7 @@ namespace dm::SoundMix
 	namespace
 	{
 		// sound_style: 0 the sliders, 1 only MORDHAU, 2 only Skyrim (2026-10-15: "Both in full" taken out - set as default,
-		// it made the sliders do nothing until "Custom" was chosen: "i have skyrim parries set to 0 but still hear them")
+		// it made the sliders do nothing until "Custom" was chosen - a parry slider at 0 still played the sound)
 		int Style()
 		{
 			return static_cast<int>(Settings::Value("sound_style", 0.0f));

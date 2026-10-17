@@ -941,7 +941,7 @@ namespace mbake
 
 	Mesh ReadStaticMesh(const PakIndex& a_paks, std::string_view a_base)
 	{
-		// The buffers are found by their headers rather than by walking every field before them (see tools/staticmesh.py).
+		// The buffers are found by their headers rather than by walking every field before them (the fields before them vary from model to model).
 		const Package p(a_paks, a_base);
 		Mesh          m;
 		m.name = LeafName(a_base);
