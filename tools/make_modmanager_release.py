@@ -32,6 +32,22 @@ put(os.path.join(ROOT, 'installer', 'modmanager', 'README.md'), os.path.join(SID
 # the settings menu (sheets/settings_menu.json): the quest's script, compiled with the Creation Kit (papyrus/), and MCM
 # Helper's pages and defaults (tools/make_mcm.py); MCM Helper finds them by the plugin's name, MordhauWeapons
 put(os.path.join(ROOT, 'build', 'papyrus', 'MordhauSkyrimMCM.pex'), os.path.join('Scripts', 'MordhauSkyrimMCM.pex'))
+# (the Papyrus compiler writes the Windows user and computer name it ran under into the script's header: replaced in the
+# packaged copy. The header is magic, version, game, time, then three length-prefixed big-endian strings - source file,
+# user, computer - and everything after it is read in order, so the strings may change length.)
+def scrub_pex(path):
+    import struct
+    b = open(path, 'rb').read()
+    assert b[:4] == bytes.fromhex('fa57c0de'), 'not a compiled Papyrus script'
+    o = 16
+    parts = [b[:o]]
+    for k, new in enumerate((None, b'modder', b'build')):
+        n = struct.unpack('>H', b[o:o + 2])[0]
+        value = b[o + 2:o + 2 + n] if new is None else new
+        parts.append(struct.pack('>H', len(value)) + value)
+        o += 2 + n
+    open(path, 'wb').write(b''.join(parts) + b[o:])
+scrub_pex(os.path.join(OUT, 'Scripts', 'MordhauSkyrimMCM.pex'))
 for name in ('config.json', 'settings.ini'):
     put(os.path.join(ROOT, 'build', 'mcm', 'MCM', 'Config', 'MordhauWeapons', name), os.path.join('MCM', 'Config', 'MordhauWeapons', name))
 # the play guide, as it is
