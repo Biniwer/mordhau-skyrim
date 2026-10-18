@@ -2,7 +2,16 @@
 page's description editor in its code view. usage: make_bbcode.py"""
 import re
 
-src = open('release/description.md', encoding='utf-8').read().splitlines()
+raw = open('release/description.md', encoding='utf-8').read().splitlines()
+# (the Markdown is wrapped at 120 columns: a list item's or a paragraph's next lines are joined to it first - each of
+# them had become a list or a line of its own, 2026-10-18)
+src = []
+for line in raw:
+    starts_block = not line.strip() or line.startswith(('#', '- ', '|')) or re.match(r'\d+\. ', line)
+    if src and src[-1].strip() and not starts_block and not src[-1].startswith(('#', '|')):
+        src[-1] = src[-1].rstrip() + ' ' + line.strip()
+    else:
+        src.append(line)
 out, mode = [], None   # mode: None | 'ul' | 'ol' | 'table'
 
 def close():
