@@ -13,9 +13,10 @@ jobs:
     env:
       COMMONLIB_COMMIT: d61bca4de789428aa7d98a770b1323ddf1bb855c
       # UE4SS: the experimental build of 2026-10-14 (3.0.1 corrupts this MORDHAU's memory at startup, with every Lua mod
-      # off). Pinned by file and checksum: experimental-latest is replaced as new builds come out.
-      UE4SS_URL: https://github.com/UE4SS-RE/RE-UE4SS/releases/download/experimental-latest/UE4SS_v3.0.1-1176-g1ba38db4.zip
-      UE4SS_SHA256: e615ee7a2c24344ea5aeef85183d6cfd550f4f6352225976679f9fefffd0b9a5
+      # off). Kept in this fork's own release: upstream's experimental-latest replaced it on 2026-10-17 (1181, untested
+      # here). That zip holds only the files used below, from the last CI build with the original (UE4SS.dll unchanged).
+      UE4SS_URL: https://github.com/Biniwer/mordhau-skyrim/releases/download/ue4ss-v3.0.1-1176-g1ba38db4/UE4SS_v3.0.1-1176-g1ba38db4.zip
+      UE4SS_SHA256: a7260cf7c62752400478798d4c1fca24a63001b4e5ad2db16c3b7bedf5901ac0
       VCPKG_DEFAULT_BINARY_CACHE: ${{ github.workspace }}\vcpkg-cache
     steps:
       - uses: actions/checkout@v4
