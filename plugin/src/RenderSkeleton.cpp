@@ -754,9 +754,9 @@ namespace dm::CharacterRender
 							++d.frames, d.sumD += movedDrawn / dtDraw, d.sqD += (movedDrawn / dtDraw) * (movedDrawn / dtDraw), d.sumP += movedPhysics / dtDraw, d.sqP += (movedPhysics / dtDraw) * (movedPhysics / dtDraw);
 							d.stillDrawn += movedDrawn < 0.05f ? 1 : 0, d.stillPhysics += movedPhysics < 0.05f ? 1 : 0;
 							if (std::chrono::duration<float>(nowTime - d.since).count() > 1.0f && d.frames > 10) {
-								const float n = static_cast<float>(d.frames);
-								const float meanD = d.sumD / n, meanP = d.sumP / n;
-								const float spreadD = std::sqrt(std::max(d.sqD / n - meanD * meanD, 0.0f)), spreadP = std::sqrt(std::max(d.sqP / n - meanP * meanP, 0.0f));
+								const float frames = static_cast<float>(d.frames);
+								const float meanD = d.sumD / frames, meanP = d.sumP / frames;
+								const float spreadD = std::sqrt(std::max(d.sqD / frames - meanD * meanD, 0.0f)), spreadP = std::sqrt(std::max(d.sqP / frames - meanP * meanP, 0.0f));
 								if (meanP > 20.0f) {
 									logger::info("drawn: {} {} frames: physics speed {:.0f} spread {:.0f}% ({} frames still), drawn speed {:.0f} spread {:.0f}% ({} frames still)", actor->GetDisplayFullName(), d.frames, meanP,
 										100.0f * spreadP / meanP, d.stillPhysics, meanD, meanD > 1.0f ? 100.0f * spreadD / meanD : 0.0f, d.stillDrawn);

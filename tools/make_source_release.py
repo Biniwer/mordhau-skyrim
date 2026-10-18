@@ -30,7 +30,7 @@ BUILDING = NL.join([
     '',
     '1. Visual Studio 2022 with the C++ workload, CMake 3.21 or newer, vcpkg, Python 3.',
     '2. Put CommonLibSSE-NG into `plugin/extern/CommonLibSSE-NG`: https://github.com/alandtse/CommonLibSSE-NG , version 10.0.0 (commit d61bca4de789428aa7d98a770b1323ddf1bb855c).',
-    '3. `python tools/gen_code.py`',
+    '3. `python tools/gen_code.py`, then `python tools/offline_checks.py` (checks that need neither game: the sheets, the link sizes on both sides, no network calls; exit code 1 if one fails)',
     '4. Configure `plugin/` with CMake and the vcpkg toolchain (triplet `x64-windows-static-md`; the libraries are listed in `plugin/vcpkg.json`), then build the targets `DirectionalMelee` and `MordhauBones` in `RelWithDebInfo`. `DirectionalMelee.dll` is the file shipped as `MordhauSkyrim.dll`; `MordhauBones.dll` is shipped under its own name.',
     '5. `tools/build_loader.bat` builds `dwmapi.dll`.',
     '6. `python tools/make_modmanager_release.py` puts the package together. It takes UE4SS v3.0.1 (https://github.com/UE4SS-RE/RE-UE4SS) from `vendor/ue4ss`, and `MordhauWeapons.esp` as `tools/make_items_esp.py` makes it from your own `Skyrim.esm`.',
@@ -65,7 +65,7 @@ with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
                 p = os.path.join(d, f)
                 rel = os.path.relpath(p, root).replace(os.sep, '/')
                 data = open(p, 'rb').read()
-                if private.search(data) and rel != 'tools/make_source_release.py':   # (this file names the general words it looks for)
+                if private.search(data) and rel not in ('tools/make_source_release.py', 'tools/offline_checks.py'):   # (these name the general words they look for)
                     found.append(rel)
                 # (every file keeps its own name: adding .txt to scripts to get past Nexus's quarantine got the mod hidden
                 # for "disguising file types", 2026-10-15)

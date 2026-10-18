@@ -315,7 +315,7 @@ namespace dm::CharacterRender
 		}
 
 		// MORDHAU's model of the weapon in the player's hand.
-		void DrawHandWeaponModel(RE::PlayerCharacter* player, ID3D11DeviceContext* context, const bool skyrimBody, const XMMATRIX& viewProj, XMMATRIX& placement, const Link::State& link, PropModel*& handModel, XMMATRIX& handWeapon, D3D11_MAPPED_SUBRESOURCE& map, const UINT stride, const UINT offset, const auto& drawSections, const XMFLOAT4X4*& propPose, std::size_t& propPoseBones, const auto& fromLink, const auto& drawProp)
+		void DrawHandWeaponModel(RE::PlayerCharacter* player, ID3D11DeviceContext* context, const bool skyrimBody, const XMMATRIX& viewProj, XMMATRIX& placement, PropModel*& handModel, XMMATRIX& handWeapon, D3D11_MAPPED_SUBRESOURCE& map, const UINT stride, const UINT offset, const auto& drawSections)
 		{
 		if (handModel && !skyrimBody) {
 			const std::size_t              bones = handModel->look.bones.size();
@@ -1347,7 +1347,7 @@ namespace dm::CharacterRender
 			}
 			DrawSkyrimWeapon(player, root, device, context, viewProj, link, skyrimWeapon, skyWeaponWorld, map);
 			DrawPlayerShield(player, skyrimBody, placement, link, fromLink, drawProp);
-			DrawHandWeaponModel(player, context, skyrimBody, viewProj, placement, link, handModel, handWeapon, map, stride, offset, drawSections, propPose, propPoseBones, fromLink, drawProp);
+			DrawHandWeaponModel(player, context, skyrimBody, viewProj, placement, handModel, handWeapon, map, stride, offset, drawSections);
 
 			// MORDHAU's stand-ins, drawn where their Skyrim characters stand (whose own models are hidden meanwhile):
 			// the enemy you fight is the MORDHAU fighter whose attacks MORDHAU is actually resolving.

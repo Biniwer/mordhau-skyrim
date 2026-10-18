@@ -473,6 +473,20 @@ namespace dm::Session
 			return moved;
 		}
 
+		// Memory and handles of both games, logged every 10 minutes of a session: over hours of play they show whether
+		// either one keeps growing (a leak) or levels off.
+		void LogUse(HANDLE a_mordhau, float a_minutes)
+		{
+			const auto use = [](HANDLE a_process) {
+				PROCESS_MEMORY_COUNTERS_EX memory{};
+				DWORD                      handles = 0;
+				GetProcessMemoryInfo(a_process, reinterpret_cast<PROCESS_MEMORY_COUNTERS*>(&memory), sizeof(memory));
+				GetProcessHandleCount(a_process, &handles);
+				return std::format("{} MB private, {} handles", memory.PrivateUsage / (1024 * 1024), handles);
+			};
+			logger::info("session: use after {:.0f} min - Skyrim {}; MORDHAU {}", a_minutes, use(GetCurrentProcess()), use(a_mordhau));
+		}
+
 		void Run()
 		{
 			std::error_code ec;
@@ -541,7 +555,12 @@ namespace dm::Session
 				auto            lastData = Clock::now();
 				bool            unverified = false, stalled = false;
 				int         focus = 2;  // (its splash window and its game window, as they appear - later the player's own tabbing is not undone)
+				float       usedLogged = 0.0f;  // (minutes: LogUse)
 				while (WaitForSingleObject(mordhau, 200) == WAIT_TIMEOUT) {
+					if (live && Seconds(started) / 60.0f >= usedLogged + 10.0f) {
+						usedLogged += 10.0f;
+						LogUse(mordhau, usedLogged);
+					}
 					// The script's stop signal (sheets/live_link.json offline_stop): the session is no longer an offline
 					// one. The process is ended here, from outside, and it is waited for until it is really gone.
 					if (WIN32_FILE_ATTRIBUTE_DATA stop{}; GetFileAttributesExW((cache / "live_stop.txt").c_str(), GetFileExInfoStandard, &stop)) {
@@ -649,17 +668,15 @@ namespace dm::Session
 		}
 		g_payload = folder / "MordhauSkyrim" / "mordhau";
 		std::error_code ec;
-		char            launcher[8]{};
-		const bool      byLauncher = GetEnvironmentVariableA("MORDHAU_SKYRIM", launcher, sizeof(launcher)) > 0 && launcher[0] == '1';
 		if (!fs::exists(g_payload / "UE4SS.dll", ec) || !fs::exists(g_payload / kLoader, ec)) {
-			logger::info("session: MORDHAU's side is not beside the plugin ('{}'): the session is someone else's to run (the launcher)", g_payload.string());
+			logger::info("session: MORDHAU's side is not beside the plugin ('{}'): no session", g_payload.string());
 			return;
 		}
 		// (the settings menu's "Start MORDHAU with Skyrim" off - sheets/settings_menu.json start_mordhau: as StartMordhau=0, read
 		// once at Skyrim's start)
 		const bool menuOff = dm::Settings::Value("start_mordhau", 1.0f) < 0.5f;
-		if (byLauncher || !g_settings.startMordhau || menuOff) {
-			logger::info("session: not run by the plugin ({})", byLauncher ? "the launcher started this Skyrim" : menuOff ? "switched off in the settings menu" : "StartMordhau=0");
+		if (!g_settings.startMordhau || menuOff) {
+			logger::info("session: not run by the plugin ({})", menuOff ? "switched off in the settings menu" : "StartMordhau=0");
 			return;
 		}
 		std::thread(Run).detach();

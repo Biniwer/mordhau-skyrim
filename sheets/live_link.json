@@ -168,7 +168,7 @@
   {
    "id": "stand_ins",
    "direction": "both",
-   "carries": "up to 24 places (Link::kGhosts, the script's MAX_GHOSTS); how many are used is builds.json standin_limit (settings menu, default 12). The first three's states (28 bytes each) sit where they always did, the others follow the bow's pose; poses in slot order after the state block. The script writes only the places in use and blanks a place once when it is freed (all places on its first write), then the closing sequence number at the block's fixed end; it asks MORDHAU for as many bots as Skyrim sends stand-ins plus two spare",
+   "carries": "up to 24 places (Link::kGhosts, the script's MAX_GHOSTS); how many are used is builds.json standin_limit (settings menu, default 12). The first three's states (28 bytes each) sit where they always did, the others follow the player's weapon block; poses in slot order after the state block. The script writes only the places in use and blanks a place once when it is freed (all places on its first write), then the closing sequence number at the block's fixed end; it asks MORDHAU for as many bots as Skyrim sends stand-ins plus two spare",
    "used_for": "crowd fights and battles: more of the enemies around the player are MORDHAU fighters",
    "verified": false,
    "source": "play-test note, 2026-10-16. 128 = the fixed size of the shared blocks (Link::kGhosts, the script's MAX_GHOSTS); more than Skyrim keeps fully running around the player. 2026-10-16 ~14:08, after a battle with 128: MORDHAU wrote all 128 slots (~570 KB) every pose, its pose rate fell from ~200 to 83 a second and the characters looked like a slideshow; play-testing. Then the limit went into the settings menu with 24 places"
@@ -225,7 +225,7 @@
   {
    "id": "managed_session",
    "direction": "Skyrim -> MORDHAU",
-   "carries": "Installed by a mod manager (the plugin loaded by SKSE from Data/SKSE/Plugins, MORDHAU's side beside it in Data/SKSE/Plugins/MordhauSkyrim/mordhau): the plugin does what Play-Mashup.ps1 does. It finds MORDHAU through Steam (or MordhauPath in MordhauSkyrim.ini), puts UE4SS and the PoseStream script into MORDHAU's Binaries/Win64 (only missing or older files of its own; someone's own UE4SS is left alone), writes cache_dir.txt, live_options.lua and live_session.txt, copies the loader in as dwmapi.dll, starts MORDHAU windowed with SteamAppId 629760, takes the loader out as soon as MORDHAU has loaded it (or after 25 s), starts MORDHAU again when it closes, and ties MORDHAU to Skyrim's process (a job object: MORDHAU ends when Skyrim ends, however Skyrim ends). Order as with the launcher: MORDHAU at once when the cache exists, else after the plugin has built it. A MORDHAU that is already running is never touched.",
+   "carries": "Installed by a mod manager (the plugin loaded by SKSE from Data/SKSE/Plugins, MORDHAU's side beside it in Data/SKSE/Plugins/MordhauSkyrim/mordhau): the plugin runs the session. It finds MORDHAU through Steam (or MordhauPath in MordhauSkyrim.ini), puts UE4SS and the PoseStream script into MORDHAU's Binaries/Win64 (only missing or older files of its own; someone's own UE4SS is left alone), writes cache_dir.txt, live_options.lua and live_session.txt, copies the loader in as dwmapi.dll, starts MORDHAU windowed with SteamAppId 629760, takes the loader out as soon as MORDHAU has loaded it (or after 25 s), starts MORDHAU again when it closes, and ties MORDHAU to Skyrim's process (a job object: MORDHAU ends when Skyrim ends, however Skyrim ends). Order: MORDHAU at once when the cache exists, else after the plugin has built it. A MORDHAU that is already running is never touched.",
    "used_for": "one ordinary mod: installed by Vortex / Mod Organizer 2, started with the usual play button, no scripts to run",
    "settings": {
     "file": "Data/SKSE/Plugins/MordhauSkyrim.ini",
@@ -241,14 +241,14 @@
    "verified": true,
    "verified_with": "copied into Data by hand, Mod Organizer 2.5.2 (virtual folders), Vortex (hardlinks) - 2026-10-10",
    "mordhau_arguments": "-windowed -ResX=<width> -ResY=<height> -insecure",
-   "insecure": "play-test note, 2026-10-11. The mod's own MORDHAU (started by the plugin, and by Play-Mashup.ps1) is always started with -insecure: declared as not for anti-cheat-protected play. Whether MORDHAU acts on the argument is not verified.",
+   "insecure": "play-test note, 2026-10-11. The mod's own MORDHAU (started by the plugin) is always started with -insecure: declared as not for anti-cheat-protected play. Whether MORDHAU acts on the argument is not verified.",
    "launch_race": "Another MORDHAU is looked for twice: before anything is done, and again with the loader already in the folder, immediately before the launch. If one has appeared, the loader is taken out again and the launch is put off until it has closed. A MORDHAU that starts in the remaining instant and loads the loader has no session key: the loader ends it and loads nothing."
   },
   {
    "id": "loader_self_removal",
    "direction": "MORDHAU",
    "carries": "The script, the moment it runs in a mashup session, renames dwmapi.dll in MORDHAU's Binaries/Win64 to dwmapi.dll.old (a loaded file can be renamed, not deleted). Whoever started the session deletes it later.",
-   "used_for": "the loader never stays loadable after a session's MORDHAU has started, even if Skyrim or the launcher dies in that moment",
+   "used_for": "the loader never stays loadable after a session's MORDHAU has started, even if Skyrim dies in that moment",
    "verified": false
   },
   {
@@ -262,7 +262,7 @@
   {
    "id": "session_key",
    "direction": "Skyrim -> MORDHAU",
-   "carries": "Whoever starts the mod's MORDHAU (the plugin, or Play-Mashup.ps1) makes a random key for that one start, puts it into that MORDHAU's environment as MORDHAU_SKYRIM_SESSION and writes it as the second line of cache/live_session.txt (first line: the time). The script, the moment it loads: no key in its environment, or not the one in the file, or the file older than 10 minutes -> the game is ended at once (os.exit, no asking, no waiting). Every second while running: not a stand-alone local match -> ended. (-insecure is not checked by the script: the command line could not be read from it; it follows from the key, since the only start that has the key always passes -insecure.)",
+   "carries": "The plugin, which starts the mod's MORDHAU, makes a random key for that one start, puts it into that MORDHAU's environment as MORDHAU_SKYRIM_SESSION and writes it as the second line of cache/live_session.txt (first line: the time). The script, the moment it loads: no key in its environment, or not the one in the file, or the file older than 10 minutes -> the game is ended at once (os.exit, no asking, no waiting). Every second while running: not a stand-alone local match -> ended. (-insecure is not checked by the script: the command line could not be read from it; it follows from the key, since the only start that has the key always passes -insecure.)",
    "used_for": "the script can only run in a MORDHAU the mod started itself, offline, with -insecure - never in one started through Steam for online play, even if the loader was left in the folder (before: a normal start within 10 minutes of a mod session passed the first check, and a failed one took seconds to close)",
    "verified": true,
    "verified_how": "2026-10-11, D: copy: (1) started by the plugin - key matches, live after 17 s, 0 script errors; (2) loader put into the folder by hand and the game started without a key - the script ended the game at once: the engine's own log closes 2 s after it opened (the process itself was gone from the task list about a minute later)."

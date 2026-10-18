@@ -218,8 +218,16 @@ Remove the mod in your mod manager. Then delete these from `Mordhau\Binaries\Win
 the inventory model folders `Data\meshes\MordhauSkyrim` and `Data\textures\MordhauSkyrim` (about 55 MB; with Mod
 Organizer they end up in Overwrite).
 
+## Network and saves
+
+- The mod makes no internet connections and collects nothing: no telemetry, no update checks. The two games
+  themselves still do what they always do (Steam, for one).
+- It keeps nothing in your saves. If you remove it, the MORDHAU weapons from `MordhauWeapons.esp` disappear from
+  inventories; that's the only trace. Removing it in the middle of a playthrough hasn't been tested much yet.
+
 ## Known problems
 
+- People sometimes take a moment to draw their weapon.
 - In tight indoor spaces fighters can bump into tables and walls, and now and then a swing passes through someone.
 - Other combat, camera and first-person body mods will clash with it.
 - Horseback fighting and werewolf or vampire lord forms are untested.

@@ -99,6 +99,21 @@ After closing Skyrim and before playing MORDHAU online:
 If anything looks wrong, remove the mod and the files below before playing online. These checks show the mod isn't
 loaded; they aren't a promise about how MORDHAU's anti-cheat behaves.
 
+## Network and saves
+
+- The mod makes no internet connections and collects nothing: no telemetry, no update checks. The two games
+  themselves still do what they always do (Steam, for one).
+- It keeps nothing in your saves. If you remove it, the MORDHAU weapons from `MordhauWeapons.esp` disappear from
+  inventories; that's the only trace. Removing it in the middle of a playthrough hasn't been tested much yet.
+
+## Known problems
+
+- People sometimes take a moment to draw their weapon.
+- In tight indoor spaces fighters can bump into tables and walls, and now and then a swing passes through someone.
+- Other combat, camera and first-person body mods will clash with it.
+- Horseback fighting and werewolf or vampire lord forms are untested.
+- A MORDHAU or Skyrim update can break it.
+
 ## Remove
 
 Remove the mod in your mod manager. Then delete these from `Mordhau\Binaries\Win64`: `UE4SS.dll`,

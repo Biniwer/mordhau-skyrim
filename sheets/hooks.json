@@ -3,8 +3,8 @@
  "rows": [
   {
    "id": "boot",
-   "purpose": "start as .asi without SKSE: thread, wait for RE::UI, create trampoline, derive data-loaded/new-game/load-game",
-   "target": "DllMain + RE::MenuOpenCloseEvent + RE::TESLoadGameEvent",
+   "purpose": "start as an SKSE plugin (SKSE's trampoline; hooks installed once input is loaded), then derive data-loaded/new-game/load-game from the game's own events, whichever of them SKSE sends on a version",
+   "target": "SKSEPluginLoad + RE::MenuOpenCloseEvent + RE::TESLoadGameEvent",
    "kind": "event_sink",
    "address_id": "n/a",
    "verified": false

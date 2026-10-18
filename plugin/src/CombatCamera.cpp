@@ -296,10 +296,10 @@ namespace dm::Combat
 							theirs = actor->GetNodeByName("NPC Head");  // (a Falmer's bones have no bracketed tags)
 						}
 						if (theirs && !actor->IsDead()) {
-							RE::NiPoint3 ahead = theirs->world.translate - player->GetPosition();
-							ahead.z = 0.0f;
+							RE::NiPoint3 toHead = theirs->world.translate - player->GetPosition();
+							toHead.z = 0.0f;
 							others += std::format(" {} {:.0f} (scale {:.2f}, feet {:+.0f}, head {:.0f} cm from the player's feet, body {:.0f})", actor->GetDisplayFullName(), (theirs->world.translate.z - actor->GetPositionZ()) / k, actor->GetHeight() / 128.0f,
-								(actor->GetPositionZ() - player->GetPositionZ()) / k, ahead.Length() / k, (actor->GetPosition() - player->GetPosition()).Length() / k);
+								(actor->GetPositionZ() - player->GetPositionZ()) / k, toHead.Length() / k, (actor->GetPosition() - player->GetPosition()).Length() / k);
 						}
 					}
 					if (!others.empty()) {

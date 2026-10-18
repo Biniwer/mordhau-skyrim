@@ -2,7 +2,7 @@
 -- of the mashup while Skyrim is the world half:
 --   out: the local character's bones exactly as MORDHAU's own animation system posed them, its attack stage, blade
 --        trace, stamina and health  -> cache/live_pose.bin (read by the Skyrim plugin)
---   in:  what the player is doing in Skyrim (move, sprint, attack direction, parry, jump) <- cache/live_input.txt,
+--   in:  what the player is doing in Skyrim (move, sprint, attack direction, parry, jump) <- cache/live_input.mem,
 --        handed to MORDHAU's own input functions, so its own combat rules decide what happens.
 --
 -- live_pose.bin (little endian): 'DMLP', uint32 sequence, float time, int32 bones, then per bone 7 floats: rotation
@@ -12,25 +12,27 @@
 -- char[48] motion name, float[4] weapon rotation xyzw + float[3] weapon position (character space), int32 has weapon;
 -- then uint32 sequence again so a reader can tell a complete write from a torn one.
 -- After the weapon block: uint32 times the player was hit, float damage of the last one (MORDHAU's, of 100), uint32 id
--- of the stand-in that did it; then 3 x (uint32 id, uint32 times hit by the player, float damage of the last hit,
--- int32 stage of its attack or -1).
--- Stand-ins: Skyrim sends up to 3 nearby characters as "g:id,right,forward,up,yaw,attacks,blocking" (cm and degrees
+-- of the stand-in that did it; then the first 3 stand-ins as (uint32 id, uint32 times hit by the player, float damage
+-- of the last hit, int32 stage of its attack or -1, + the three numbers below); stand-ins 4 to 24 follow later, after
+-- the player's weapon block (the full layout: sheets/live_link.json).
+-- Stand-ins: Skyrim sends up to 24 nearby characters as "g:id,right,forward,up,yaw,attacks,blocking" (cm and degrees
 -- relative to the player). Each is given one MORDHAU bot with its own AI switched off, held at that place relative to
 -- the MORDHAU player, told to attack when the Skyrim character attacks and to parry when it blocks. So MORDHAU's own
 -- combat decides what hits, what is parried, clashes, ripostes, stamina. Nobody dies in MORDHAU: health is put back.
 -- Then float[4] camera rotation xyzw + float[3] camera position in character space and int32 "is first person":
 -- Skyrim draws MORDHAU's first-person view by putting this camera on its own.
--- Then per stand-in slot (3): int32 look (1.. = which baked look it is drawn with, 0 = empty slot), 158 x 7 floats local
+-- Then per stand-in slot (24): int32 look (1.. = which baked look it is drawn with, 0 = empty slot), 158 x 7 floats local
 -- bone transforms (a rotation of all zeros = "not read, use the model's own rest pose"), float[4]+float[3] weapon
 -- transform in ITS character space, int32 has weapon.
 -- Reading a bone costs ~25 microseconds here, so only bones that animate are read every time: the player's body and
 -- fingers each pose, the face and shape bones once a second; a stand-in's body 20 times a second, its fingers rarely.
 -- Each stand-in entry also carries: uint32 times hit by ANOTHER stand-in, float damage of the last such hit, uint32
 -- id of that stand-in (two Skyrim characters fighting each other).
--- live_input.txt (one line): sequence forward right sprint pitch mouseRightSum mouseUpSum, then "id:Action" pairs for
--- the latest requests.
+-- live_input.mem (one line, with its length before it and the sequence again after it): sequence forward right sprint
+-- pitch mouseRightSum mouseUpSum, then "id:Action" pairs for the latest requests.
 -- Where the cache shared with Skyrim's plugin is: the folder named in cache_dir.txt beside this mod's Scripts folder
--- (the launcher writes it), else %LOCALAPPDATA%\MordhauSkyrim\cache (where the plugin builds it by default).
+-- (the plugin writes it when it starts a session), else %LOCALAPPDATA%\MordhauSkyrim\cache (where the plugin builds it
+-- by default).
 if not CACHE then
     local here = (debug.getinfo(1, "S").source or ""):gsub("^@", ""):gsub("[/\\][^/\\]*$", "")   -- ...\Mods\PoseStream\Scripts
     for _, path in ipairs({ here .. "\\..\\cache_dir.txt", "Mods\\PoseStream\\cache_dir.txt" }) do
@@ -44,20 +46,21 @@ if not CACHE then
     CACHE = CACHE or ((os.getenv("LOCALAPPDATA") or ".") .. "\\MordhauSkyrim\\cache\\")
 end
 do
-    -- the cache is built by Skyrim's plugin (from this MORDHAU's own files) the first time Skyrim is started through
-    -- the launcher: without it there is nothing to do here
+    -- the cache is built by Skyrim's plugin (from this MORDHAU's own files) the first time Skyrim is started with the
+    -- mod: without it there is nothing to do here
     local made = io.open(CACHE .. "bone_names.lua", "r")
     if not made then
-        print("[PoseStream] no cache at " .. CACHE .. " yet: start through Play-Mashup.ps1 (Skyrim's plugin builds it on a first start)\n")
+        print("[PoseStream] no cache at " .. CACHE .. " yet: start Skyrim with the mod (its plugin builds it on a first start)\n")
         return
     end
     made:close()
 end
 
 -- OFFLINE ONLY. This script is never to be in a MORDHAU that is, or could go, online. Two guards:
--- (1) MORDHAU was started any other way than by the mashup's launcher (which leaves the time in
---     cache/live_session.txt just before it starts MORDHAU) - a normal start from Steam, with the loader left behind in
---     the folder: MORDHAU is closed again at once, with a notice saying how to clean the folder.
+-- (1) MORDHAU was started any other way than by the plugin's session (which writes the time and a key into
+--     cache/live_session.txt and gives the MORDHAU it starts the same key as MORDHAU_SKYRIM_SESSION) - a normal start
+--     from Steam, with the loader left behind in the folder, has no key: MORDHAU is closed again at once, with a notice
+--     saying how to clean the folder.
 -- (2) In a mashup session, the moment the game is anything but a stand-alone local match (it joined a server, or
 --     hosts one): MORDHAU is closed. Looked at every second (see PS_offline_guard).
 -- A window with the reason is shown (PowerShell's message box; the game itself is on its way out).
@@ -864,7 +867,7 @@ end
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Stand-ins for Skyrim's characters
-local MAX_GHOSTS = 24   -- (the plugin's Link::kGhosts; the first three's states sit where they always did, the rest after the bow's pose)
+local MAX_GHOSTS = 24   -- (the plugin's Link::kGhosts; the first three's states sit where they always did, the rest after the player's weapon block)
 -- Nobody may die inside MORDHAU (a dead character is destroyed, and its stand-in with it): the match's damage is
 -- scaled down so even a 100-damage hit leaves health, health is put back each frame, and what we report to Skyrim is
 -- scaled back up to MORDHAU's real number.
@@ -896,7 +899,7 @@ function PS_ai_row(level)
 end
 local HEALTH_FLOOR = 30
 local DAMAGE_FACTOR = 0.15
--- On unless cache/live_options.lua says otherwise (the launcher writes it; -SimpleEnemies turns it off). Tested on
+-- On unless cache/live_options.lua says otherwise (the plugin writes it; SimpleEnemies=1 in MordhauSkyrim.ini turns it off). Tested on
 -- for 12 minutes and off for 25 minutes of continuous fighting.
 if BOT_BRAINS == nil then
     BOT_BRAINS = true
