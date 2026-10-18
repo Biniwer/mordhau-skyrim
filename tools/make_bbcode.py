@@ -58,5 +58,12 @@ WARNING = ("[size=5][color=#ff2a2a][b]NEVER USE THIS IN ONLINE MORDHAU PLAY.[/b]
            "[size=4][color=#ff2a2a][b]Before you play MORDHAU online, make sure no trace of this mod is active: there must be no file named "
            "dwmapi.dll (or dwmapi.dll.old) in MORDHAU's Mordhau\\Binaries\\Win64 folder. If there is one, delete it first.[/b][/color][/size]\n\n")
 text = WARNING + text
+# the Honest Mods strip at the very bottom (the user put it on the page, 2026-10-18): kept as it is, in its own file,
+# so that replacing the description does not take it off the page (release/slop_meter.bbcode.txt, not in the source zip)
+STRIP = 'release/slop_meter.bbcode.txt'
+try:
+    text += '\n\n' + open(STRIP, encoding='utf-8').read().strip()
+except FileNotFoundError:
+    print('NOTE: no', STRIP, '- the description has no Honest Mods strip')
 open('release/description.bbcode.txt', 'w', encoding='utf-8', newline='\r\n').write(text)
 print(len(text), 'characters')
