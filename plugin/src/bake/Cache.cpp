@@ -116,7 +116,10 @@ namespace mbake
 		return std::filesystem::path(EnvironmentPath(L"LOCALAPPDATA")) / "MordhauSkyrim" / "cache";
 	}
 
-	Result BuildCache(const Job& a_job, bool a_force, const std::function<void(const std::string&)>& a_progress)
+	namespace
+	{
+		// a_checkOnly: only whether the cache is up to date (result.upToDate); nothing is built.
+		Result Build(const Job& a_job, bool a_force, bool a_checkOnly, const std::function<void(const std::string&)>& a_progress)
 	{
 		Result     result;
 		const auto say = [&](const std::string& a_line) {
@@ -201,6 +204,9 @@ namespace mbake
 					result.ok = result.upToDate = true;
 					return result;
 				}
+			}
+			if (a_checkOnly) {
+				return result;
 			}
 			std::filesystem::remove(stampFile, ec);
 
@@ -320,5 +326,16 @@ namespace mbake
 			say(std::string("preparing MORDHAU's models failed while ") + step + ": " + ex.what());
 		}
 		return result;
+	}
+	}
+
+	Result BuildCache(const Job& a_job, bool a_force, const std::function<void(const std::string&)>& a_progress)
+	{
+		return Build(a_job, a_force, false, a_progress);
+	}
+
+	bool CacheUpToDate(const Job& a_job)
+	{
+		return Build(a_job, false, true, nullptr).upToDate;
 	}
 }

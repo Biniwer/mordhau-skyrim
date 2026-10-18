@@ -377,15 +377,62 @@ namespace dm::Combat
 			logger::warn("cache: MORDHAU was not found through Steam; its characters cannot be drawn");
 			return;
 		}
-		const auto started = Clock::now();
-		const auto result = mbake::BuildCache(mbake::JobFromSheets(paks, mbake::MordhauGameIni(), g_dev.cache), false, [](const std::string& a_line) { logger::info("cache: {}", a_line); });
-		if (result.upToDate) {
-			logger::info("cache: '{}' is up to date (mercenary {})", g_dev.cache.string(), result.mercenary);
-		} else {
-			logger::info("cache: '{}' {} in {:.1f} s from {} (mercenary {}, {} built, {} failed)", g_dev.cache.string(), result.ok ? "built" : "NOT built", Seconds(started), paks.string(),
-				result.mercenary, result.built, result.failed);
-			g_cacheFailed = !result.ok;
+		const auto job = mbake::JobFromSheets(paks, mbake::MordhauGameIni(), g_dev.cache);
+		const auto build = [job, paks]() {
+			const auto started = Clock::now();
+			const auto result = mbake::BuildCache(job, false, [](const std::string& a_line) { logger::info("cache: {}", a_line); });
+			if (result.upToDate) {
+				logger::info("cache: '{}' is up to date (mercenary {})", g_dev.cache.string(), result.mercenary);
+			} else {
+				logger::info("cache: '{}' {} in {:.1f} s from {} (mercenary {}, {} built, {} failed)", g_dev.cache.string(), result.ok ? "built" : "NOT built", Seconds(started), paks.string(),
+					result.mercenary, result.built, result.failed);
+				g_cacheFailed = !result.ok;
+			}
+		};
+		if (mbake::CacheUpToDate(job)) {
+			build();
+			return;
 		}
+		// The preparation holds Skyrim's main thread for a minute or more (first start, a MORDHAU update): a message box
+		// says so first, and the preparation begins only once that box is on the screen - it stays there meanwhile.
+		// Without it, the frozen main menu looked like a softlock and was closed (manual-install test, 2026-10-18).
+		static const std::string kText = "MORDHAU x Skyrim is preparing MORDHAU's models from your own copy of MORDHAU (the first start, or after MORDHAU was updated).\n\nSkyrim does not respond while it does: this can take a few minutes. Please wait - MORDHAU starts by itself when it is done.";
+		auto* factories = RE::MessageDataFactoryManager::GetSingleton();
+		auto* strings = RE::InterfaceStrings::GetSingleton();
+		auto* creator = factories && strings ? factories->GetCreator<RE::MessageBoxData>(strings->messageBoxData) : nullptr;
+		auto* box = creator ? creator->Create() : nullptr;
+		if (!box) {
+			logger::info("cache: no message box could be made; preparing at once");
+			build();
+			return;
+		}
+		box->bodyText = kText.c_str();
+		box->buttonText.push_back("OK");
+		using func_t = void(RE::MessageBoxData*);
+		REL::Relocation<func_t> queue{ RELOCATION_ID(51422, 52271) };  // MessageBoxData::QueueMessage
+		queue(box);
+		logger::info("cache: out of date - the message box is shown first, then MORDHAU's models are prepared");
+		struct Wait
+		{
+			static void Next(std::function<void()> a_build, int a_shownFrames, Clock::time_point a_since)
+			{
+				SKSE::GetTaskInterface()->AddTask([a_build, a_shownFrames, a_since]() {
+					const auto* current = RE::MessageBoxMenu::GetCurrentMessageBoxData();
+					const bool  ours = current && std::string_view(current->bodyText.c_str()) == kText;
+					const int   frames = ours ? a_shownFrames + 1 : 0;
+					// (a few frames with the box up, so that it is drawn. Another box - the first-start one - is waited
+					// for as long as it is open; only when no box at all has been up for 10 s is the wait given up.)
+					const auto since = current ? Clock::now() : a_since;
+					if (frames >= 10 || Seconds(since) > 10.0f) {
+						logger::info("cache: the message box is {} - preparing now", ours ? "on the screen" : "not seen");
+						a_build();
+						return;
+					}
+					Next(a_build, frames, since);
+				});
+			}
+		};
+		Wait::Next(build, 0, Clock::now());
 	}
 
 	void Install()

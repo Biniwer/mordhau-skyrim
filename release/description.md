@@ -95,11 +95,31 @@ mod isn't loaded; they aren't a promise about how MORDHAU's anti-cheat behaves.
 
 Nothing else to run or copy.
 
+## Installing by hand
+
+Without a mod manager, all of this goes into Skyrim's own folder (the one with `SkyrimSE.exe`):
+
+1. SKSE: `skse64_loader.exe` and its `skse64_1_*.dll` next to `SkyrimSE.exe`, and the `Data` folder from its download
+   into Skyrim's `Data`. Start the game with `skse64_loader.exe` from then on.
+2. Address Library: only the file for your game version, straight into `Data\SKSE\Plugins` - `versionlib-1-6-1170-0.bin`
+   for 1.6.1170 or `versionlib-1-7-104-0.bin` for 1.7.104. Not into an `SKSE` folder next to `SkyrimSE.exe`, and not
+   into a second `Plugins` folder inside that one.
+3. This mod: unpack its download into Skyrim's `Data`, so that `Data\MordhauWeapons.esp` and
+   `Data\SKSE\Plugins\MordhauSkyrim.dll` are there.
+4. Switch the plugin on: press Win + R, open `%LOCALAPPDATA%\Skyrim Special Edition`, and add the line
+   `*MordhauWeapons.esp` to `plugins.txt`. The `*` is what switches it on; without it Skyrim ignores the plugin.
+5. The settings menu (optional): SkyUI and MCM Helper. MCM Helper's download is an installer package, so by hand take
+   `ESL\MCMHelper.esp` and `BSA\MCMHelper.bsa` into `Data` and `SkyrimSE\SKSE\Plugins\MCMHelper.dll` into
+   `Data\SKSE\Plugins`, and add `*SkyUI_SE.esp` and `*MCMHelper.esp` to `plugins.txt`.
+
+If MORDHAU never opens, look at `skse64.log` in `Documents\My Games\Skyrim Special Edition\SKSE`: "MordhauSkyrim.dll
+... disabled, address library needs to be updated" means the Address Library file is missing or in the wrong folder.
+
 ## Playing
 
 1. Start Skyrim through SKSE as usual.
-2. MORDHAU opens by itself behind Skyrim. On the very first start the mod prepares MORDHAU's models at the main menu
-   first.
+2. MORDHAU opens by itself behind Skyrim. On the very first start (and after a MORDHAU update) the mod first prepares
+   MORDHAU's models at the main menu: Skyrim doesn't respond for a minute or a few while it does, so let it finish.
 3. Load a save. When "MORDHAU is live" shows at the top left, draw a melee weapon.
 4. Leave MORDHAU's window open behind Skyrim. Don't minimise it or play in it.
 

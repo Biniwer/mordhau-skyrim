@@ -48,4 +48,6 @@ namespace mbake
 
 	// Builds whatever is out of date. a_progress is called with a short line now and then ("outfit 12 of 85 ...").
 	Result BuildCache(const Job& a_job, bool a_force, const std::function<void(const std::string&)>& a_progress);
+	// Whether BuildCache would find nothing to do (reads only the stamp and MORDHAU's file list: quick).
+	[[nodiscard]] bool CacheUpToDate(const Job& a_job);
 }
