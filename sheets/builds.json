@@ -529,6 +529,13 @@
    "verified": false
   },
   {
+   "id": "skyrim_block_with_shield",
+   "value": 1.0,
+   "meaning": "play-test note, 2026-10-18. 1 = while MORDHAU's shield is up (the block button held, or the shield wall: the shield's alternate mode, MORDHAU's R), Skyrim's own block is held too (wantBlocking + blockStart), so what Skyrim ties to blocking works: Spellbreaker's ward, the Block perks (Elemental Protection, Block Runner). MORDHAU still poses the body. 0 = Skyrim never blocks with a shield (before: Spellbreaker's ward never came up).",
+   "source": "play-test note, 2026-10-18",
+   "verified": false
+  },
+  {
    "id": "shield_wall_blocks",
    "value": 1.0,
    "meaning": "play-test note, 2026-10-13. 1 = while MORDHAU's shield wall is up (the shield's alternate mode, MORDHAU's R; streamed back as a ShieldParry motion in its blocking stage 0), a hit Skyrim judges on the player from the front - a creature's bite or claw, an arrow - is stopped, as one is by the timed parry or by the held block button. Until now only the block button counted: the wall raised with R stopped MORDHAU's own fighters but not Skyrim's creatures.",

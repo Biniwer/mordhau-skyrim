@@ -652,6 +652,7 @@ namespace dm::Combat
 		void SendPlayerState(RE::PlayerCharacter* a_player, float& forward, float& right, const Link::State& link);
 
 		void SendShield(RE::PlayerCharacter* a_player, const Link::State& link);
+		void KeepSkyrimBlock(RE::PlayerCharacter* a_player, const Link::State& link);
 
 		void ShowPickUpPrompt(RE::PlayerCharacter* a_player, const Link::State& link);
 

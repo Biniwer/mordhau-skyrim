@@ -263,6 +263,34 @@ namespace dm::Combat
 		}
 		}
 
+		// While MORDHAU's shield is up - the block button held, or its shield wall (alternate mode, MORDHAU's R) - Skyrim's own
+		// block is held as well, so what Skyrim ties to blocking works: Spellbreaker's ward, the Block perks (Elemental
+		// Protection, Block Runner...). MORDHAU still poses the body. (sheets/builds.json skyrim_block_with_shield)
+		void KeepSkyrimBlock(RE::PlayerCharacter* a_player, const Link::State& link)
+		{
+			static bool              held = false;
+			static Clock::time_point lastAsk{};
+			const bool wallUp = link.kind == 2 && link.stage == 0 && std::string_view(link.motion).find("ShieldParry") != std::string_view::npos;
+			const bool want = BuildValue("skyrim_block_with_shield") > 0.5f && link.live && a_player->AsActorState()->IsWeaponDrawn() && LiveMelee(a_player) && PlayerShield(a_player) &&
+			                  !SkyrimScene(a_player) && (g_shieldBlock.load() || wallUp);
+			auto& state = a_player->AsActorState()->actorState2;
+			if (want && (!held || (!a_player->IsBlocking() && Seconds(lastAsk) > 0.5f))) {
+				// (asked again while it is wanted and Skyrim has dropped it - a stagger or a hit can end Skyrim's block)
+				state.wantBlocking = 1;
+				const bool taken = a_player->NotifyAnimationGraph("blockStart");
+				lastAsk = Clock::now();
+				if (!held) {
+					logger::info("block: MORDHAU's shield is up ({}): Skyrim's own block held too (taken {}, blocking {})", g_shieldBlock.load() ? "block button" : "shield wall", taken, a_player->IsBlocking());
+				}
+				held = true;
+			} else if (!want && held) {
+				state.wantBlocking = 0;
+				a_player->NotifyAnimationGraph("blockStop");
+				held = false;
+				logger::info("block: MORDHAU's shield is down: Skyrim's own block let go");
+			}
+		}
+
 		// The player's Skyrim shield as its MORDHAU counterpart.
 		void SendShield(RE::PlayerCharacter* a_player, const Link::State& link)
 		{
@@ -923,6 +951,7 @@ namespace dm::Combat
 			if (!PlayerShield(a_player)) {
 				g_shieldBlock.store(false);
 			}
+			KeepSkyrimBlock(a_player, link);
 			ShowPickUpPrompt(a_player, link);
 			PlaceDroppedWeapons(a_player, link);
 			LoadAiLevel();

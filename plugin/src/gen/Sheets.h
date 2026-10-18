@@ -377,6 +377,7 @@ namespace dm::sheets
 		{ "super_kick_force", 10.0f },
 		{ "kick_reach", 80.0f },
 		{ "kick_stagger_tallest", 190.0f },
+		{ "skyrim_block_with_shield", 1.0f },
 		{ "shield_wall_blocks", 1.0f },
 		{ "creature_standin", 1.0f },
 		{ "creature_standin_reach", 600.0f },
