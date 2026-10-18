@@ -170,6 +170,21 @@
    "verified": false
   },
   {
+   "id": "spellsword_standin",
+   "value": 1.0,
+   "unit": "1 = on",
+   "meaning": "an enemy with a blade in its right hand and a spell in its left gets a MORDHAU stand-in like a melee fighter: its blade fights by MORDHAU's rules (parries, feints, MORDHAU's damage), its spells stay Skyrim's - while it casts (and spellsword_cast_linger after), its body is Skyrim's and its stand-in holds its attacks. Pure casters and staff users stay Skyrim's altogether. 0 = anyone with a spell is Skyrim's, as before (an earlier try had such a stand-in point at the ground).",
+   "source": "the user, 2026-10-18 ('Enemy spell casters who have a weapon in one hand and a spell in another still attack skyrim style')",
+   "verified": false
+  },
+  {
+   "id": "spellsword_cast_linger",
+   "value": 0.6,
+   "meaning": "spellsword_standin: seconds its body stays Skyrim's after a cast ends (Skyrim's animation lowers the hand), then its stand-in has it again",
+   "source": "2026-10-18, a first guess (cast_arm_linger is 0.5 for the player)",
+   "verified": false
+  },
+  {
    "id": "standin_stamina",
    "value": 1.0,
    "unit": "1 = on",

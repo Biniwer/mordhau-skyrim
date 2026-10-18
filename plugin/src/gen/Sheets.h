@@ -347,6 +347,8 @@ namespace dm::sheets
 		{ "arrow_start_down", 7.0f },
 		{ "undead_fight", 1.0f },
 		{ "stamina_restore_step", 15.0f },
+		{ "spellsword_standin", 1.0f },
+		{ "spellsword_cast_linger", 0.6f },
 		{ "standin_stamina", 1.0f },
 		{ "player_stamina_drain", 1.0f },
 		{ "standin_stamina_drain_step", 0.05f },

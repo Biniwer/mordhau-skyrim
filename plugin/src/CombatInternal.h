@@ -534,6 +534,11 @@ namespace dm::Combat
 						logger::info("hit on player: {} for {:.1f}, not parried (parry {} at {:.3f}s, angle {:.0f})", attacker ? attacker->GetDisplayFullName() : "?",
 							a_hit.totalDamage, g_parry ? "active" : "not active", t, angle);
 					}
+					if (stopped && missile) {
+						// (an arrow parried or blocked: not given to Skyrim at all - with no damage and marked blocked, Skyrim still
+						// played the player's being hit, the user 2026-10-18. Its block and bounce sounds are played above.)
+						return;
+					}
 				}
 				func(a_victim, a_hit);
 			}

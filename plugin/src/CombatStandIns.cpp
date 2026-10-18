@@ -429,18 +429,34 @@ namespace dm::Combat
 				inCombatAt[m.id] = Clock::now();
 			}
 			const bool yielded = !actor->IsInCombat() && Seconds(inCombatAt[m.id]) > BuildValue("yield_after_seconds");
-			const bool skyrimHas = fleeing || kneeling || yielded;
+			// (casting with its spell hand - one with a blade and a spell, sheets/builds.json spellsword_standin: Skyrim's own
+			// casting, from its own pose, and a moment after; then its stand-in has it again)
+			// (only a cast under way - starting, charging, casting, letting go: not a spell held ready, which a character keeps in
+			// its hand the whole fight - seen 2026-10-18: a Vigilant with Oakflesh ready was "casting" for good and never struck)
+			static std::unordered_map<std::uint32_t, Clock::time_point> castAt;
+			static std::unordered_map<std::uint32_t, int>               castState;
+			for (const auto source : { RE::MagicSystem::CastingSource::kLeftHand, RE::MagicSystem::CastingSource::kRightHand }) {
+				const auto* caster = actor->GetMagicCaster(source);
+				using State = RE::MagicCaster::State;
+				const State state = caster ? caster->state.get() : State::kNone;
+				if (state == State::kUnk01 || state == State::kUnk02 || state == State::kUnk04 || state == State::kCharging || state == State::kCasting || state == State::kUnk07) {
+					castAt[m.id] = Clock::now();
+					castState[m.id] = static_cast<int>(state);
+				}
+			}
+			const bool casting = castAt.contains(m.id) && Seconds(castAt[m.id]) < BuildValue("spellsword_cast_linger");
+			const bool skyrimHas = fleeing || kneeling || yielded || casting;
 			CharacterRender::SetSkyrimHasBody(actor->GetFormID(), skyrimHas);
 			if (skyrimHas != g_skyrimHasBody.contains(m.id)) {
 				logger::info("fought: {}'s body is {} ({})", actor->GetDisplayFullName(), skyrimHas ? "Skyrim's alone now" : "in MORDHAU's movement again",
-					kneeling ? "kneeling" : fleeing ? "running away" : yielded ? "out of combat" : "fighting");
+					kneeling ? "kneeling" : fleeing ? "running away" : yielded ? "out of combat" : casting ? std::format("casting, state {}", castState[m.id]) : std::string("fighting"));
 				if (skyrimHas) {
 					g_skyrimHasBody.insert(m.id);
 				} else {
 					g_skyrimHasBody.erase(m.id);
 				}
 			}
-			if (yielded) {
+			if (yielded || casting) {
 				g.passive = true;
 			}
 			if (fleeing || kneeling) {
@@ -866,10 +882,22 @@ namespace dm::Combat
 					// (a spell or a staff in either hand: that one is Skyrim's own altogether - its moves, its path, its fight.
 					// With a spell in one hand and a blade in the other its stand-in pointed at the ground. It is still hit:
 					// the player's blade is checked against it as against a creature.)
+					// (...except, with sheets/builds.json spellsword_standin, a blade in the right hand and a spell in the left: its
+					// blade fights by MORDHAU's rules, its spells stay Skyrim's - while it casts, its body is Skyrim's
+					// (LeaveYieldingBodyToSkyrim). The user, 2026-10-18: casters with a weapon "still attack skyrim style".)
 					const auto* off = a_actor->GetEquippedObject(true);
 					const auto* offWeapon = off ? off->As<RE::TESObjectWEAP>() : nullptr;
-					const bool  casts = (held && !heldWeapon && held->Is(RE::FormType::Spell)) || (off && off->Is(RE::FormType::Spell)) || (heldWeapon && heldWeapon->IsStaff()) ||
+					const bool  bladeInRight = heldWeapon && !heldWeapon->IsBow() && !heldWeapon->IsCrossbow() && !heldWeapon->IsStaff();
+					const bool  spellsword = BuildValue("spellsword_standin") > 0.5f && bladeInRight && off && off->Is(RE::FormType::Spell);
+					const bool  casts = (held && !heldWeapon && held->Is(RE::FormType::Spell)) || (off && off->Is(RE::FormType::Spell) && !spellsword) || (heldWeapon && heldWeapon->IsStaff()) ||
 										(offWeapon && offWeapon->IsStaff());
+					if (spellsword) {
+						static std::unordered_set<std::uint32_t> told;
+						if (told.insert(a_actor->GetFormID()).second) {
+							logger::info("fought: {} holds {} in the right hand and the spell {} in the left: its blade fights by MORDHAU's rules, its spells stay Skyrim's",
+								a_actor->GetDisplayFullName(), heldWeapon->GetName(), off->GetName());
+						}
+					}
 					// (nor one still lying, sitting or getting up - a draugr climbing out of its coffin: Skyrim's own animation
 					// has it until it stands; with a stand-in already it swung and parried unseen through that)
 					const bool  rising = a_actor->AsActorState()->GetSitSleepState() != RE::SIT_SLEEP_STATE::kNormal;  // (not 'animation driven': a stagger is that too)
