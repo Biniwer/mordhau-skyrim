@@ -250,7 +250,7 @@ MORDHAU's `Mordhau\Binaries\Win64` folder).
   hits that show the health bar and give kill credit). No file of it is included.
 - spdlog, {fmt}, DirectXTK, DirectXMath, rapidcsv, xbyak, JSON for Modern C++, SimpleIni, toml11: libraries the plugin
   is built with (MIT or BSD-3-Clause).
-- SkyUI by the SkyUI team and MCM Helper by Exit-9B: the settings menu is built on them (optional, not included; the
+- SkyUI by the SkyUI team and MCM Helper by Parapets: the settings menu is built on them (optional, not included; the
   menu's script was compiled against their published script headers).
 - Address Library for SKSE Plugins by meh321, and SKSE by the SKSE team: required, not included.
 - MORDHAU by Triternion and Skyrim Special Edition by Bethesda Game Studios: the two games this brings together.
