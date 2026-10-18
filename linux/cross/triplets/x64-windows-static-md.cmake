@@ -1,0 +1,11 @@
+# The CI triplet (static libraries, dynamic C runtime), built on Linux with ../clang-cl-msvc.cmake.
+set(VCPKG_TARGET_ARCHITECTURE x64)
+set(VCPKG_CRT_LINKAGE dynamic)
+set(VCPKG_LIBRARY_LINKAGE static)
+set(VCPKG_CHAINLOAD_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/../clang-cl-msvc.cmake")
+set(VCPKG_ENV_PASSTHROUGH XWIN_SDK HOME)
+set(VCPKG_BUILD_TYPE release)  # (xwin ships no debug C runtime; the plugin is built RelWithDebInfo)
+# DirectXTK's shaders need fxc.exe: compiled beforehand by ../directxtk-shaders.sh (linux/build-cross.sh does it)
+if(PORT STREQUAL "directxtk")
+	set(VCPKG_CMAKE_CONFIGURE_OPTIONS "-DUSE_PREBUILT_SHADERS=ON" "-DCOMPILED_SHADERS=$ENV{HOME}/dev/tools/directxtk-shaders")
+endif()

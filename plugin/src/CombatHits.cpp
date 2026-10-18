@@ -504,18 +504,19 @@ namespace dm::Combat
 					if (!havok) {
 						continue;
 					}
-					const auto& v = havok->motion.linearVelocity.quad;
-					const float speed = std::sqrt(v.m128_f32[0] * v.m128_f32[0] + v.m128_f32[1] * v.m128_f32[1] + v.m128_f32[2] * v.m128_f32[2]);
+					float v[4], w[4];  // (copied out: m128_f32 is MSVC's own, the local clang build has no such member)
+					_mm_storeu_ps(v, havok->motion.linearVelocity.quad);
+					_mm_storeu_ps(w, havok->motion.angularVelocity.quad);
+					const float speed = std::sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]);
 					if (speed > limit * scale) {
 						const float k = limit * scale / speed;
-						body->SetLinearVelocity(RE::hkVector4(v.m128_f32[0] * k, v.m128_f32[1] * k, v.m128_f32[2] * k, 0.0f));
+						body->SetLinearVelocity(RE::hkVector4(v[0] * k, v[1] * k, v[2] * k, 0.0f));
 						++slowed;
 					}
-					const auto& w = havok->motion.angularVelocity.quad;
-					const float spin = std::sqrt(w.m128_f32[0] * w.m128_f32[0] + w.m128_f32[1] * w.m128_f32[1] + w.m128_f32[2] * w.m128_f32[2]);
+					const float spin = std::sqrt(w[0] * w[0] + w[1] * w[1] + w[2] * w[2]);
 					if (spin > 6.0f) {
 						const float k = 6.0f / spin;
-						body->SetAngularVelocity(RE::hkVector4(w.m128_f32[0] * k, w.m128_f32[1] * k, w.m128_f32[2] * k, 0.0f));
+						body->SetAngularVelocity(RE::hkVector4(w[0] * k, w[1] * k, w[2] * k, 0.0f));
 					}
 				}
 				static std::unordered_set<std::uint32_t> told;
