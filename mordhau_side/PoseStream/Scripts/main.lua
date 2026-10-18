@@ -718,7 +718,18 @@ local function apply_input(pawn, pc)
     if input.actions then
         if lastAction == nil then
             lastAction = 0
-            for _, a in ipairs(input.actions) do lastAction = math.max(lastAction, a[1]) end
+            -- (settings are not one-off moves: the latest of each still counts. The plugin sends them as the link comes up,
+            -- often before this runs - seen 2026-10-18: no Volume, so MORDHAU's footsteps and music were heard)
+            local settings = {}
+            for _, a in ipairs(input.actions) do
+                lastAction = math.max(lastAction, a[1])
+                local kind = a[2]:match("^(%a+)%d+$")
+                if (kind == "Volume" or kind == "VoiceSet") and (not settings[kind] or settings[kind][1] < a[1]) then settings[kind] = a end
+            end
+            for _, a in pairs(settings) do
+                local ok, done = pcall(numbered_action, pawn, a[2])
+                log("action " .. a[1] .. " " .. a[2] .. " (sent before the script listened)" .. ((ok and done) and "" or (" FAILED: " .. tostring(done))))
+            end
         end
         table.sort(input.actions, function(a, b) return a[1] < b[1] end)
         for _, a in ipairs(input.actions) do
