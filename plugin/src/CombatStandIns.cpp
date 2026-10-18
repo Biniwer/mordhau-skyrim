@@ -505,8 +505,12 @@ namespace dm::Combat
 				m.seenHits = gs.hits;
 			} else if (gs.hits < m.seenHits) {
 				m.seenHits = gs.hits;  // MORDHAU's side started counting afresh
+			} else if (gs.hits != m.seenHits && g_creatureHitRelease[m.id] == g_releaseNumber) {
+				m.seenHits = gs.hits;  // (this swing already struck its body lying in Skyrim: CombatLive, limp_hits_skyrim)
+				logger::info("live: MORDHAU's hit on {}'s stand-in not counted again: the blade already struck its body in Skyrim", actor->GetDisplayFullName());
 			} else if (gs.hits != m.seenHits) {
 				m.seenHits = gs.hits;
+				g_creatureHitRelease[m.id] = g_releaseNumber;  // (the blade test does not count this swing again)
 				ActiveSwing swing;
 				swing.swing = g_liveSwing ? g_liveSwing : &sheets::kSwings[0];
 				swing.family = FamilyOf(a_player);

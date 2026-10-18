@@ -384,6 +384,8 @@ namespace dm::sheets
 		{ "mordhau_draw_clips", 0.0f },
 		{ "third_person_weapon_mordhau", 1.0f },
 		{ "death_speed_limit", 220.0f },
+		{ "limp_speed_limit", 220.0f },
+		{ "limp_hits_skyrim", 1.0f },
 		{ "creature_damage_scale", 1.25f },
 		{ "skyrim_shield_look", 1.0f },
 		{ "mordhau_bars", 0.0f },

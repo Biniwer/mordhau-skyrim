@@ -1200,8 +1200,11 @@ namespace dm::Combat
 				RE::ProcessLists::GetSingleton()->ForEachHighActor([&](RE::Actor* a_target) {
 					// (mirrored characters: MORDHAU itself decides - but the super kick throws them too: MORDHAU's kick does no damage,
 					// so it never reports one as a hit - "super kick doesnt work ... doesnt launch anyone", all kicks at a stand-in's bandit)
+					// (...and one lying limp in Skyrim - paralysed, knocked down - is struck where Skyrim has its body, as well as by
+					// MORDHAU's verdict on its falling stand-in: sheets/builds.json limp_hits_skyrim. Either counts, once a swing.)
 					const bool superKickOnFought = kick && BuildValue("super_kick") > 0.5f;
-					if (!a_target || a_target == a_player || a_target->IsDead() || !a_target->Is3DLoaded() || (IsFought(a_target) && !superKickOnFought) ||
+					const bool limpFought = a_target && !kick && BuildValue("limp_hits_skyrim") > 0.5f && a_target->IsInRagdollState() && Humanoid(a_target);
+					if (!a_target || a_target == a_player || a_target->IsDead() || !a_target->Is3DLoaded() || (IsFought(a_target) && !superKickOnFought && !limpFought) ||
 						g_creatureHitRelease[a_target->GetFormID()] == g_releaseNumber) {
 						return RE::BSContainer::ForEachResult::kContinue;
 					}
@@ -1212,7 +1215,18 @@ namespace dm::Combat
 					RE::NiPoint3 base = a_target->GetPosition() + RE::NiPoint3{ 0.0f, 0.0f, height * 0.15f };
 					RE::NiPoint3 top = a_target->GetPosition() + RE::NiPoint3{ 0.0f, 0.0f, height * 0.9f };
 					float        body = kBodyRadius;
-					if (!Humanoid(a_target)) {
+					if (limpFought) {
+						// a body lying in Skyrim: the line from its head to its feet, where its ragdoll has them
+						const auto* head = a_target->GetNodeByName("NPC Head [Head]");
+						const auto* pelvis = a_target->GetNodeByName("NPC Pelvis [Pelv]");
+						const auto* leftFoot = a_target->GetNodeByName("NPC L Foot [Lft ]");
+						const auto* rightFoot = a_target->GetNodeByName("NPC R Foot [Rft ]");
+						if (head && pelvis) {
+							base = head->world.translate;
+							top = leftFoot && rightFoot ? (leftFoot->world.translate + rightFoot->world.translate) * 0.5f :
+							                              pelvis->world.translate + (pelvis->world.translate - head->world.translate) * 0.9f;  // (legs as long as the trunk)
+						}
+					} else if (!Humanoid(a_target)) {
 						// a creature is not an upright person: its body is taken from its own bounds - a line along the way it
 						// faces, as long as it is, at half its height, as thick as it is wide or high (a skeever or a wolf lies
 						// low and long; the upright line missed most swings at it)
@@ -1295,7 +1309,8 @@ namespace dm::Combat
 					if (!swing.family) {
 						swing.family = &sheets::kWeaponFamilies[0];
 					}
-					logger::info("live: MORDHAU's blade ({}) reached {} at {:.3f}s into the motion", link.motion, found->GetDisplayFullName(), link.motionTime);
+					logger::info("live: MORDHAU's blade ({}) reached {}{} at {:.3f}s into the motion", link.motion, found->GetDisplayFullName(),
+						IsFought(found) ? " lying limp in Skyrim" : "", link.motionTime);
 					// (no stand-in: MORDHAU gave no damage; one clean hit - a creature takes sheets/builds.json creature_damage_scale of it)
 					ApplyHit(a_player, found, swing, 1.0f, Progress("clean_hit") * CreatureScale(found));
 					{

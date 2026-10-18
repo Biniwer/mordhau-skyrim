@@ -39,8 +39,11 @@ Store, a few gameplay additions, and a CI build. Everything else - and how to pl
   enemy's parries break and cost it its weapon, by MORDHAU's rules. (`standin_stamina` in sheets/builds.json)
 - Slows: a Skyrim slow on a fought enemy (a frost spell's, or any mod's) slows its stand-in's movement; Skyrim's world
   time (Slow Time) its whole pace, attacks included. (`standin_slow`)
+- Enemies lying limp (paralysed, knocked down): the body seen in Skyrim can be struck - MORDHAU's blade reaching it is a
+  clean hit, as well as MORDHAU's own verdict on its falling stand-in (once a swing) - and it no longer flies off when
+  hit. (`limp_hits_skyrim`, `limp_speed_limit`)
 - MORDHAU's music, its arena's ambience and its footsteps are silent in the mod's session; its fighting and voices are
   heard.
 - The settings menu's MORDHAU volume and voice choices are applied at every start (they were often lost).
 
-The stamina and slow additions can be switched off in sheets/builds.json (then `tools/gen_code.py` and a new build).
+The stamina, slow and limp-enemy additions can be switched off in sheets/builds.json (then `tools/gen_code.py` and a new build).

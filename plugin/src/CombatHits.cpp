@@ -459,25 +459,33 @@ namespace dm::Combat
 
 		// A fought character that has just died does not fly off (sheets/builds.json death_speed_limit): for half a
 		// second every part of its limp body is held to that speed. The head of one being decapitated is left to ThrowHeads.
+		// Nor one lying limp alive - paralysed, knocked down - for as long as it lies there (limp_speed_limit): Skyrim's
+		// hits pushed paralysed bodies through the air.
 		void CalmBodies()
 		{
-			const float limit = BuildValue("death_speed_limit");
-			if (limit <= 0.0f) {
+			const float deathLimit = BuildValue("death_speed_limit"), limpLimit = BuildValue("limp_speed_limit");
+			if (deathLimit <= 0.0f && limpLimit <= 0.0f) {
 				return;
 			}
 			static std::unordered_map<std::uint32_t, Clock::time_point> fought;  // id -> when it was last seen alive with a stand-in
 			static std::unordered_map<std::uint32_t, Clock::time_point> died;
+			static std::unordered_set<std::uint32_t>                    limp;  // ...of those, the ones lying limp alive (held while they lie, and half a second after)
 			for (const auto& m : g_mirrored) {
 				if (auto* actor = RE::TESForm::LookupByID<RE::Actor>(m.id)) {
 					if (!actor->IsDead()) {
 						fought[m.id] = Clock::now();
+						if (!m.dummy && limpLimit > 0.0f && actor->IsInRagdollState()) {
+							died[m.id] = Clock::now();
+							limp.insert(m.id);
+						}
 					}
 				}
 			}
 			for (auto it = fought.begin(); it != fought.end();) {
 				auto* actor = RE::TESForm::LookupByID<RE::Actor>(it->first);
-				if (actor && actor->IsDead() && !died.contains(it->first) && Seconds(it->second) < 2.0f) {
-					died[it->first] = Clock::now();
+				if (actor && actor->IsDead() && deathLimit > 0.0f && (!died.contains(it->first) || limp.contains(it->first)) && Seconds(it->second) < 2.0f) {
+					died[it->first] = Clock::now();  // (dying while limp: the death's half second from now)
+					limp.erase(it->first);
 				}
 				it = Seconds(it->second) > 10.0f ? fought.erase(it) : std::next(it);
 			}
@@ -486,9 +494,12 @@ namespace dm::Combat
 				auto* actor = RE::TESForm::LookupByID<RE::Actor>(it->first);
 				auto* root = actor ? actor->Get3D(false) : nullptr;
 				if (!root || Seconds(it->second) > 0.5f) {
+					limp.erase(it->first);
 					it = died.erase(it);
 					continue;
 				}
+				const bool  lying = limp.contains(it->first);
+				const float limit = lying ? limpLimit : deathLimit;
 				const bool headThrown = std::any_of(g_thrownHeads.begin(), g_thrownHeads.end(), [&](const ThrownHead& a_head) { return a_head.who.get().get() == actor; }) ||
 										std::any_of(g_pendingHeads.begin(), g_pendingHeads.end(), [&](const ThrownHead& a_head) { return a_head.who.get().get() == actor; });
 				int                          slowed = 0;
@@ -527,9 +538,9 @@ namespace dm::Combat
 						body->SetAngularVelocity(RE::hkVector4(w[0] * k, w[1] * k, w[2] * k, 0.0f));
 					}
 				}
-				static std::unordered_set<std::uint32_t> told;
-				if (slowed > 0 && told.insert(it->first).second) {
-					logger::info("death: {}'s body was about to fly ({} parts over {:.0f} units/s): held back", actor->GetDisplayFullName(), slowed, limit);
+				static std::unordered_set<std::uint32_t> told, toldLimp;
+				if (slowed > 0 && (lying ? toldLimp : told).insert(it->first).second) {
+					logger::info("{}: {}'s body was about to fly ({} parts over {:.0f} units/s): held back", lying ? "limp" : "death", actor->GetDisplayFullName(), slowed, limit);
 				}
 				++it;
 			}

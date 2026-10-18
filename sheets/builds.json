@@ -431,6 +431,21 @@
    "verified": false
   },
   {
+   "id": "limp_speed_limit",
+   "value": 220.0,
+   "meaning": "while a fought character lies limp alive in Skyrim (paralysed, knocked down) and half a second after, no part of its body moves faster than this (Skyrim units per second; turning limited likewise), as death_speed_limit does for the dead: hits on paralysed enemies sent them flying (play test 2026-10-18). 0 = no limit.",
+   "source": "the user, 2026-10-18 ('paralyze throws the enemy ... or they just fly around'); 220 as death_speed_limit",
+   "verified": false
+  },
+  {
+   "id": "limp_hits_skyrim",
+   "value": 1.0,
+   "unit": "1 = on",
+   "meaning": "a fought character lying limp in Skyrim (paralysed, knocked down) is hit where Skyrim has its body: MORDHAU's blade reaching the line from its head to its feet is a clean hit, as for those without a stand-in. MORDHAU's verdict on its falling stand-in still counts too - either one, once a swing. Its ragdoll in MORDHAU was hard to hit (4 of 11 swings in the play test of 2026-10-18) and not always where Skyrim's body lay. 0 = MORDHAU's verdict alone, as before.",
+   "source": "the user, 2026-10-18 ('when they lay on the ground ... its still hard to hit them')",
+   "verified": false
+  },
+  {
    "id": "creature_damage_scale",
    "value": 1.25,
    "meaning": "what the player's hit on a creature (anything without a MORDHAU stand-in: wolves, spiders, bears, dragons ...) is multiplied by. 1.25 = a creature falls to a fifth fewer blows: MORDHAU's swings are slower than Skyrim's, and creatures took too long. 1 = as it was.",
