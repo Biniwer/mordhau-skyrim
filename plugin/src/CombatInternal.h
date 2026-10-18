@@ -354,6 +354,7 @@ namespace dm::Combat
 		// True if thrown.
 		bool SuperKick(RE::Actor* a_player, RE::Actor* a_target);
 
+		float SneakMult(RE::Actor* a_attacker, RE::Actor* a_target, RE::HitData& a_hit, bool* a_inDamage);
 		float HitFraction(RE::Actor* a_attacker, RE::Actor* a_target, float a_mordhauDamage, float a_skyrimDamage);
 
 		void ApplyHit(RE::Actor* a_attacker, RE::Actor* a_target, const ActiveSwing& a_swing, float a_scale = 1.0f, float a_mordhauDamage = -1.0f);
@@ -391,10 +392,12 @@ namespace dm::Combat
 						const float mordhau = g_shot.damage[tier] + (head ? g_shot.head[tier] : 0.0f);
 						const float full = std::max(a_victim->AsActorValueOwner()->GetPermanentActorValue(RE::ActorValue::kHealth), 1.0f);
 						const float was = a_hit.totalDamage;
-						a_hit.totalDamage = full * HitFraction(player, a_victim, mordhau, was);
+						bool        inDamage = false;
+						const float sneak = SneakMult(player, a_victim, a_hit, &inDamage);
+						a_hit.totalDamage = full * std::min(HitFraction(player, a_victim, mordhau, inDamage ? was / sneak : was) * sneak, 1.0f);
 						a_hit.physicalDamage = a_hit.totalDamage;
-						logger::info("archery: the arrow hit {} ({}, armour tier {}): MORDHAU damage {:.0f}, Skyrim's {:.0f} becomes {:.0f}", a_victim->GetDisplayFullName(),
-							head ? "head" : "body", tier, mordhau, was, a_hit.totalDamage);
+						logger::info("archery: the arrow hit {} ({}, armour tier {}): MORDHAU damage {:.0f}, Skyrim's {:.0f} becomes {:.0f}, sneak x{:.1f}", a_victim->GetDisplayFullName(),
+							head ? "head" : "body", tier, mordhau, was, a_hit.totalDamage, sneak);
 					}
 				}
 				if (a_victim && a_victim != player && IsFought(a_victim)) {

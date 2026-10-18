@@ -242,6 +242,29 @@ namespace dm::Combat
 			return true;
 		}
 
+		float SneakMult(RE::Actor* a_attacker, RE::Actor* a_target, RE::HitData& a_hit, bool* a_inDamage)
+		{
+			// Skyrim's sneak attack (Backstab, Assassin's Blade, Deadly Aim...): what the game worked out for this hit, else the
+			// same by its rules - sneaking and unseen, the base multiplier and the attacker's perks on it
+			*a_inDamage = false;
+			if (a_hit.flags.any(RE::HitData::Flag::kSneakAttack) && a_hit.sneakAttackBonus > 1.0f) {
+				*a_inDamage = true;  // (the game's own: already in its damage)
+				return a_hit.sneakAttackBonus;
+			}
+			if (!a_attacker->IsSneaking() || a_target->IsDead() || a_target->RequestDetectionLevel(a_attacker) > 0) {
+				return 1.0f;
+			}
+			auto* setting = RE::GameSettingCollection::GetSingleton()->GetSetting("fCombatSneakAttackBonusMult");
+			float mult = setting ? setting->GetFloat() : 2.0f;
+			RE::BGSEntryPoint::HandleEntryPoint(RE::BGSEntryPoint::ENTRY_POINT::kModSneakAttackMult, a_attacker, a_hit.weapon, a_target, std::addressof(mult));
+			if (mult <= 1.0f) {
+				return 1.0f;
+			}
+			a_hit.flags.set(RE::HitData::Flag::kSneakAttack);
+			a_hit.sneakAttackBonus = mult;
+			return mult;
+		}
+
 		float HitFraction(RE::Actor* a_attacker, RE::Actor* a_target, float a_mordhauDamage, float a_skyrimDamage)
 		{
 			auto*       player = RE::PlayerCharacter::GetSingleton();
@@ -321,7 +344,12 @@ namespace dm::Combat
 			if (auto* hit = RE::HitData::Create(a_attacker, a_target, a_attacker->GetEquippedEntryData(false), false)) {
 				if (a_mordhauDamage >= 0.0f) {
 					const float full = std::max(a_target->AsActorValueOwner()->GetPermanentActorValue(RE::ActorValue::kHealth), 1.0f);
-					hit->totalDamage = full * HitFraction(a_attacker, a_target, a_mordhauDamage, hit->totalDamage);
+					bool        inDamage = false;
+					const float sneak = a_attacker == RE::PlayerCharacter::GetSingleton() ? SneakMult(a_attacker, a_target, *hit, &inDamage) : 1.0f;
+					hit->totalDamage = full * std::min(HitFraction(a_attacker, a_target, a_mordhauDamage, inDamage ? hit->totalDamage / sneak : hit->totalDamage) * sneak, 1.0f);
+					if (sneak > 1.0f) {
+						logger::info("progress: sneak attack on {}: x{:.1f} ({})", a_target->GetDisplayFullName(), sneak, inDamage ? "Skyrim's" : "worked out here");
+					}
 					hit->physicalDamage = hit->totalDamage;
 				} else {
 					hit->totalDamage *= a_scale;
