@@ -36,20 +36,24 @@ clear_loader() {
     rm -f "$BIN/dwmapi.dll" "$BIN"/dwmapi.dll.old*
 }
 
+fetch() {
+    local tmp=$ARGS.tmp
+    mkdir -p "$CACHE"
+    if flatpak run --command=$LEG --env=LEGENDARY_CONFIG_PATH=$CFG $HGL \
+        launch $APP --json --skip-version-check 2>/dev/null |
+        python3 -I -c 'import json,sys; print("\n".join(json.load(sys.stdin)["egl_parameters"]))' \
+        > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
+        chmod 600 "$tmp"
+        mv -f "$tmp" "$ARGS"
+    else
+        rm -f "$tmp"
+        log "could not get an Epic login from legendary (logged in to Epic in Heroic?)"
+    fi
+}
+
 refresh() {
-    local tmp=$ARGS.tmp pid seen="" since
+    local pid seen="" since
     while true; do
-        mkdir -p "$CACHE"
-        if flatpak run --command=$LEG --env=LEGENDARY_CONFIG_PATH=$CFG $HGL \
-            launch $APP --json --skip-version-check 2>/dev/null |
-            python3 -I -c 'import json,sys; print("\n".join(json.load(sys.stdin)["egl_parameters"]))' \
-            > "$tmp" 2>/dev/null && [ -s "$tmp" ]; then
-            chmod 600 "$tmp"
-            mv -f "$tmp" "$ARGS"
-        else
-            rm -f "$tmp"
-            log "could not get an Epic login from legendary (logged in to Epic in Heroic?)"
-        fi
         # an Epic login is good for one start only: once a new MORDHAU has started (and read the file), a fresh one
         # is put in at once, so the plugin's next start - after a crash, seconds later - never finds a used one
         since=0
@@ -58,13 +62,17 @@ refresh() {
             if [ -n "$pid" ] && [ "$pid" != "$seen" ]; then seen=$pid; break; fi
             sleep 2; since=$((since + 2))
         done
+        fetch
     done
 }
 
 clear_loader
+# the first login before Skyrim starts (about 2 s): the plugin starts MORDHAU seconds after Skyrim, and since 2026-10-18
+# (Skyrim on an NVMe) it got there before a login fetched alongside - MORDHAU then ran without one ("backend unreachable")
+trap 'kill ${refresher:-} 2>/dev/null; rm -f "$ARGS" "$ARGS.tmp"; clear_loader' EXIT
+fetch
 refresh &
 refresher=$!
-trap 'kill $refresher 2>/dev/null; rm -f "$ARGS" "$ARGS.tmp"; clear_loader' EXIT
 
 # SKSE in place of Bethesda's launcher, when it is there
 args=("$@")

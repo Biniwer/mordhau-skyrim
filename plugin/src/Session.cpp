@@ -288,6 +288,7 @@ namespace dm::Session
 			const auto      file = a_cache / "launch_args.txt";
 			std::error_code ec;
 			if (!fs::exists(file, ec)) {
+				logger::info("session: no {} - MORDHAU starts without more arguments (the Epic build then cannot reach its backend)", file.filename().string());
 				return {};
 			}
 			std::ifstream in(file, std::ios::binary);
