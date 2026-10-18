@@ -554,6 +554,12 @@ local function read_input()
     end
     PS_ghostTarget = {}
     for id, t in rest:gmatch(" gt:(%d+),(%d+)") do PS_ghostTarget[tonumber(id)] = tonumber(t) end
+    -- (how much of its full stamina Skyrim has drained from each fought character so far: sheets/builds.json standin_stamina)
+    PS_staminaDrained = {}
+    for id, total in rest:gmatch(" sd:(%d+),([%d%.]+)") do PS_staminaDrained[tonumber(id)] = tonumber(total) end
+    -- (Skyrim's slows of each fought character, move and time shares: sheets/builds.json standin_slow; none = normal)
+    PS_ghostSlow = {}
+    for id, mv, tm in rest:gmatch(" gv:(%d+),([%d%.]+),([%d%.]+)") do PS_ghostSlow[tonumber(id)] = { tonumber(mv), tonumber(tm) } end
     for id, cls in rest:gmatch(" gs:(%d+),([%w_]+)") do PS_ghostShield[tonumber(id)] = cls end
     for id in rest:gmatch(" gp:(%d+)") do PS_passive[tonumber(id)] = true end
     -- (a creature's stand-in: sheets/builds.json creature_standin)
@@ -619,9 +625,48 @@ local function apply_input(pawn, pc)
         input.staminaGain = nil
         pcall(function()
             local before = pawn.Stamina
-            pawn.Stamina = math.min(100, before + gain)
+            pawn.Stamina = math.min(100, math.floor(before + gain + 0.5))   -- (whole points: a fraction is written as 0)
             log(string.format("stamina: Skyrim gave %.0f%%: %.0f -> %.0f", gain, before, pawn.Stamina))
         end)
+    end
+    -- what Skyrim drained from a fought character (a frost spell, a poison, any mod's effect) its stand-in loses too: the
+    -- plugin sends running totals, so only the part not yet taken is (PS_drainSeen: by the plugin's id, kept across
+    -- rebuilds of the stand-in list; a total lower than seen is a new count from the plugin). Stamina takes whole
+    -- points only - a fraction is written as 0 (seen 2026-10-18: "100 -> 0" on a drain of 0.04) - so whole points are
+    -- taken and the rest waits for the next frames.
+    PS_drainSeen = PS_drainSeen or {}
+    for _, b in ipairs(PS_get_bots()) do
+        local total = b.ghost and PS_staminaDrained and PS_staminaDrained[b.ghost]
+        if total then
+            local seen = PS_drainSeen[b.ghost] or 0
+            if total < seen then seen = 0 end
+            local take = math.floor(total - seen)
+            if take >= 1 and not b.dead then
+                pcall(function()
+                    local before = b.obj.Stamina
+                    b.obj.Stamina = math.max(0, math.floor(before) - take)
+                    if os.clock() - (b.drainLogged or -10) > 1.0 then
+                        b.drainLogged = os.clock()
+                        log(string.format("stamina: Skyrim drained stand-in %d by %d%%: %.0f -> %.0f", b.ghost, take, before, b.obj.Stamina))
+                    end
+                end)
+                seen = seen + take
+            end
+            PS_drainSeen[b.ghost] = seen
+            -- (still draining - the total rose since the last frame: regeneration waits until its delay has passed after it)
+            if total > (b.drainTotal or 0) + 1e-4 then b.drainUntil = os.clock() + PS_regen_delay(b) end
+            b.drainTotal = total
+        end
+        if b.regenHeld or b.drainUntil then
+            PS_hold_regen(b, not b.dead and b.drainUntil ~= nil and os.clock() < b.drainUntil)
+        end
+        local slow = b.ghost and PS_ghostSlow and PS_ghostSlow[b.ghost]
+        if not b.dead and (slow or b.slowed) then PS_apply_slow(b, slow and slow[1] or 1, slow and slow[2] or 1) end
+        if not PS_probed and b.ghost and not b.dead then
+            PS_probed = true
+            local f = io.open(CACHE .. "probe.txt", "r")   -- (dev: only with cache/probe.txt - walking the classes is untried here)
+            if f then f:close(); pcall(PS_probe, b.obj) end
+        end
     end
     pcall(PS_player_arm, pawn)
     pcall(PS_player_shield, pawn)
@@ -1013,6 +1058,101 @@ function PS_no_world_hits(pawn)
     for _, b in ipairs(PS_get_bots()) do
         if not b.dead and there(b.obj) then off(b.obj) end
     end
+end
+-- MORDHAU's stamina regeneration of a stand-in waits while Skyrim drains it (sheets/builds.json standin_stamina): its
+-- StaminaRegenPerTick is 0 meanwhile and put back after, as MORDHAU waits StaminaRegenDelay after its own spending.
+-- Which object holds them - the character's StaminaStatComponent, else the character - is looked up once and logged.
+function PS_regen_owner(b)
+    if b.regenOwner == nil then
+        b.regenOwner = false
+        pcall(function()
+            local c = b.obj.StaminaStatComponent
+            if there(c) and type(c.StaminaRegenPerTick) == "number" then b.regenOwner = c end
+        end)
+        if not b.regenOwner then
+            pcall(function() if type(b.obj.StaminaRegenPerTick) == "number" then b.regenOwner = b.obj end end)
+        end
+        local delay, per = "?", "?"
+        if b.regenOwner then pcall(function() delay = tostring(b.regenOwner.StaminaRegenDelay); per = tostring(b.regenOwner.StaminaRegenPerTick) end) end
+        log(string.format("stamina: stand-in %s's regeneration is %s (per tick %s, delay %s)", tostring(b.ghost),
+            b.regenOwner == false and "NOT FOUND - drains do not hold it" or (b.regenOwner == b.obj and "on the character" or "on its StaminaStatComponent"), per, delay))
+    end
+    return b.regenOwner or nil
+end
+function PS_regen_delay(b)
+    local delay = 1.5
+    pcall(function() local d = PS_regen_owner(b).StaminaRegenDelay; if type(d) == "number" and d > 0 then delay = d end end)
+    return delay
+end
+function PS_hold_regen(b, hold)
+    if hold == (b.regenHeld or false) then return end
+    b.regenHeld = hold
+    local owner = PS_regen_owner(b)
+    if not owner then return end
+    local ok = pcall(function()
+        if hold then
+            b.regenWas = owner.StaminaRegenPerTick
+            owner.StaminaRegenPerTick = 0
+        elseif b.regenWas then
+            owner.StaminaRegenPerTick = b.regenWas
+        end
+    end)
+    if os.clock() - (b.regenLogged or -10) > 5.0 or not ok then
+        b.regenLogged = os.clock()
+        log(string.format("stamina: stand-in %s's regeneration %s%s", tostring(b.ghost), hold and "held (drained)" or "goes on (" .. tostring(b.regenWas) .. " per tick)", ok and "" or " - FAILED"))
+    end
+end
+-- Skyrim's slows on a stand-in (sheets/builds.json standin_slow): its movement through MovementSpeedScale (else its
+-- CharacterMovement's MaxWalkSpeed, the original kept), its whole pace through CustomTimeDilation; normal again when
+-- Skyrim's slow is over. Which way its movement is slowed is looked up once and logged.
+function PS_apply_slow(b, move, time)
+    if b.slowMove == move and b.slowTime == time then return end
+    b.slowMove, b.slowTime = move, time
+    b.slowed = move ~= 1 or time ~= 1
+    local how = "?"
+    pcall(function()
+        if b.speedHow == nil then
+            b.speedHow = false
+            if type(b.obj.MovementSpeedScale) == "number" then b.speedHow = "MovementSpeedScale"
+            else
+                local cm = b.obj.CharacterMovement
+                if there(cm) and type(cm.MaxWalkSpeed) == "number" then b.speedHow = "MaxWalkSpeed"; b.walkWas = cm.MaxWalkSpeed end
+            end
+        end
+        if b.speedHow == "MovementSpeedScale" then b.obj.MovementSpeedScale = move
+        elseif b.speedHow == "MaxWalkSpeed" then b.obj.CharacterMovement.MaxWalkSpeed = b.walkWas * move end
+        how = tostring(b.speedHow)
+    end)
+    pcall(function() b.obj.CustomTimeDilation = time end)
+    if os.clock() - (b.slowLogged or -10) > 2.0 or not b.slowed then
+        b.slowLogged = os.clock()
+        log(string.format("slow: stand-in %s moves at %.0f%% (%s), its pace %.0f%%", tostring(b.ghost), move * 100, how, time * 100))
+    end
+end
+-- (dev, once a session with cache/probe.txt: what MORDHAU's character class and its stamina component offer that bears on stamina, stun,
+-- flinch, motions and speed - names to build on, written to the log)
+function PS_probe(obj)
+    local want = { "Stamina", "Stun", "Flinch", "Motion", "Speed", "Dilation", "Perk", "Daze", "Knock" }
+    local function dump(cls, label)
+        local names, n = {}, 0
+        while cls and cls:IsValid() and n < 12 do
+            n = n + 1
+            local cname = cls:GetFName():ToString()
+            pcall(function() cls:ForEachFunction(function(f)
+                local name = f:GetFName():ToString()
+                for _, w in ipairs(want) do if name:find(w, 1, true) then names[#names + 1] = cname .. ":" .. name .. "()"; break end end
+            end) end)
+            pcall(function() cls:ForEachProperty(function(p)
+                local name = p:GetFName():ToString()
+                for _, w in ipairs(want) do if name:find(w, 1, true) then names[#names + 1] = cname .. "." .. name; break end end
+            end) end)
+            cls = cls:GetSuperStruct()
+        end
+        log("probe " .. label .. ": " .. table.concat(names, " "))
+    end
+    dump(obj:GetClass(), "character")
+    pcall(function() local c = obj.StaminaStatComponent; if there(c) then dump(c:GetClass(), "stamina component") end end)
+    pcall(function() local m = obj:GetMotion(); if there(m) then dump(m:GetClass(), "motion") end end)
 end
 -- MORDHAU's sound classes kept silent in the mod's session (see PS_apply_volume)
 PS_SILENT_CLASSES = {
@@ -2216,6 +2356,7 @@ end
 
 local function ghost_block()
     local parts = { string.pack("<I4fI4", playerHits, playerDamage, playerAttacker) }
+    local stamina_parts = {}
     local n = 0
     for _, b in ipairs(bots) do
         if b.ghost and not b.dead and n < MAX_GHOSTS then
@@ -2227,8 +2368,14 @@ local function ghost_block()
                 if fallen(b.obj) then stage = FALLEN end
             end)
             parts[#parts + 1] = string.pack("<I4I4fi4I4fI4", b.ghost, b.hits, b.damage, stage, b.otherHits or 0, b.otherDamage or 0, b.otherBy or 0)
+            local stamina = -1
+            pcall(function() if there(b.obj) then stamina = b.obj.Stamina end end)
+            stamina_parts[#stamina_parts + 1] = string.pack("<I4f", b.ghost, stamina)
         end
     end
+    for _ = #stamina_parts + 1, MAX_GHOSTS do stamina_parts[#stamina_parts + 1] = string.pack("<I4f", 0, -1) end
+    -- (each stand-in's MORDHAU stamina, for its Skyrim bar: after the stand-ins' moves in the state block)
+    PS_staminaBlock = table.concat(stamina_parts)
     for _ = n + 1, MAX_GHOSTS do parts[#parts + 1] = string.pack("<I4I4fi4I4fI4", 0, 0, 0, -1, 0, 0, 0) end
     -- (parts[1] is the player's own numbers, 2-4 the first three stand-ins; the others go to the end of the state block)
     PS_ghostExtra = table.concat(parts, "", 5)
@@ -2733,7 +2880,7 @@ local function stream(pawn, mesh)
         local stamp = os.clock()
         pcall(function() if PS_ks and PS_ks:IsValid() and there(PS_pc) then stamp = PS_ks:GetGameTimeInSeconds(PS_pc) end end)
         local block = table.concat({ string.pack("<c4I4fi4", "DMLP", sequence, stamp, #names), table.concat(parts), state_block(pawn, mesh), ghost_block(),
-            PS_camera_block(pawn, PS_pc, mesh), PS_shot_block(), string.rep("\0", 60), PS_player_weapon_block(), PS_bow_block(pawn), PS_ghostExtra or string.rep("\0", (MAX_GHOSTS - 3) * 28), PS_shield_block(pawn, mesh), PS_move_block(), PS_ghost_poses(), string.pack("<I4", sequence) })
+            PS_camera_block(pawn, PS_pc, mesh), PS_shot_block(), string.rep("\0", 60), PS_player_weapon_block(), PS_bow_block(pawn), PS_ghostExtra or string.rep("\0", (MAX_GHOSTS - 3) * 28), PS_shield_block(pawn, mesh), PS_move_block(), PS_staminaBlock or string.rep(string.pack("<I4f", 0, -1), MAX_GHOSTS), PS_ghost_poses(), string.pack("<I4", sequence) })
         f:seek("set", 0)
         f:write(block)
         f:flush()

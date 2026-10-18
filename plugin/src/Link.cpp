@@ -11,7 +11,7 @@ namespace dm::Link
 	namespace
 	{
 		using Clock = std::chrono::steady_clock;
-		constexpr std::size_t kStateBytes = 836 + (kGhosts - 3) * 28 + 32 + kGhosts * 20;  // (408 + the bow's pose, 428, + the stand-ins after the third)
+		constexpr std::size_t kStateBytes = 836 + (kGhosts - 3) * 28 + 32 + kGhosts * 20 + kGhosts * 8;  // (408 + the bow's pose, 428, + the stand-ins after the third, + their stamina)
 
 		std::filesystem::path g_cache;
 		std::mutex            g_lock;
@@ -174,6 +174,11 @@ namespace dm::Link
 							std::memcpy(&g_state.moves[k].forward, at + 8, 4);
 							std::memcpy(&g_state.moves[k].yaw, at + 12, 4);
 							std::memcpy(&g_state.moves[k].free, at + 16, 4);
+						}
+						for (int k = 0; k < kGhosts; ++k) {
+							const char* at = s + 836 + (kGhosts - 3) * 28 + 32 + kGhosts * 20 + k * 8;
+							std::memcpy(&g_state.standinStamina[k].id, at, 4);
+							std::memcpy(&g_state.standinStamina[k].stamina, at + 4, 4);
 						}
 						std::memcpy(&g_state.bowBones, s + 408, 4);
 						std::memcpy(g_state.bow, s + 412, sizeof(g_state.bow));
@@ -377,6 +382,12 @@ namespace dm::Link
 				}
 				if (g.target != 0) {
 					line += std::format(" gt:{},{}", g.id, g.target);
+				}
+				if (std::abs(g.moveScale - 1.0f) > 0.01f || std::abs(g.timeScale - 1.0f) > 0.01f) {
+					line += std::format(" gv:{},{:.2f},{:.2f}", g.id, g.moveScale, g.timeScale);
+				}
+				if (g.staminaDrained > 0.0f) {
+					line += std::format(" sd:{},{:.2f}", g.id, g.staminaDrained);  // (a running total: the script takes what it has not yet)
 				}
 				if (g.shield && *g.shield) {
 					line += std::format(" gs:{},{}", g.id, g.shield);

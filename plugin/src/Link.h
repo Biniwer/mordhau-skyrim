@@ -34,6 +34,12 @@ namespace dm::Link
 			int           free = 0;                      // MORDHAU's AI moves it
 		};
 		GhostMove     moves[kGhosts];
+		struct GhostStamina
+		{
+			std::uint32_t id = 0;
+			float         stamina = -1.0f;  // its stand-in's stamina in MORDHAU, of 100 (-1: not known)
+		};
+		GhostStamina  standinStamina[kGhosts];
 		bool          altMode = false;            // the weapon in MORDHAU's hand is in its alternate mode (its other grip)
 		int           shieldHas = 0;              // MORDHAU's character carries a shield
 		float         shield[7]{};                // ...there, in character space (rotation xyzw, position cm)
@@ -116,6 +122,9 @@ namespace dm::Link
 		std::uint32_t target = 0;   // whom it fights in Skyrim, when that is not the player (0: the player)
 		const char*   shield = "";  // MORDHAU shield class for the shield it wears in Skyrim ("" = none)
 		const char*   weapon = "";  // MORDHAU weapon for its moves and reach (sheets/weapon_families.json: mordhau_weapon), by what it holds in Skyrim
+		float         staminaDrained = 0.0f;  // percent of its full stamina Skyrim has taken so far (a frost spell, a poison, any mod's effect): its stand-in loses the same
+		float         moveScale = 1.0f;       // how fast it may move against its normal speed in Skyrim (a frost spell's slow): its stand-in's movement too
+		float         timeScale = 1.0f;       // Skyrim's world time (Slow Time): its stand-in's whole pace, attacks included
 	};
 	void SetGhosts(const std::vector<Ghost>& a_ghosts);
 	// Who is limp in Skyrim right now (thrown by a shout, knocked down): the player and/or stand-ins by id. MORDHAU's own

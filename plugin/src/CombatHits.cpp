@@ -371,6 +371,14 @@ namespace dm::Combat
 			if (!processed) {
 				a_target->DoDamage(damage, a_attacker, false);
 			}
+			if (blocked) {
+				// (what Skyrim's block cost it is Skyrim's own spending, not a drain for its stand-in: sheets/builds.json standin_stamina)
+				for (auto& m : g_mirrored) {
+					if (m.handle.get().get() == a_target && m.staminaSet >= 0.0f) {
+						m.staminaSet = values->GetActorValue(RE::ActorValue::kStamina);
+					}
+				}
+			}
 			// blood and the weapon-on-flesh sound
 			if (auto* impacts = RE::BGSImpactManager::GetSingleton(); impacts && weapon && weapon->impactDataSet && node) {
 				RE::NiPoint3 pick = dir;

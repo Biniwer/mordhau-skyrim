@@ -170,6 +170,36 @@
    "verified": false
   },
   {
+   "id": "standin_stamina",
+   "value": 1.0,
+   "unit": "1 = on",
+   "meaning": "A fought character's Skyrim stamina bar shows its stand-in's MORDHAU stamina (as the player's does), and whatever Skyrim takes off it beyond that - a frost spell, a stamina poison, any mod's effect - its stand-in loses in MORDHAU too, as a share of full: a drained enemy's parries break and cost it its weapon, by MORDHAU's rules; while it is drained, MORDHAU's stamina regeneration of the stand-in waits (as after MORDHAU's own spending: its StaminaRegenDelay after the last drain). Not counted: while it sprints in Skyrim, while Skyrim has its body (yielding, fleeing), and a hit Skyrim blocked. 0 = Skyrim's stamina of fought characters is left alone, as before.",
+   "source": "the user, 2026-10-18 ('even if other mods drained skyrim stamina it would also drain from Mordhaus bar')",
+   "verified": false
+  },
+  {
+   "id": "standin_stamina_drain_step",
+   "value": 0.05,
+   "meaning": "standin_stamina: the least Skyrim stamina points a fought character must lose between two frames to count as drained (a concentration spell takes a little every frame)",
+   "source": "2026-10-18, a first guess",
+   "verified": false
+  },
+  {
+   "id": "standin_slow",
+   "value": 1.0,
+   "unit": "1 = on",
+   "meaning": "Skyrim's slows reach a fought character's stand-in: how fast it may move against its normal speed (SpeedMult: a frost spell's slow, or any mod's) scales its MORDHAU movement (MovementSpeedScale), and Skyrim's world time (Slow Time) its whole pace, attacks included (CustomTimeDilation). The player's own MORDHAU character keeps its pace. 0 = stand-ins always move and fight at MORDHAU's speed, as before.",
+   "source": "the user, 2026-10-18 ('look into slowing enemies down when controlled by Mordhau')",
+   "verified": false
+  },
+  {
+   "id": "standin_slow_least",
+   "value": 0.2,
+   "meaning": "standin_slow: the slowest a stand-in is made, as a share of its normal speed or pace (MORDHAU's motions are not made for a standstill)",
+   "source": "2026-10-18, a first guess",
+   "verified": false
+  },
+  {
    "id": "enemy_arrows_mordhau",
    "value": 0.0,
    "meaning": "1 = an enemy archer's arrow or bolt that hits the player does MORDHAU's damage for that kind of bow (recurve 50/40/26/25, long bow 70/50/36/34, crossbow 60/50/42/40 by the player's armour: none/light/-/heavy; +50/30/20/20 on the head), scaled into Skyrim's health like every MORDHAU hit; it can be parried or blocked and has MORDHAU's trail. The archer itself still aims and shoots by Skyrim's AI.",

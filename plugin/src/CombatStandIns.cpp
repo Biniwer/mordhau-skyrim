@@ -594,6 +594,48 @@ namespace dm::Combat
 		}
 		}
 
+		// A fought character's stamina (sheets/builds.json standin_stamina): its Skyrim bar shows its stand-in's MORDHAU stamina,
+		// as the player's does; whatever Skyrim takes off it beyond that since the last frame - a frost spell, a stamina poison,
+		// any mod's effect, whatever its source - is counted, and its stand-in loses as much in MORDHAU (a running total, Link
+		// " sd:"). Skyrim's own spending is left out: sprinting, a blocked hit (ApplyHit), and all of it while Skyrim has the body.
+		void MirrorStamina(Mirrored& m, const Link::State& a_link, RE::Actor* a_actor, Link::Ghost& g)
+		{
+			if (BuildValue("standin_stamina") < 0.5f) {
+				m.staminaSet = -1.0f;
+				return;
+			}
+			float mordhau = -1.0f;
+			for (const auto& s : a_link.standinStamina) {
+				if (s.id == m.id) {
+					mordhau = s.stamina;
+				}
+			}
+			auto*       values = a_actor->AsActorValueOwner();
+			const float full = std::max(values->GetPermanentActorValue(RE::ActorValue::kStamina), 1.0f);
+			const float have = values->GetActorValue(RE::ActorValue::kStamina);
+			const bool  skyrims = g_skyrimHasBody.contains(m.id) || a_actor->IsDead() || a_actor->AsActorState()->IsSprinting() ||
+			                     (RE::UI::GetSingleton() && RE::UI::GetSingleton()->GameIsPaused());
+			if (!skyrims && m.staminaSet >= 0.0f && m.staminaSet - have > BuildValue("standin_stamina_drain_step")) {
+				const float share = (m.staminaSet - have) / full * 100.0f;
+				m.staminaDrained += share;
+				if (Seconds(m.drainLogged) > 1.0f) {  // (a concentration spell drains every frame: at most a line a second)
+					m.drainLogged = Clock::now();
+					logger::info("stamina: Skyrim is draining {} ({:.1f}% of full so far): passed on to its stand-in (MORDHAU's stamina {:.0f})", a_actor->GetDisplayFullName(), m.staminaDrained,
+						mordhau);
+				}
+			}
+			g.staminaDrained = m.staminaDrained;
+			if (skyrims || mordhau < 0.0f) {
+				m.staminaSet = -1.0f;
+				return;
+			}
+			const float want = full * std::clamp(mordhau, 0.0f, 100.0f) / 100.0f;
+			if (std::abs(want - have) > 0.5f) {
+				values->ModActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kStamina, want - have);
+			}
+			m.staminaSet = values->GetActorValue(RE::ActorValue::kStamina);
+		}
+
 		void MirrorOneEnemy(Mirrored& m, RE::PlayerCharacter* a_player, const Link::State& a_link, const float kCm, const float facing, std::vector<Link::Ghost>& ghosts)
 		{
 			if (m.dummy) {
@@ -616,6 +658,15 @@ namespace dm::Combat
 				g.size = std::clamp(actor->GetHeight() / a_player->GetHeight(), 0.8f, 1.25f);
 			}
 			WalkAfterStandIn(m, a_player, a_link, kCm, actor, g);
+			MirrorStamina(m, a_link, actor.get(), g);
+			if (BuildValue("standin_slow") > 0.5f && !g_skyrimHasBody.contains(m.id)) {
+				// (sheets/builds.json standin_slow: Skyrim's slows reach the stand-in - its speed against its normal one, a
+				// frost spell's slow or any mod's, and the world's time, Slow Time; the player's own character keeps its pace)
+				auto*       values = actor->AsActorValueOwner();
+				const float base = values->GetBaseActorValue(RE::ActorValue::kSpeedMult);
+				g.moveScale = base > 1.0f ? std::clamp(values->GetActorValue(RE::ActorValue::kSpeedMult) / base, BuildValue("standin_slow_least"), 1.0f) : 1.0f;
+				g.timeScale = std::clamp(RE::BSTimer::QGlobalTimeMultiplier(), BuildValue("standin_slow_least"), 1.0f);
+			}
 			{
 				static Clock::time_point lastMirror = Clock::now();
 				static float             mirrorDt = 0.016f;

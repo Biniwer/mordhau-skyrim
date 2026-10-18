@@ -229,6 +229,27 @@
    "verified": true
   },
   {
+   "id": "standin_stamina",
+   "direction": "MORDHAU -> Skyrim",
+   "carries": "40 bytes after standin_move, closing the state block (1064 bytes now): for each of the five stand-ins the Skyrim id (uint32) and its stand-in's Stamina of 100 (float; -1 = not known)",
+   "used_for": "a fought character's Skyrim stamina bar shows its stand-in's MORDHAU stamina (sheets/builds.json standin_stamina)",
+   "verified": false
+  },
+  {
+   "id": "standin_stamina_drain",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "' sd:<id>,<percent>' = how much of its full stamina Skyrim has drained from that fought character so far (a frost spell, a poison, any mod's effect), a running total; the script takes the part it has not yet taken off its stand-in's Stamina",
+   "used_for": "stamina drains of any source weaken an enemy in MORDHAU's fight: its parries break on no stamina (sheets/builds.json standin_stamina)",
+   "verified": false
+  },
+  {
+   "id": "standin_slow",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "' gv:<id>,<move>,<time>' = that fought character's speed against its normal one in Skyrim, and Skyrim's world time, as shares (sent only while one is not 1)",
+   "used_for": "its stand-in's MovementSpeedScale and CustomTimeDilation (sheets/builds.json standin_slow)",
+   "verified": false
+  },
+  {
    "id": "hybrid_values",
    "direction": "Skyrim -> MORDHAU",
    "carries": "' hy:<on>,<engage cm>,<snap cm>' on the input line",

@@ -604,6 +604,9 @@ namespace dm::Combat
 			RE::NiPoint3    velocity;        // units per second, smoothed
 			bool            posKnown = false;
 			bool            dummy = false;   // a creature's: only stands to be hit (sheets/builds.json creature_standin); the creature stays Skyrim's
+			float           staminaSet = -1.0f;   // its Skyrim stamina as the mirror left it last frame (-1: not mirrored then)
+			float           staminaDrained = 0.0f;  // percent of full Skyrim took off it beyond that, so far (sent to MORDHAU)
+			Clock::time_point drainLogged{};
 		};
 
 		inline std::vector<Mirrored> g_mirrored;
