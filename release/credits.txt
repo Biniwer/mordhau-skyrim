@@ -8,6 +8,9 @@ BUILT ON (linked into MordhauSkyrim.dll)
 INCLUDED IN THE DOWNLOAD
 - UE4SS (RE-UE4SS) v3.0.1 by the UE4SS-RE team - https://github.com/UE4SS-RE/RE-UE4SS - MIT. Unchanged: UE4SS.dll. With this mod's settings: UE4SS-settings.ini and Mods/mods.txt.
 
+INTERFACE HEADER FROM
+- True Directional Movement by Ersh (Ershin on Nexus Mods, ersh1 on GitHub) - https://github.com/ersh1/TrueDirectionalMovement - GPL-3.0. Its modder interface header, TrueDirectionalMovementAPI.h, is part of the plugin's source, so that a running True Directional Movement can be asked to leave the player's movement, turning and target lock alone while MORDHAU is linked. No other file of it is included.
+
 TECHNIQUES FROM
 - SkyCraft by chasmlol (MIT): drawing into Skyrim's frame before its post-processing, and dealing a hit so that Skyrim shows the health bar and gives kill credit. No file of SkyCraft is included.
 

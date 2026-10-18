@@ -82,7 +82,7 @@ write('SkyCraft.txt', NL.join([
     read(os.path.join(root, '_deps', 'SkyCraft', 'LICENSE')),
 ]))
 write('TrueDirectionalMovement.txt', NL.join([
-    'True Directional Movement by ersh1 - https://github.com/ersh1/TrueDirectionalMovement',
+    'True Directional Movement by Ersh (ersh1 on GitHub) - https://github.com/ersh1/TrueDirectionalMovement',
     'Licence: GPL-3.0 (as its repository states; full text: GPL-3.0.txt beside this file).',
     'Its modder interface header, TrueDirectionalMovementAPI.h, is part of the source of MordhauSkyrim.dll (plugin/src/api),',
     'copied as the file itself asks, so that the plugin can ask a running True Directional Movement to leave the player\'s',

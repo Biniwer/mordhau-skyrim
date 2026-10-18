@@ -248,6 +248,9 @@ MORDHAU's `Mordhau\Binaries\Win64` folder).
   settings file and mod list carry this mod's settings.
 - SkyCraft by chasmlol (MIT): two techniques follow its approach (drawing into Skyrim's frame before post-processing;
   hits that show the health bar and give kill credit). No file of it is included.
+- True Directional Movement by Ersh (GPL-3.0): the plugin includes its modder interface header, so that a running True
+  Directional Movement can be asked to leave the player's movement, turning and target lock alone while MORDHAU is
+  linked. No other file of it is included.
 - spdlog, {fmt}, DirectXTK, DirectXMath, rapidcsv, xbyak, JSON for Modern C++, SimpleIni, toml11: libraries the plugin
   is built with (MIT or BSD-3-Clause).
 - SkyUI by the SkyUI team and MCM Helper by Parapets: the settings menu is built on them (optional, not included; the
