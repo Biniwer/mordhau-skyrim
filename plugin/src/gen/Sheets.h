@@ -348,6 +348,7 @@ namespace dm::sheets
 		{ "undead_fight", 1.0f },
 		{ "stamina_restore_step", 15.0f },
 		{ "standin_stamina", 1.0f },
+		{ "player_stamina_drain", 1.0f },
 		{ "standin_stamina_drain_step", 0.05f },
 		{ "standin_slow", 1.0f },
 		{ "standin_slow_least", 0.2f },

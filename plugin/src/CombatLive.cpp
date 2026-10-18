@@ -121,6 +121,7 @@ namespace dm::Combat
 				const float cost = g_stats.Move("jump_stamina");
 				if (cost > 0.0f) {
 					values->DamageActorValue(RE::ActorValue::kStamina, cost);
+					g_ownStaminaSpent += cost;
 				}
 			}
 			g_move.wasAirborne = airborne;
@@ -1052,6 +1053,23 @@ namespace dm::Combat
 				if (lastSet >= 0.0f && have - lastSet > BuildValue("stamina_restore_step") && !RE::UI::GetSingleton()->GameIsPaused()) {
 					Link::AddStamina((have - lastSet) / full * 100.0f);
 					logger::info("stamina: Skyrim restored {:.0f} ({:.0f}% of full): passed on to MORDHAU", have - lastSet, (have - lastSet) / full * 100.0f);
+				}
+				// (...and what Skyrim took - a frost spell, a stamina poison, any mod's effect - MORDHAU's character loses too:
+				// sheets/builds.json player_stamina_drain. Not the plugin's own spending, nor Skyrim's sprinting.)
+				{
+					static float             drained = 0.0f;
+					static Clock::time_point logged{};
+					const float              lost = lastSet - have - g_ownStaminaSpent;
+					if (BuildValue("player_stamina_drain") > 0.5f && lastSet >= 0.0f && lost > BuildValue("standin_stamina_drain_step") && !a_player->AsActorState()->IsSprinting() &&
+						!RE::UI::GetSingleton()->GameIsPaused()) {
+						Link::DrainStamina(lost / full * 100.0f);
+						drained += lost / full * 100.0f;
+						if (Seconds(logged) > 1.0f) {  // (a concentration spell drains every frame: at most a line a second)
+							logged = Clock::now();
+							logger::info("stamina: Skyrim is draining the player ({:.1f}% of full so far): passed on to MORDHAU (its stamina {:.0f})", drained, link.stamina);
+						}
+					}
+					g_ownStaminaSpent = 0.0f;
 				}
 				if (std::abs(want - have) > 0.5f) {
 					values->ModActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kStamina, want - have);

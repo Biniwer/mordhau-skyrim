@@ -529,6 +529,7 @@ local function read_input()
             PS_staminaGains = tonumber(gn)
             if not first then input.staminaGain = tonumber(gp) end   -- (what was in the file when the script started is old)
         end
+        input.playerDrained = tonumber(rest:match(" pd:([%d%.]+)"))   -- (Skyrim's drains of the player's stamina so far, percent of full)
         local level = tonumber(rest:match(" ai:(%d)"))
         if level and PS_ai_levels[level] and level ~= PS_ai_level then
             PS_ai_level = level
@@ -629,6 +630,29 @@ local function apply_input(pawn, pc)
             log(string.format("stamina: Skyrim gave %.0f%%: %.0f -> %.0f", gain, before, pawn.Stamina))
         end)
     end
+    -- what Skyrim drained from the player (an enemy's frost spell, a poison, any mod's effect) the character loses too, in
+    -- whole points as for the stand-ins below, and its regeneration waits meanwhile (sheets/builds.json player_stamina_drain)
+    if not PS_me or PS_me.obj ~= pawn then PS_me = { obj = pawn, ghost = "player" } end
+    if input.playerDrained then
+        local total, seen = input.playerDrained, PS_meSeen or input.playerDrained   -- (what was there when the script started is old)
+        if total < seen then seen = 0 end   -- (a new count from the plugin)
+        local take = math.floor(total - seen)
+        if take >= 1 then
+            pcall(function()
+                local before = pawn.Stamina
+                pawn.Stamina = math.max(0, math.floor(before) - take)
+                if os.clock() - (PS_meLogged or -10) > 1.0 then
+                    PS_meLogged = os.clock()
+                    log(string.format("stamina: Skyrim drained the player by %d%%: %.0f -> %.0f", take, before, pawn.Stamina))
+                end
+            end)
+            seen = seen + take
+        end
+        PS_meSeen = seen
+        if total > (PS_me.drainTotal or 0) + 1e-4 then PS_me.drainUntil = os.clock() + PS_regen_delay(PS_me) end
+        PS_me.drainTotal = total
+    end
+    if PS_me.regenHeld or PS_me.drainUntil then PS_hold_regen(PS_me, PS_me.drainUntil ~= nil and os.clock() < PS_me.drainUntil) end
     -- what Skyrim drained from a fought character (a frost spell, a poison, any mod's effect) its stand-in loses too: the
     -- plugin sends running totals, so only the part not yet taken is (PS_drainSeen: by the plugin's id, kept across
     -- rebuilds of the stand-in list; a total lower than seen is a new count from the plugin). Stamina takes whole
@@ -1062,6 +1086,7 @@ end
 -- MORDHAU's stamina regeneration of a stand-in waits while Skyrim drains it (sheets/builds.json standin_stamina): its
 -- StaminaRegenPerTick is 0 meanwhile and put back after, as MORDHAU waits StaminaRegenDelay after its own spending.
 -- Which object holds them - the character's StaminaStatComponent, else the character - is looked up once and logged.
+function PS_who(b) return b.ghost == "player" and "the player" or ("stand-in " .. tostring(b.ghost)) end
 function PS_regen_owner(b)
     if b.regenOwner == nil then
         b.regenOwner = false
@@ -1074,7 +1099,7 @@ function PS_regen_owner(b)
         end
         local delay, per = "?", "?"
         if b.regenOwner then pcall(function() delay = tostring(b.regenOwner.StaminaRegenDelay); per = tostring(b.regenOwner.StaminaRegenPerTick) end) end
-        log(string.format("stamina: stand-in %s's regeneration is %s (per tick %s, delay %s)", tostring(b.ghost),
+        log(string.format("stamina: %s's regeneration is %s (per tick %s, delay %s)", PS_who(b),
             b.regenOwner == false and "NOT FOUND - drains do not hold it" or (b.regenOwner == b.obj and "on the character" or "on its StaminaStatComponent"), per, delay))
     end
     return b.regenOwner or nil
@@ -1099,7 +1124,7 @@ function PS_hold_regen(b, hold)
     end)
     if os.clock() - (b.regenLogged or -10) > 5.0 or not ok then
         b.regenLogged = os.clock()
-        log(string.format("stamina: stand-in %s's regeneration %s%s", tostring(b.ghost), hold and "held (drained)" or "goes on (" .. tostring(b.regenWas) .. " per tick)", ok and "" or " - FAILED"))
+        log(string.format("stamina: %s's regeneration %s%s", PS_who(b), hold and "held (drained)" or "goes on (" .. tostring(b.regenWas) .. " per tick)", ok and "" or " - FAILED"))
     end
 end
 -- Skyrim's slows on a stand-in (sheets/builds.json standin_slow): its movement through MovementSpeedScale (else its

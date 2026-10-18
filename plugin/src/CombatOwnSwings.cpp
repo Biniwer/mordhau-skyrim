@@ -180,6 +180,7 @@ namespace dm::Combat
 				const float before = values->GetActorValue(RE::ActorValue::kStamina);
 				if (cost > 0.0f) {
 					values->DamageActorValue(RE::ActorValue::kStamina, cost);
+					g_ownStaminaSpent += cost;
 				}
 				logger::info("miss: {} at {:.3f}s, stamina {:.0f} -> {:.0f} (cost {:.0f})", swing.swing->id, t, before, values->GetActorValue(RE::ActorValue::kStamina), cost);
 			}

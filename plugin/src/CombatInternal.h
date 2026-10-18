@@ -302,7 +302,10 @@ namespace dm::Combat
 
 		float BuildValue(const char* a_id);
 
-		inline std::unordered_set<std::uint32_t> g_skyrimHasBody;  // fought characters whose body is Skyrim's alone right now (yielding, fleeing, kneeling)
+		inline std::unordered_set<std::uint32_t> g_skyrimHasBody;
+		// the player's stamina the plugin itself took since the last frame (a jump, a miss, a parry): not a drain of Skyrim's
+		// to pass on to MORDHAU (sheets/builds.json player_stamina_drain)
+		inline float g_ownStaminaSpent = 0.0f;  // fought characters whose body is Skyrim's alone right now (yielding, fleeing, kneeling)
 
 		inline Clock::time_point g_parryAsked{};  // when the parry button last went to MORDHAU
 
@@ -510,6 +513,7 @@ namespace dm::Combat
 						const float before = values->GetActorValue(RE::ActorValue::kStamina);
 						if (cost > 0.0f) {
 							values->DamageActorValue(RE::ActorValue::kStamina, cost);
+							g_ownStaminaSpent += cost;
 						}
 						const float window = g_stats.Parry("riposte_window");
 						g_riposteUntil = Clock::now() + std::chrono::milliseconds(static_cast<int>((window > 0.0f ? window : 0.4f) * 1000.0f));

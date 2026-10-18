@@ -326,6 +326,12 @@ namespace dm::Link
 	}
 	int   g_staminaGains = 0;
 	float g_staminaGain = 0.0f;
+	float g_staminaDrained = 0.0f;  // (a running total, percent of full: the script takes what it has not yet)
+	void  DrainStamina(float a_percent)
+	{
+		std::scoped_lock lock(g_lock);
+		g_staminaDrained += a_percent;
+	}
 	void  AddStamina(float a_percent)
 	{
 		std::scoped_lock lock(g_lock);
@@ -410,6 +416,9 @@ namespace dm::Link
 			}
 			if (!g_shield.empty()) {
 				line += " sh:" + g_shield;
+			}
+			if (g_staminaDrained > 0.0f) {
+				line += std::format(" pd:{:.2f}", g_staminaDrained);
 			}
 			if (g_staminaGains > 0) {
 				line += std::format(" sg:{},{:.1f}", g_staminaGains, g_staminaGain);

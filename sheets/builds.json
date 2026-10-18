@@ -178,6 +178,14 @@
    "verified": false
   },
   {
+   "id": "player_stamina_drain",
+   "value": 1.0,
+   "unit": "1 = on",
+   "meaning": "Skyrim's stamina bar shows MORDHAU's stamina; whatever Skyrim takes off it beyond that - an enemy's frost spell, a stamina poison, any mod's effect - MORDHAU's character loses too, as a share of full, and its stamina does not regenerate meanwhile (as standin_stamina does for enemies). Not counted: the plugin's own spending (a jump's cost), and Skyrim's while sprinting. 0 = only Skyrim's restores are passed on, as before.",
+   "source": "the user, 2026-10-18 ('Fix Skyrim stamina drains on the player too')",
+   "verified": false
+  },
+  {
    "id": "standin_stamina_drain_step",
    "value": 0.05,
    "meaning": "standin_stamina: the least Skyrim stamina points a fought character must lose between two frames to count as drained (a concentration spell takes a little every frame)",

@@ -37,6 +37,8 @@ Store, a few gameplay additions, and a CI build. Everything else - and how to pl
 - Stamina drains: whatever Skyrim takes off a fought enemy's stamina - a frost spell, a stamina poison, any mod's
   effect - its MORDHAU stand-in loses too, and its MORDHAU stamina does not regenerate while it is drained. A drained
   enemy's parries break and cost it its weapon, by MORDHAU's rules. (`standin_stamina` in sheets/builds.json)
+- The same for the player: whatever Skyrim drains from your stamina (an enemy's frost spell, a poison) your MORDHAU
+  character loses too, and its regeneration waits meanwhile. (`player_stamina_drain`)
 - Slows: a Skyrim slow on a fought enemy (a frost spell's, or any mod's) slows its stand-in's movement; Skyrim's world
   time (Slow Time) its whole pace, attacks included. (`standin_slow`)
 - Enemies lying limp (paralysed, knocked down): the body seen in Skyrim can be struck - MORDHAU's blade reaching it is a

@@ -236,6 +236,13 @@
    "verified": false
   },
   {
+   "id": "player_stamina_drain",
+   "direction": "Skyrim -> MORDHAU",
+   "carries": "' pd:<percent>' = how much of the player's full stamina Skyrim has drained so far (an enemy's frost spell, a poison, any mod's effect), a running total; the script takes the part it has not yet taken off its character's Stamina",
+   "used_for": "stamina drains of any source tire the player in MORDHAU's fight too (sheets/builds.json player_stamina_drain)",
+   "verified": false
+  },
+  {
    "id": "standin_stamina_drain",
    "direction": "Skyrim -> MORDHAU",
    "carries": "' sd:<id>,<percent>' = how much of its full stamina Skyrim has drained from that fought character so far (a frost spell, a poison, any mod's effect), a running total; the script takes the part it has not yet taken off its stand-in's Stamina",
