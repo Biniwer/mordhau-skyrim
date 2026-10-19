@@ -422,17 +422,17 @@ float4 PSHudTex(VSOut i) : SV_Target
 
 		inline ID3D11BlendState*        g_blendAlpha = nullptr;
 
-		// MORDHAU's own health / stamina display, read from its window (which sits behind Skyrim) about 20 times a
-		// second on a worker thread. The MORDHAU side blacks out its 3D view, so only the HUD is in the picture.
-		// The part read: the strip at the bottom centre where MORDHAU draws the two bars and their numbers.
-		// Two parts are read: [0] the strip at the bottom centre with the health / stamina bars and their numbers, and
-		// [1] the middle of the screen with MORDHAU's crosshair and its attack-direction ("240") indicator.
+		// Parts of MORDHAU's own HUD, read from its window (which sits behind Skyrim) about 25 times a second on a
+		// worker thread. The MORDHAU side blacks out its 3D view, so only the HUD is in the picture. Three parts:
+		// [0] the strip at the bottom centre with the health / stamina bars and their numbers (not shown since
+		// sheets/builds.json mordhau_bars is 0: Skyrim's own bars are), [1] the middle of the screen with MORDHAU's
+		// crosshair and its attack-direction ("240") indicator, [2] MORDHAU's voice / emote menu, top left.
 		struct HudPart
 		{
 			float left, right, top, bottom;  // of MORDHAU's window
 		};
 
-		// (the third: MORDHAU's own voice / emote menu, top left - sheets/menus.json)
+		// (the third's place: sheets/menus.json)
 		constexpr int     kHudPartCount = 3;
 
 		constexpr HudPart kHudParts[kHudPartCount]{ { 0.285f, 0.71f, 0.89f, 0.955f }, { 0.44f, 0.56f, 0.393f, 0.607f },
@@ -982,9 +982,23 @@ float4 PSHudTex(VSOut i) : SV_Target
 
 		inline std::atomic_bool   g_gripInFist{ true };     // sheets/builds.json skyrim_weapon_grip_in_fist
 
+		inline std::atomic_bool   g_handOntoWeapon{ true };  // sheets/builds.json right_hand_onto_weapon
+
+		inline std::atomic_bool   g_leftOntoWeapon{ true };  // sheets/builds.json left_hand_onto_weapon
+
+		// Both hands on the weapon (left_hand_onto_weapon): what ArmsToMordhauHands needs to lay the Skyrim left fist on
+		// the weapon as it is drawn. Directions and places in Skyrim's world units, from the right wrist.
+		struct LeftOnWeapon
+		{
+			RE::NiPoint3 lineFromRight;  // a point of the drawn weapon's line, from where the right hand's place is
+			RE::NiPoint3 along;          // the weapon's direction
+			RE::NiPoint3 fist;           // the Skyrim left fist from the left wrist, as the left hand is turned now
+			float        snapped = 0.0f;  // (out: how far the left hand was moved onto the line, for the log)
+		};
+
 		RE::NiMatrix3 TurnFromTo(RE::NiPoint3 a_from, RE::NiPoint3 a_to);
 
-		void ArmsToMordhauHands(RE::NiAVObject* a_body, const XMMATRIX& a_toWorld, float a_k);
+		void ArmsToMordhauHands(RE::NiAVObject* a_body, const XMMATRIX& a_toWorld, float a_k, const RE::NiPoint3& a_rightShift, LeftOnWeapon* a_left);
 
 		void PlacePlayerWeaponThirdNow();
 

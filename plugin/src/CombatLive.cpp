@@ -481,6 +481,7 @@ namespace dm::Combat
 			CharacterRender::SetMordhauBars(BuildValue("mordhau_bars") > 0.5f);
 			InventoryModels::SetEnabled(BuildValue("inventory_mordhau_models") > 0.5f);
 			CharacterRender::SetArms(BuildValue("arms_to_mordhau_hands") > 0.5f, BuildValue("arms_stretch_max"), BuildValue("skyrim_weapon_grip_in_fist") > 0.5f, BuildValue("skyrim_weapon_half_turn") > 0.5f, BuildValue("alt_grip_hands_on_blade") > 0.5f);
+			CharacterRender::SetHandsOntoWeapon(BuildValue("right_hand_onto_weapon") > 0.5f, BuildValue("left_hand_onto_weapon") > 0.5f);
 		}
 		}
 

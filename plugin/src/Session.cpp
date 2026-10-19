@@ -27,7 +27,7 @@ namespace dm::Session
 		{
 			fs::path mordhau;               // MORDHAU's folder (the one holding "Mordhau\Binaries") when Steam does not have it
 			fs::path cache;                 // another cache folder
-			int      width = 1920;          // MORDHAU's window (its health / stamina display is read from it)
+			int      width = 1920;          // MORDHAU's window (its crosshair, attack-direction indicator and voice / emote menu are read from it)
 			int      height = 1080;
 			bool     simpleEnemies = false;  // enemies only copy the Skyrim character's timing (default: MORDHAU's own bot brains)
 			bool     startMordhau = true;    // 0: the plugin starts nothing (someone else runs the session)
@@ -188,76 +188,114 @@ namespace dm::Session
 			return true;
 		}
 
-		// MORDHAU's side, from beside the plugin into MORDHAU's Binaries\Win64: UE4SS (the script host) unless someone's
-		// own is there, this mashup's script, and where the shared cache is. Nothing of MORDHAU's own is changed.
+		// Where the script host lives: the mod's own folder (<cache>\ue4ss), never MORDHAU's. UE4SS takes the folder its
+		// UE4SS.dll is in as its own (settings, signatures, Mods, its log), and the loader loads it from there - so
+		// MORDHAU's Binaries\Win64 holds nothing of this mod between sessions, and only the loader, for the second of a
+		// start, during one. (Before 0.1.22 UE4SS stayed in MORDHAU's folder: nothing loaded it without the loader, but
+		// nobody can promise how anti-cheat treats unused script-host files in a game's folder.)
+		fs::path ScriptHostHome(const fs::path& a_cache)
+		{
+			return a_cache / "ue4ss";
+		}
+
+		// What versions before 0.1.22 left in MORDHAU's folder, taken out again. Only the mod's own copy of UE4SS (told by
+		// its marker file, or by being the very file the mod brings): someone's own UE4SS stays, only this mod's script
+		// and its line in their mods.txt go. UE4SS's two example mods and its shared Lua files came with the mod's UE4SS
+		// in earlier versions.
+		void ClearOldScriptHost(const fs::path& a_bin)
+		{
+			std::error_code ec;
+			const auto      marker = a_bin / "UE4SS.mashup.txt";
+			const bool      ours = fs::exists(marker, ec) || (fs::exists(a_bin / "UE4SS.dll", ec) && SameBytes(g_payload / "UE4SS.dll", a_bin / "UE4SS.dll"));
+			int             removed = 0, failed = 0;
+			const auto      gone = [&](const fs::path& a_path) {
+				std::error_code e;
+				if (!fs::exists(a_path, e)) {
+					return;
+				}
+				SetFileAttributesW(a_path.c_str(), FILE_ATTRIBUTE_NORMAL);
+				fs::remove_all(a_path, e);
+				if (e || fs::exists(a_path, e)) {
+					++failed;
+					logger::warn("session: '{}' could not be taken out of MORDHAU's folder ({})", a_path.string(), e.message());
+				} else {
+					++removed;
+				}
+			};
+			gone(a_bin / "Mods" / "PoseStream");
+			if (ours) {
+				for (const auto* name : { "UE4SS.dll", "UE4SS-settings.ini", "UE4SS.log", "UE4SS_Signatures" }) {
+					gone(a_bin / name);
+				}
+				for (const auto* name : { "mods.txt", "ConsoleEnablerMod", "Keybinds", "shared" }) {
+					gone(a_bin / "Mods" / name);
+				}
+				if (fs::is_directory(a_bin / "Mods", ec) && fs::is_empty(a_bin / "Mods", ec)) {
+					gone(a_bin / "Mods");
+				}
+				gone(marker);  // (last: while anything of ours is left, the marker says whose it is)
+			} else if (const auto list = a_bin / "Mods" / "mods.txt"; fs::exists(list, ec)) {
+				std::ifstream in(list);
+				std::string   line, all;
+				bool          listed = false;
+				while (std::getline(in, line)) {
+					if (Trim(line).starts_with("PoseStream")) {
+						listed = true;
+						continue;
+					}
+					all += line + "\n";
+				}
+				in.close();
+				if (listed) {
+					std::ofstream(list, std::ios::trunc) << all;
+					++removed;
+				}
+			}
+			if (removed > 0 || failed > 0) {
+				logger::info("session: {} file(s) or folder(s) of an earlier version taken out of MORDHAU's folder{}", removed, failed ? std::format(", {} could not be", failed) : std::string());
+			}
+		}
+
+		// MORDHAU's side, from beside the plugin into the mod's own folder for the script host (ScriptHostHome): UE4SS,
+		// its settings and signatures, this mashup's script, and where the shared cache is. Nothing is put into MORDHAU's
+		// folder here, and nothing of MORDHAU's own is changed; what earlier versions left there is taken out.
 		bool PlaceFiles(const fs::path& a_bin, const fs::path& a_cache)
 		{
 			std::error_code ec;
-			const auto      marker = a_bin / "UE4SS.mashup.txt";  // "this UE4SS was put here by the mashup": it may be updated
-			const bool      theirs = fs::exists(a_bin / "UE4SS.dll", ec) && !fs::exists(marker, ec) && !SameBytes(g_payload / "UE4SS.dll", a_bin / "UE4SS.dll");
-			bool            ok = true;
-			if (theirs) {
-				logger::info("session: MORDHAU's folder has a UE4SS of its own: left as it is; only this mashup's script is added");
-			}
+			const auto      home = ScriptHostHome(a_cache);
+			fs::create_directories(home, ec);
+			bool ok = true;
 			for (const auto& entry : fs::recursive_directory_iterator(g_payload, ec)) {
 				if (!entry.is_regular_file(ec)) {
 					continue;
 				}
 				const auto relative = fs::relative(entry.path(), g_payload, ec);
-				const auto name = relative.generic_string();
 				if (_wcsicmp(relative.filename().c_str(), kLoader) == 0) {
 					continue;  // (only ever in MORDHAU's folder while a session's MORDHAU starts)
 				}
 				if (relative.filename().wstring().starts_with(L"__folder_managed_by_") || relative.filename() == L"meta.ini") {
 					continue;  // (a mod manager's own markers in the mod's folders - Vortex, Mod Organizer 2: not MORDHAU's business)
 				}
-				const bool script = name.starts_with("Mods/PoseStream/");
-				if (name == "Mods/mods.txt") {
-					continue;  // (below: someone's own list is kept)
-				}
-				if (theirs && !script) {
-					continue;
-				}
-				ok = Put(entry.path(), a_bin / relative) && ok;
+				ok = Put(entry.path(), home / relative) && ok;
 			}
-			if (!theirs) {
-				std::ofstream(marker) << "UE4SS in this folder was put here by the MORDHAU x Skyrim mashup (a Skyrim mod). It is not loaded by a normal start of MORDHAU.\n";
-			}
-			// UE4SS's list of scripts: this mashup's must be on it and switched on
-			const auto list = a_bin / "Mods" / "mods.txt";
-			if (!fs::exists(list, ec)) {
-				ok = Put(g_payload / "Mods" / "mods.txt", list) && ok;
-			} else {
-				std::ifstream in(list);
-				std::string   line, all;
-				bool          listed = false;
-				while (std::getline(in, line)) {
-					if (Trim(line).starts_with("PoseStream")) {
-						line = "PoseStream : 1";
-						listed = true;
-					}
-					all += line + "\n";
-				}
-				in.close();
-				std::ofstream(list, std::ios::trunc) << (listed ? "" : "PoseStream : 1\n") << all;
-			}
-			std::ofstream(a_bin / "Mods" / "PoseStream" / "cache_dir.txt", std::ios::trunc) << a_cache.string() << "\n";
+			std::ofstream(home / "Mods" / "PoseStream" / "cache_dir.txt", std::ios::trunc) << a_cache.string() << "\n";
 			// (the native helper into the mod's own cache folder, not MORDHAU's - see ClearHelper)
 			if (const auto helper = g_payload.parent_path() / "MordhauBones.dll"; fs::exists(helper, ec)) {
 				Put(helper, a_cache / "MordhauBones.dll");
 			}
 			ClearHelper(a_bin);
-			return ok && fs::exists(a_bin / "UE4SS.dll", ec) && fs::exists(a_bin / "Mods" / "PoseStream" / "Scripts" / "main.lua", ec);
+			ClearOldScriptHost(a_bin);
+			return ok && fs::exists(home / "UE4SS.dll", ec) && fs::exists(home / "Mods" / "PoseStream" / "Scripts" / "main.lua", ec);
 		}
 
 		// Skyrim's own environment with MORDHAU's Steam id instead of Skyrim's.
-		std::wstring EnvironmentForMordhau(const std::wstring& a_key)
+		std::wstring EnvironmentForMordhau(const std::wstring& a_key, const fs::path& a_scriptHost)
 		{
 			std::wstring block;
 			if (const LPWCH all = GetEnvironmentStringsW()) {
 				for (const wchar_t* at = all; *at; at += std::wcslen(at) + 1) {
 					if (_wcsnicmp(at, L"SteamAppId=", 11) == 0 || _wcsnicmp(at, L"SteamGameId=", 12) == 0 || _wcsnicmp(at, L"SteamOverlayGameId=", 19) == 0 ||
-						_wcsnicmp(at, L"MORDHAU_SKYRIM=", 15) == 0 || _wcsnicmp(at, L"MORDHAU_SKYRIM_SESSION=", 23) == 0) {
+						_wcsnicmp(at, L"MORDHAU_SKYRIM=", 15) == 0 || _wcsnicmp(at, L"MORDHAU_SKYRIM_SESSION=", 23) == 0 || _wcsnicmp(at, L"MORDHAU_SKYRIM_UE4SS=", 21) == 0) {
 						continue;
 					}
 					block.append(at);
@@ -272,15 +310,18 @@ namespace dm::Session
 			// (the key of this one start: the script runs only in a MORDHAU that has it - sheets/live_link.json session_key)
 			block.append(L"MORDHAU_SKYRIM_SESSION=" + a_key);
 			block.push_back(L'\0');
+			// (where the loader finds the script host: the mod's own folder, not MORDHAU's - ScriptHostHome)
+			block.append(L"MORDHAU_SKYRIM_UE4SS=" + a_scriptHost.wstring());
+			block.push_back(L'\0');
 			block.push_back(L'\0');
 			return block;
 		}
 
 		// The last session's script log is kept (UE4SS starts it afresh): evidence when MORDHAU closed by itself.
-		void KeepLog(const fs::path& a_bin, const fs::path& a_cache)
+		void KeepLog(const fs::path& a_cache)
 		{
 			std::error_code ec;
-			const auto      log = a_bin / "UE4SS.log";
+			const auto      log = ScriptHostHome(a_cache) / "UE4SS.log";
 			if (!fs::exists(log, ec) || fs::file_size(log, ec) == 0) {
 				return;
 			}
@@ -309,7 +350,7 @@ namespace dm::Session
 		HANDLE StartMordhau(const fs::path& a_bin, const fs::path& a_cache, bool& a_other)
 		{
 			a_other = false;
-			KeepLog(a_bin, a_cache);
+			KeepLog(a_cache);
 			DeleteFileW((a_cache / "live_stop.txt").c_str());  // (a stop signal is for the session that raised it)
 			std::ofstream(a_cache / "live_options.lua", std::ios::trunc) << "return { bot_brains = " << (g_settings.simpleEnemies ? "false" : "true") << " }\n";
 			// (the script closes MORDHAU again unless a mashup session started it: this is how it knows)
@@ -334,7 +375,7 @@ namespace dm::Session
 				logger::info("session: another MORDHAU appeared just before the launch: loader taken out again, waiting for it to close");
 				return nullptr;
 			}
-			auto         environment = EnvironmentForMordhau(std::wstring(key.begin(), key.end()));
+			auto         environment = EnvironmentForMordhau(std::wstring(key.begin(), key.end()), ScriptHostHome(a_cache) / "UE4SS.dll");
 			std::wstring command = L"\"" + (a_bin / kExe).wstring() + L"\" -windowed -ResX=" + std::to_wstring(g_settings.width) + L" -ResY=" + std::to_wstring(g_settings.height) +
 								   L" -insecure";  // (always: this MORDHAU is not for anti-cheat-protected play - sheets/live_link.json managed_session)
 			STARTUPINFOW        startup{};
@@ -636,7 +677,7 @@ namespace dm::Session
 				MordhauAudio::Restore(cache);
 				logger::info("session: MORDHAU closed after {:.0f} s", Seconds(started));
 				if (Seconds(started) < 60.0f && ++quick >= 3) {
-					logger::error("session: MORDHAU closed three times right after starting; not started again (see UE4SS.log in '{}')", bin.string());
+					logger::error("session: MORDHAU closed three times right after starting; not started again (see UE4SS.log in '{}')", ScriptHostHome(cache).string());
 					Tell("MORDHAU x Skyrim: MORDHAU keeps closing - see MordhauSkyrim.log");
 					return;
 				}

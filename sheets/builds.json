@@ -359,6 +359,20 @@
    "verified": true
   },
   {
+   "id": "right_hand_onto_weapon",
+   "value": 1.0,
+   "meaning": "player reports, 2026-10-18 (Nexus, and a video): the player's weapon floated beside the hand, in first and third person, with MORDHAU and Skyrim weapons; the people fought were fine. The weapon was set off from the Skyrim wrist as MORDHAU's is from MORDHAU's wrist, and skyrim_weapon_grip_in_fist corrected that only along the weapon - the Skyrim fist does not sit where MORDHAU's does about its wrist, so the grip could come out beside the fist. The fix came from a player who built the mod from its source. 1 = the weapon keeps MORDHAU's line and the right hand is moved onto it: the hand's place (arms_to_mordhau_hands) is moved by how far the Skyrim fist is beside MORDHAU's weapon line, and the weapon is laid in the fist; along the weapon nothing changes. 0 = as before.",
+   "source": "",
+   "verified": false
+  },
+  {
+   "id": "left_hand_onto_weapon",
+   "value": 1.0,
+   "meaning": "with right_hand_onto_weapon, for weapons held in both hands: when MORDHAU's two palms are within 9 cm of one line along the weapon (let go again above 12 cm, so it does not flicker), the left hand is set from the right one as far apart as MORDHAU's hands are, and moved sideways so that the Skyrim left fist lies on the weapon as it is drawn. The left fist's place is the right one's, mirrored - only when the rest skeleton is the same on both sides (logged). 0 = the left hand where arms_to_mordhau_hands puts it.",
+   "source": "",
+   "verified": false
+  },
+  {
    "id": "skyrim_weapon_half_turn",
    "value": 1.0,
    "meaning": "play-test note, 2026-10-11 (its edge faced backwards; log: the model has its head on its -x side). 1 = a Skyrim weapon model laid along MORDHAU's weapon is turned half round about its own length (players' and enemies'). A sword looks the same both ways. Not yet confirmed by play-testing. Not while the weapon held is a MORDHAU item: MORDHAU's own model is drawn on that same node and was turned with it - play-test note, 2026-10-12.",

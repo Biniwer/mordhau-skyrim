@@ -90,7 +90,7 @@ go through a shield. Holding R with a shield throws it.
 - Combat goes back to normal Skyrim in the middle of a session: MORDHAU closed. The mod starts it again within a
   minute.
 - Logs to send with a report: `Documents\My Games\Skyrim Special Edition\SKSE\MordhauSkyrim.log`, and `UE4SS.log` in
-  MORDHAU's `Mordhau\Binaries\Win64` folder.
+  `%LOCALAPPDATA%\MordhauSkyrim\cache\ue4ss`.
 - To remove it: see "Remove" in the README.
 
 ## Settings

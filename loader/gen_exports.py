@@ -25,10 +25,45 @@ def exports(path):
     return [(base + i, names.get(i)) for i in range(nfun) if struct.unpack_from('<I', d, off(afun) + 4 * i)[0]]
 
 ex = exports(r'C:\Windows\System32\dwmapi.dll')
+# (each export jumps through its place in g_real. The place is empty until the export's first call, which asks
+# ResolveReal in loader.cpp: the real dwmapi.dll is loaded then, not in DllMain. The argument registers - the four
+# integer and the four floating-point ones - are kept across that lookup.)
+RESOLVE = '''resolve PROC FRAME
+\tpush rcx
+\t.pushreg rcx
+\tpush rdx
+\t.pushreg rdx
+\tpush r8
+\t.pushreg r8
+\tpush r9
+\t.pushreg r9
+\tsub rsp, 104
+\t.allocstack 104
+\t.endprolog
+\tmovdqu XMMWORD PTR [rsp + 32], xmm0
+\tmovdqu XMMWORD PTR [rsp + 48], xmm1
+\tmovdqu XMMWORD PTR [rsp + 64], xmm2
+\tmovdqu XMMWORD PTR [rsp + 80], xmm3
+\tmov ecx, eax
+\tcall ResolveReal
+\tmovdqu xmm0, XMMWORD PTR [rsp + 32]
+\tmovdqu xmm1, XMMWORD PTR [rsp + 48]
+\tmovdqu xmm2, XMMWORD PTR [rsp + 64]
+\tmovdqu xmm3, XMMWORD PTR [rsp + 80]
+\tadd rsp, 104
+\tpop r9
+\tpop r8
+\tpop rdx
+\tpop rcx
+\tjmp rax
+resolve ENDP
+'''
 with open('exports.asm', 'w') as f:
-    f.write('; made by gen_exports.py: every export of dwmapi.dll jumps to the real one\nEXTERN g_real:QWORD\n.code\n')
+    f.write('; made by gen_exports.py: every export of dwmapi.dll jumps to the real one, looked up on its first call\n'
+            'EXTERN g_real:QWORD\nEXTERN ResolveReal:PROC\n.code\n' + RESOLVE)
     for i, _ in enumerate(ex):
-        f.write(f'f_{i} PROC\n\tjmp QWORD PTR [g_real + {i * 8}]\nf_{i} ENDP\n')
+        f.write(f'f_{i} PROC\n\tmov rax, QWORD PTR [g_real + {i * 8}]\n\ttest rax, rax\n\tjz first_{i}\n\tjmp rax\n'
+                f'first_{i}:\n\tmov eax, {i}\n\tjmp resolve\nf_{i} ENDP\n')
     f.write('END\n')
 with open('exports.def', 'w') as f:
     f.write('LIBRARY dwmapi\nEXPORTS\n')

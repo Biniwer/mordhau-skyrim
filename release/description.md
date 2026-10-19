@@ -16,7 +16,7 @@ stamina, and the people you fight are moved and fought by MORDHAU's bots. Damage
 - No guarantee for your MORDHAU account. The mod only ever runs inside its own offline MORDHAU, started with
   `-insecure`, and shuts the game down if it's started any other way. Even so, nobody, me included, can promise how
   the anti-cheat treats it. If you can't accept any risk to your MORDHAU account, don't install it.
-- It puts files in MORDHAU's folder (see below).
+- It puts one file in MORDHAU's folder, only while it starts MORDHAU (see below).
 - Experimental. It was built on one PC and has barely been tried anywhere else. Expect bugs, and use a new save.
 - Not affiliated with or endorsed by Bethesda or Triternion.
 
@@ -29,7 +29,7 @@ Nothing of the mod is loaded when you start MORDHAU normally:
    `-insecure` and the key first. Without both it closes the game within a fraction of a second, loads nothing, and
    renames itself so the next start is normal.
 3. Once it has done its job the loader renames itself to `dwmapi.dll.old`, which MORDHAU doesn't load. The mod deletes
-   it when MORDHAU closes or at the next session.
+   it at the next session. The script host itself is never in MORDHAU's folder: it lives in the mod's own folder.
 4. The script checks the key again, and closes the game if the session ever becomes a joined or hosted server.
 5. A MORDHAU you started yourself is never touched. If it's already running when Skyrim starts, the mod waits until
    you close it.
@@ -44,9 +44,10 @@ and the loader removing itself don't depend on it.
 After closing Skyrim and before playing MORDHAU online:
 
 1. Open MORDHAU's `Mordhau\Binaries\Win64` folder. There must be no `dwmapi.dll`. Delete `dwmapi.dll.old` if it's
-   there. `UE4SS.dll`, `UE4SS-settings.ini` and the `Mods` folder can stay; without the loader MORDHAU ignores them.
-2. Note the "date modified" of `UE4SS.log` there, start MORDHAU from Steam, go to the main menu and quit. If the date
-   hasn't changed, the script host wasn't loaded.
+   there. Nothing else of the mod is in that folder (no `UE4SS` files, no `Mods` folder, unless you have a UE4SS of
+   your own).
+2. Note the "date modified" of `UE4SS.log` in `%LOCALAPPDATA%\MordhauSkyrim\cache\ue4ss`, start MORDHAU from Steam, go
+   to the main menu and quit. If the date hasn't changed, the script host wasn't loaded.
 3. If you find `MordhauSkyrim-closed-MORDHAU.txt`, the loader stopped a wrong start and says why. Delete it and
    `dwmapi.dll.old`.
 
@@ -210,10 +211,12 @@ A Skyrim weapon keeps its own look and fights as a MORDHAU weapon, chosen by its
 
 ## What goes into MORDHAU's folder
 
-Everything is in `Mordhau\Binaries\Win64`. Nothing of MORDHAU's own is changed or replaced.
+Only one file, and only for a moment: the loader `dwmapi.dll` in `Mordhau\Binaries\Win64`. Nothing of MORDHAU's own
+is changed or replaced.
 
-- These stay: UE4SS (an open-source script host) and the mod's script. On their own they do nothing; a normal MORDHAU
-  start doesn't load them.
+- The script host (UE4SS, an open-source tool) and the mod's script never go into MORDHAU's folder. They live in
+  `%LOCALAPPDATA%\MordhauSkyrim\cache\ue4ss` and the loader loads them from there. Versions before 0.1.22 kept them in
+  MORDHAU's folder; the first start with 0.1.22 takes them out (a UE4SS of your own there is left alone).
 - Only there for a moment: the mod's small loader, `dwmapi.dll`. The mod puts it in and starts MORDHAU. Before anything
   else runs, the loader checks that the mod started MORDHAU (`-insecure` and the one-time key); only then does it load
   the script host, renaming itself to `dwmapi.dll.old` in the same moment.
@@ -232,9 +235,10 @@ Everything is in `Mordhau\Binaries\Win64`. Nothing of MORDHAU's own is changed o
 
 ## Uninstall
 
-Remove the mod in your mod manager. Then delete these from `Mordhau\Binaries\Win64`: `UE4SS.dll`,
-`UE4SS-settings.ini`, `UE4SS.mashup.txt`, `UE4SS.log`, the `UE4SS_Signatures` and `Mods` folders, and `dwmapi.dll` or
-`dwmapi.dll.old` if present. Also delete `%LOCALAPPDATA%\MordhauSkyrim` (the prepared models and the bone reader), and
+Remove the mod in your mod manager. Then delete `dwmapi.dll` or `dwmapi.dll.old` from `Mordhau\Binaries\Win64` if
+present (and, if you last played a version before 0.1.22: `UE4SS.dll`, `UE4SS-settings.ini`, `UE4SS.mashup.txt`,
+`UE4SS.log`, the `UE4SS_Signatures` and `Mods` folders). Also delete `%LOCALAPPDATA%\MordhauSkyrim` (the prepared
+models, the script host and the bone reader), and
 the inventory model folders `Data\meshes\MordhauSkyrim` and `Data\textures\MordhauSkyrim` (about 55 MB; with Mod
 Organizer they end up in Overwrite).
 
@@ -257,7 +261,7 @@ Organizer they end up in Overwrite).
 
 Say what you were doing and attach `MordhauSkyrim.log` (in `Documents\My Games\Skyrim Special Edition\SKSE`, next to
 your other SKSE mods' logs; versions up to 0.1.16 wrote `DirectionalMelee.log` one folder up) and `UE4SS.log` (in
-MORDHAU's `Mordhau\Binaries\Win64` folder).
+`%LOCALAPPDATA%\MordhauSkyrim\cache\ue4ss`; up to 0.1.21 in MORDHAU's `Mordhau\Binaries\Win64` folder).
 
 ## Credits
 
@@ -277,6 +281,7 @@ MORDHAU's `Mordhau\Binaries\Win64` folder).
   menu's script was compiled against their published script headers).
 - Address Library for SKSE Plugins by meh321, and SKSE by the SKSE team: required, not included.
 - MORDHAU by Triternion and Skyrim Special Edition by Bethesda Game Studios: the two games this brings together.
+- MilanPenak: the fix that keeps your weapon in your hand (0.1.22), made from this mod's source.
 - Made with AI help: the code, tools and texts were written with an AI coding assistant (Claude, by Anthropic),
   directed and play-tested by me.
 

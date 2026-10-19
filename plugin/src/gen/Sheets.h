@@ -353,6 +353,8 @@ namespace dm::sheets
 		{ "arms_to_mordhau_hands", 1.0f },
 		{ "arms_stretch_max", 1.15f },
 		{ "skyrim_weapon_grip_in_fist", 1.0f },
+		{ "right_hand_onto_weapon", 1.0f },
+		{ "left_hand_onto_weapon", 1.0f },
 		{ "skyrim_weapon_half_turn", 1.0f },
 		{ "alt_grip_hands_on_blade", 1.0f },
 		{ "alt_slide_BattleAxe_3p", 8.0f },

@@ -15,6 +15,10 @@ Mods/PoseStream/Scripts/main.lua (the MORDHAU script), MordhauWeapons.esp, the d
 built with. The plugin is built on CommonLibSSE-NG (GPL-3.0-or-later with a modding and linking exception, see
 CommonLibSSE-NG.txt) and is conveyed under the same licence and exception.
 
+Contributed: how the player's own weapon is held (the plugin's RenderWeapons.cpp - the weapon kept on MORDHAU's line
+and the hands moved onto it, 0.1.22) was written by MilanPenak, from this mod's source, and is part of it under the
+same licence.
+
 Source code: the complete corresponding source of this version is offered on the mod's page on Nexus Mods, under
 Files, as "Source code" (https://www.nexusmods.com/skyrimspecialedition/mods/194747?tab=files).
 

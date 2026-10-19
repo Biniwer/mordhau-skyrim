@@ -115,7 +115,11 @@ namespace dm::CharacterRender
 		// Both hands of the player's own Skyrim body to where MORDHAU's hands are (sheets/builds.json
 		// arms_to_mordhau_hands). The body's bones were turned like MORDHAU's before this; a Skyrim body's arms are not as
 		// long and its shoulders not as wide, so its hands ended somewhere else than MORDHAU's - beside the weapon.
-		void ArmsToMordhauHands(RE::NiAVObject* a_body, const XMMATRIX& a_toWorld, float a_k)
+		// a_rightShift moves the right hand's place on top of that (the Skyrim fist onto MORDHAU's weapon line, sheets/builds.json
+		// right_hand_onto_weapon). a_left (both hands on the weapon, sheets/builds.json left_hand_onto_weapon): the left hand is
+		// set from the right one as MORDHAU has them, unscaled - the hands must be as far apart along the weapon as MORDHAU's -
+		// and then moved so that the Skyrim left fist lies on the weapon as it is drawn.
+		void ArmsToMordhauHands(RE::NiAVObject* a_body, const XMMATRIX& a_toWorld, float a_k, const RE::NiPoint3& a_rightShift, LeftOnWeapon* a_left)
 		{
 			static const int   mordhau[2][3] = { { BoneNamed(g_bones, "LeftArm"), BoneNamed(g_bones, "LeftForeArm"), BoneNamed(g_bones, "LeftHand") },
 				  { BoneNamed(g_bones, "RightArm"), BoneNamed(g_bones, "RightForeArm"), BoneNamed(g_bones, "RightHand") } };
@@ -181,13 +185,25 @@ namespace dm::CharacterRender
 			const RE::NiTransform handWas[2] = { node[0][2]->world, node[1][2]->world };
 			float                 stretched[2]{ 1.0f, 1.0f }, moved[2]{};
 			RE::NiUpdateData      update;
+			const RE::NiPoint3    rightPlace = middle + world(XMVectorSubtract(at(mordhau[1][2]), mordhauMiddle)) * ratio;
 			for (int side = 0; side < 2; ++side) {
 				if (side == 0 && g_leftCasting.load()) {
 					continue;  // (the left hand casting: that arm is Skyrim's own casting animation, sheets/builds.json cast_arm_skyrim)
 				}
 				auto *             upper = node[side][0], *fore = node[side][1], *hand = node[side][2];
 				const RE::NiPoint3 shoulder = upper->world.translate, elbow = fore->world.translate, palm = hand->world.translate;
-				RE::NiPoint3       target = middle + world(XMVectorSubtract(at(mordhau[side][2]), mordhauMiddle)) * ratio;
+				RE::NiPoint3       target = side == 1 ? rightPlace + a_rightShift
+				                            : a_left  ? rightPlace + world(XMVectorSubtract(at(mordhau[0][2]), at(mordhau[1][2])))
+				                                      : middle + world(XMVectorSubtract(at(mordhau[0][2]), mordhauMiddle)) * ratio;
+				if (side == 0 && a_left) {
+					// (MORDHAU's left hand holds MORDHAU's own shaft, which is not where the weapon is drawn - the line MORDHAU
+					// sends lies some 14 cm beside its visible weapon - and the Skyrim fist is not where MORDHAU's is about the
+					// wrist: what is left over beside the drawn line is taken off; along it, the hand stays where MORDHAU has it)
+					const RE::NiPoint3 off = target + a_left->fist - (rightPlace + a_left->lineFromRight);
+					const RE::NiPoint3 beside = off - a_left->along * off.Dot(a_left->along);
+					target = target - beside;
+					a_left->snapped = beside.Length();
+				}
 				moved[side] = (target - palm).Length();
 				RE::NiPoint3 reach = target - shoulder;
 				float        length = reach.Length();
@@ -282,9 +298,6 @@ namespace dm::CharacterRender
 			// moved, while its place and its bound are both as Skyrim's own update left them)
 			const float modelRadius = node->worldBound.radius;
 			const float modelHandle = modelRadius - (node->worldBound.center - node->world.translate).Length();
-			if (g_armsFollow.load()) {
-				ArmsToMordhauHands(body, toWorld, k);
-			}
 			EnemyWeapon held;
 			held.id = 1;
 			held.along = RE::NiPoint3{ along.x, along.y, along.z };
@@ -293,10 +306,103 @@ namespace dm::CharacterRender
 			const auto*  inRight = player->GetEquippedObject(false);
 			const auto*  handRest = g_skyrimRest.Find("NPC R Hand [RHnd]");
 			const auto*  weaponRest = g_skyrimRest.Find("WEAPON");
-			if (g_gripInFist.load() && inRight && handRest && weaponRest && !dm::Items::MordhauWeaponOf(inRight)) {
+			// The Skyrim fist: where Skyrim's skeleton has its weapon node in the right hand (read from the rest skeleton), as
+			// the hand is turned now. (The arms below keep the hand's turn: the same before and after.)
+			const bool         fistKnown = handRest && weaponRest;
+			const RE::NiPoint3 fist = fistKnown ? (handNode->world.rotate * (ToMatrix(handRest->rot).Transpose() * (weaponRest->pos - handRest->pos))) * body->world.scale : RE::NiPoint3{};
+			// (sheets/builds.json right_hand_onto_weapon: MORDHAU's weapon was set off from the Skyrim wrist as MORDHAU's is set
+			// off from MORDHAU's - but the Skyrim fist does not sit where MORDHAU's does about its wrist, and the hand's turn
+			// is carried over between two skeletons: the grip came out beside the fist, by the side of the hand or its back,
+			// all the time - play-test report, 2026-10-18; the people fought were fine, their weapon stays at the Skyrim
+			// hand's own place. So the weapon keeps MORDHAU's place and the right hand is moved onto it: the hand's place is
+			// moved by how far the Skyrim fist is beside MORDHAU's weapon line, and the grip is then laid in the fist.)
+			const bool         onto = g_handOntoWeapon.load() && fistKnown;
+			const RE::NiPoint3 offsetBeside = offset - held.along * offset.Dot(held.along), fistBeside = fist - held.along * fist.Dot(held.along);
+			const RE::NiPoint3 shift = onto ? offsetBeside - fistBeside : RE::NiPoint3{};
+			// Both hands on the weapon (sheets/builds.json left_hand_onto_weapon): told by MORDHAU's two palms, not by MORDHAU's
+			// weapon line - that line lies some 14 cm beside MORDHAU's visible weapon, and MORDHAU's left palm, on the visible
+			// shaft, was as far from it with a two-handed hammer as with a one-handed sword, so the left hand jumped between the
+			// two ways every few frames (log of 2026-10-18). Both palms on one shaft are close to one line along the weapon;
+			// held a little longer than it takes to come, so it does not flicker at the edge.
+			static bool       bothHands = false;
+			static RE::FormID bothFor = 0;
+			float             palmsApart = -1.0f;  // (cm, beside the weapon's direction)
+			{
+				static const int hands[2][2] = { { BoneNamed(g_bones, "LeftHand"), BoneNamed(g_bones, "LeftHandMiddle1") }, { BoneNamed(g_bones, "RightHand"), BoneNamed(g_bones, "RightHandMiddle1") } };
+				const auto       palmOf = [&](const int (&a_bones)[2]) {
+					XMVECTOR p = g_playerComp[static_cast<std::size_t>(a_bones[0])].r[3];
+					if (a_bones[1] >= 0 && static_cast<std::size_t>(a_bones[1]) < g_playerComp.size()) {
+						p = XMVectorScale(XMVectorAdd(p, g_playerComp[static_cast<std::size_t>(a_bones[1])].r[3]), 0.5f);
+					}
+					return p;
+				};
+				const auto here = inRight ? inRight->GetFormID() : 0;
+				if (here != bothFor) {
+					bothFor = here;
+					bothHands = false;
+				}
+				if (g_leftOntoWeapon.load() && hands[0][0] >= 0 && hands[1][0] >= 0 && static_cast<std::size_t>(std::max(hands[0][0], hands[1][0])) < g_playerComp.size()) {
+					const XMVECTOR line = XMVector3Normalize(XMVector3TransformNormal(XMVectorSet(0.0f, 0.0f, 1.0f, 0.0f), weapon));  // (MORDHAU's character space, cm)
+					const XMVECTOR apart = XMVectorSubtract(palmOf(hands[0]), palmOf(hands[1]));
+					const float    up = XMVectorGetX(XMVector3Dot(apart, line));
+					palmsApart = XMVectorGetX(XMVector3Length(XMVectorSubtract(apart, XMVectorScale(line, up))));
+					if (!bothHands && palmsApart < 9.0f && std::abs(up) < 120.0f) {
+						bothHands = true;
+					} else if (bothHands && (palmsApart > 12.0f || std::abs(up) > 130.0f)) {
+						bothHands = false;
+					}
+				} else {
+					bothHands = false;
+				}
+			}
+			// the Skyrim left fist: the right one's place in the rest skeleton, mirrored to the left hand (the rest skeleton is
+			// the same on both sides), as the left hand is turned now
+			auto*        leftHandNode = body->GetObjectByName("NPC L Hand [LHnd]");
+			LeftOnWeapon left;
+			bool         leftKnown = false;
+			{
+				static RE::NiPoint3 leftFistInHand;
+				static int          known = -1;  // -1 not looked at yet, 0 no, 1 yes
+				if (known < 0 && fistKnown) {
+					const auto* leftRest = g_skyrimRest.Find("NPC L Hand [LHnd]");
+					known = 0;
+					if (leftRest) {
+						const RE::NiPoint3 mirroredHand{ -handRest->pos.x, handRest->pos.y, handRest->pos.z };
+						const RE::NiPoint3 mirroredFist{ -weaponRest->pos.x, weaponRest->pos.y, weaponRest->pos.z };
+						if ((mirroredHand - leftRest->pos).Length() < 1.0f) {
+							leftFistInHand = ToMatrix(leftRest->rot).Transpose() * (mirroredFist - leftRest->pos);
+							known = 1;
+						}
+						logger::info("weapon: the Skyrim left fist {} (rest hands {:.1f} units off mirrored)", known ? std::format("is {:.1f} units from its wrist", leftFistInHand.Length()) : std::string("is not known: the rest skeleton is not the same on both sides"),
+							(mirroredHand - leftRest->pos).Length());
+					}
+				}
+				if (bothHands && known == 1 && leftHandNode) {
+					left.lineFromRight = onto ? shift + fist : offset;  // (where the weapon will be drawn: through the Skyrim right fist)
+					left.along = held.along;
+					left.fist = (leftHandNode->world.rotate * leftFistInHand) * body->world.scale;
+					leftKnown = true;
+				}
+			}
+			if (g_armsFollow.load()) {
+				ArmsToMordhauHands(body, toWorld, k, shift, leftKnown ? &left : nullptr);
+			}
+			if (onto) {
+				// (beside the line: the Skyrim fist's; along it: as before, below)
+				offset = fistBeside + held.along * offset.Dot(held.along);
+				static RE::FormID told = 0;
+				static bool       toldBoth = false;
+				if (inRight && (told != inRight->GetFormID() || toldBoth != leftKnown)) {
+					told = inRight->GetFormID();
+					toldBoth = leftKnown;
+					logger::info("weapon: right hand onto MORDHAU's {} line - the Skyrim fist was {:.1f} units beside it, the hand's place moved by that; {}", inRight->GetName(), shift.Length(),
+						leftKnown ? std::format("both hands on it - MORDHAU's palms {:.1f} cm apart beside it; the left hand moved {:.1f} units onto the weapon as drawn", palmsApart, left.snapped) :
+									std::format("one hand (MORDHAU's palms {:.1f} cm apart beside the weapon)", palmsApart));
+				}
+			}
+			if (g_gripInFist.load() && inRight && fistKnown && !dm::Items::MordhauWeaponOf(inRight)) {
 				// (sheets/builds.json skyrim_weapon_grip_in_fist: on MORDHAU's line, moved along it so that the Skyrim
 				// model's own grip point is in the fist - MORDHAU's holding point is wherever each MORDHAU model has it)
-				const RE::NiPoint3 fist = (handNode->world.rotate * (ToMatrix(handRest->rot).Transpose() * (weaponRest->pos - handRest->pos))) * body->world.scale;
 				offset = offset + held.along * (fist.Dot(held.along) - offset.Dot(held.along));
 			}
 			if (link.altMode && inRight && !dm::Items::MordhauWeaponOf(inRight)) {

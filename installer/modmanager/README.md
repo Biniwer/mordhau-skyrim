@@ -13,7 +13,7 @@ This started as a mod for one PC. Expect bugs.
   the mod on. It closes MORDHAU when Skyrim closes.
 - MORDHAU is an online game with anti-cheat. The mod does not touch or work around the anti-cheat, and it must never be
   used to play online. If that makes you uneasy, don't install it.
-- It puts files in MORDHAU's folder (listed below).
+- It puts one file in MORDHAU's folder, only while it starts MORDHAU (see below).
 - Skyrim 1.7.104 or 1.6.1170 (others are untested), SKSE for your version, and Address Library for SKSE Plugins
   (Nexus mod 32444).
 - Optional: SkyUI and MCM Helper for the settings menu. Without them the defaults are used.
@@ -63,18 +63,21 @@ kicks, sound mix, your character's voice, crouch toggle or hold, and more. MCM H
 
 ## What goes into MORDHAU's folder
 
-Everything is in `Mordhau\Binaries\Win64`. Nothing of MORDHAU's own is changed or replaced.
+Only one file, and only for a moment: `dwmapi.dll` in `Mordhau\Binaries\Win64`. Nothing of MORDHAU's own is changed
+or replaced.
 
-- These stay there: `UE4SS.dll`, `UE4SS-settings.ini`, `UE4SS.mashup.txt`, and the folders `UE4SS_Signatures` and
-  `Mods` (UE4SS, an open-source script host, and the mod's script in `Mods\PoseStream`). MORDHAU doesn't load any of
-  them on its own.
-- `dwmapi.dll` is there only while the mod starts MORDHAU. It's the mod's own small loader. Before anything else
+- `dwmapi.dll` is the mod's own small loader. The mod puts it there only to start its MORDHAU. Before anything else
   runs, it checks that MORDHAU was started by the mod (with `-insecure` and a one-time key). If so, it loads the
-  script host and renames itself to `dwmapi.dll.old` right away; the mod deletes that once MORDHAU has closed. If
-  MORDHAU was started any other way, it renames itself, closes the game straight away and leaves a note
+  script host and renames itself to `dwmapi.dll.old` right away, which MORDHAU doesn't load; the mod deletes that at
+  its next start of MORDHAU (or straight away if MORDHAU closes while Skyrim is still running). If MORDHAU was
+  started any other way, it renames itself, closes the game straight away and leaves a note
   (`MordhauSkyrim-closed-MORDHAU.txt`). The next start is normal.
-- The script's small helper, `MordhauBones.dll` (it reads the fighters' bones), is never put in MORDHAU's folder. It
-  is copied to `%LOCALAPPDATA%\MordhauSkyrim` for each session and loaded from there.
+- The script host - UE4SS, an open-source tool, with its settings and the mod's script - is never put in MORDHAU's
+  folder. It lives in `%LOCALAPPDATA%\MordhauSkyrim\cache\ue4ss` (or the `CacheFolder` you set), and the loader loads
+  it from there. So does the script's small helper, `MordhauBones.dll` (it reads the fighters' bones).
+- Versions before 0.1.22 kept UE4SS in MORDHAU's folder (`UE4SS.dll`, `UE4SS-settings.ini`, `UE4SS.mashup.txt`,
+  `UE4SS.log`, `UE4SS_Signatures`, `Mods`). The first start with 0.1.22 takes those out. A UE4SS of your own there is
+  left alone; only the mod's script is taken out of it.
 
 Never start MORDHAU for online play while a file called `dwmapi.dll` is in that folder. Nobody can promise how the
 anti-cheat would treat a script loader. After a crash or a power cut, check the folder and delete `dwmapi.dll` or
@@ -96,8 +99,8 @@ is running. If it's ever left at 1 after a crash, MORDHAU just keeps its sound i
 1. The mod only starts its own offline MORDHAU: a local match, with `-insecure` and a one-time key for that launch.
 2. The loader checks before anything runs. Without `-insecure` and the key it closes the game within a fraction of a
    second, loads nothing, and renames itself so the next start is normal.
-3. The loader takes itself out of the way (`dwmapi.dll.old`, which MORDHAU doesn't load), and the mod deletes it when
-   MORDHAU closes or at the next session.
+3. The loader takes itself out of the way (`dwmapi.dll.old`, which MORDHAU doesn't load), and the mod deletes it at
+   the next session. The script host is never in MORDHAU's folder at all.
 4. The script checks the key again, and closes the game if the session ever turns into a joined or hosted server.
 5. A MORDHAU you started yourself is never touched.
 
@@ -110,10 +113,10 @@ check, `-insecure` and the loader removing itself don't depend on it.
 
 After closing Skyrim and before playing MORDHAU online:
 
-1. Open `Mordhau\Binaries\Win64`. There must be no `dwmapi.dll`. Delete `dwmapi.dll.old` if it's there. The UE4SS
-   files and the `Mods` folder can stay; without the loader MORDHAU ignores them.
-2. Note the "date modified" of `UE4SS.log` in that folder, start MORDHAU from Steam, go to the main menu and quit. If
-   the date hasn't changed, the script host wasn't loaded.
+1. Open `Mordhau\Binaries\Win64`. There must be no `dwmapi.dll`. Delete `dwmapi.dll.old` if it's there. Nothing
+   else of the mod is in that folder (no `UE4SS` files, no `Mods` folder, unless you have a UE4SS of your own).
+2. Note the "date modified" of `UE4SS.log` in `%LOCALAPPDATA%\MordhauSkyrim\cache\ue4ss`, start MORDHAU from Steam,
+   go to the main menu and quit. If the date hasn't changed, the script host wasn't loaded.
 3. If you find `MordhauSkyrim-closed-MORDHAU.txt`, the loader stopped a wrong start and says why. Delete it and
    `dwmapi.dll.old`.
 
@@ -137,10 +140,10 @@ loaded; they aren't a promise about how MORDHAU's anti-cheat behaves.
 
 ## Remove
 
-Remove the mod in your mod manager. Then delete these from `Mordhau\Binaries\Win64`: `UE4SS.dll`,
-`UE4SS-settings.ini`, `UE4SS.mashup.txt`, `UE4SS.log`, the `UE4SS_Signatures` and `Mods` folders, and `dwmapi.dll` /
-`dwmapi.dll.old` if present. If you had your own UE4SS there before, the mod left it alone - only delete
-`Mods\PoseStream`. Also delete `%LOCALAPPDATA%\MordhauSkyrim` (the prepared models and the helper), and the inventory
+Remove the mod in your mod manager. Then delete `dwmapi.dll` / `dwmapi.dll.old` from `Mordhau\Binaries\Win64` if
+present (and, if you last played a version before 0.1.22: `UE4SS.dll`, `UE4SS-settings.ini`, `UE4SS.mashup.txt`,
+`UE4SS.log`, the `UE4SS_Signatures` and `Mods` folders - with a UE4SS of your own there, only `Mods\PoseStream`).
+Also delete `%LOCALAPPDATA%\MordhauSkyrim` (the prepared models, the script host and the helper), and the inventory
 model folders `Data\meshes\MordhauSkyrim` and `Data\textures\MordhauSkyrim` (about 55 MB; with Mod Organizer they end
 up in Overwrite).
 
@@ -156,6 +159,8 @@ up in Overwrite).
 GPL-3.0-or-later, because the library it's built on (CommonLibSSE-NG) requires it: you can use, change and share it
 under that licence. The full source of each version is on the mod's Nexus page under Files ("Source code"). All licence texts are in the `LICENSES` folder next to this file;
 `MordhauSkyrim.txt` there says what is whose.
+
+Thanks to MilanPenak for the fix that keeps your weapon in your hand (0.1.22), made from this mod's source.
 
 Made with AI help: the code, tools and texts were written with an AI coding assistant (Claude, by Anthropic), directed
 and play-tested by the author.

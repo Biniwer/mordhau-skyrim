@@ -1352,11 +1352,9 @@ namespace dm::CharacterRender
 			// MORDHAU's stand-ins, drawn where their Skyrim characters stand (whose own models are hidden meanwhile):
 			// the enemy you fight is the MORDHAU fighter whose attacks MORDHAU is actually resolving.
 			DrawWorldFigures(player, device, context, skyrimBody, cam, viewProj, link, playerDropModel, playerDropWorld, map, stride, offset, drawSections, drawProp);
-			// MORDHAU's two bars at the bottom centre while the weapon is out: stamina (MORDHAU's own value) on the left,
-			// health (Skyrim's) on the right, each emptying away from the middle. Plain shapes; no MORDHAU art.
-			// MORDHAU's OWN health / stamina display, streamed from its window, at the bottom centre like in MORDHAU
-			// (it shows itself only when one of the two is not full, as MORDHAU does). The plain bars below are the
-			// fallback for when no picture of MORDHAU's window can be had.
+			// The parts of MORDHAU's own HUD streamed from its window (drawn in PresentHook) - and, only while MORDHAU's
+			// health / stamina bars are shown (sheets/builds.json mordhau_bars), plain stand-in bars for when no picture
+			// of MORDHAU's window can be had: stamina (MORDHAU's own value) on the left, health (Skyrim's) on the right.
 			// MORDHAU's hit marker: four short slanted ticks around the crosshair for a quarter of a second (for hits Skyrim
 			// judges - creatures; MORDHAU shows its own for the fighters it judges). sheets/builds.json hit_marker_*
 			DrawHitMarker(context, sd, map, stride, offset);

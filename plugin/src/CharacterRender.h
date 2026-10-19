@@ -46,6 +46,7 @@ namespace dm::CharacterRender
 	// sheets/builds.json arms_to_mordhau_hands, arms_stretch_max, skyrim_weapon_grip_in_fist, skyrim_weapon_half_turn
 	void SetAltSlide(float a_cm);  // sheets/builds.json alt_slide_<weapon>_<view> of the weapon now held
 	void SetArms(bool a_follow, float a_stretch, bool a_gripInFist, bool a_halfTurn, bool a_altOnBlade);  // + alt_grip_hands_on_blade
+	void SetHandsOntoWeapon(bool a_right, bool a_left);  // sheets/builds.json right_hand_onto_weapon, left_hand_onto_weapon
 	void SetSkyrimHasBody(std::uint32_t a_id, bool a_on);
 	void SetMordhauBars(bool a_on);  // MORDHAU's health / stamina strip in Skyrim's picture (sheets/builds.json mordhau_bars)
 	void SetSkyrimShieldLook(bool a_on);  // sheets/builds.json skyrim_shield_look

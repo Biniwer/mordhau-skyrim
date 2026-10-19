@@ -501,6 +501,12 @@ namespace dm::CharacterRender
 		g_halfTurn.store(a_halfTurn);
 	}
 
+	void SetHandsOntoWeapon(bool a_right, bool a_left)
+	{
+		g_handOntoWeapon.store(a_right);
+		g_leftOntoWeapon.store(a_left);
+	}
+
 
 	void SetSkyrimHasBody(std::uint32_t a_id, bool a_on)
 	{
