@@ -29,7 +29,7 @@ namespace dm::InventoryModels
 			float              radius = 0.0f;
 		};
 
-		// --- the prepared model (character.dmchar: tools/bake_character.py has the layout)
+		// --- the prepared model (character.dmchar, written at the first start)
 		bool ReadBaked(const std::filesystem::path& a_dir, Baked& a_out)
 		{
 			std::ifstream in(a_dir / "character.dmchar", std::ios::binary);

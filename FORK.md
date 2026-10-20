@@ -28,7 +28,9 @@ Store, a few gameplay additions, and a CI build. Everything else - and how to pl
   `ue4ss-v3.0.1-1176-g1ba38db4`, since upstream replaced it.
 - `linux/build-cross.sh` - builds the plugin on Linux in seconds (clang-cl, lld-link, Microsoft's SDK through xwin; see
   the setup at its top and `linux/cross/`) and puts it, with MORDHAU's script, into the mod manager's folder of the
-  bridge. CI's build stays the reference for releases.
+  bridge, with the loader and the script's bones helper. CI's build stays the reference for releases.
+- Upstream's 0.1.22 is merged in; `plugin/CMakeLists.txt` skips upstream's dev test program, whose source is not
+  published.
 
 ## Gameplay
 
@@ -44,8 +46,9 @@ Store, a few gameplay additions, and a CI build. Everything else - and how to pl
 - Enemies lying limp (paralysed, knocked down): the body seen in Skyrim can be struck - MORDHAU's blade reaching it is a
   clean hit, as well as MORDHAU's own verdict on its falling stand-in (once a swing) - and it no longer flies off when
   hit. (`limp_hits_skyrim`, `limp_speed_limit`)
-- Enemies with a blade and a spell (a Vigilant of Stendarr): the blade fights by MORDHAU's rules, the spells stay
-  Skyrim's - while one casts, its body is Skyrim's. Pure mages and staff users stay Skyrim's. (`spellsword_standin`)
+- Enemies with a blade and a spell (a Vigilant of Stendarr): the blade fights by MORDHAU's rules (as upstream's since
+  0.1.21), the spells stay Skyrim's - while one casts, its whole body is Skyrim's, so it really casts. Pure mages and
+  staff users stay Skyrim's. (`spellsword_standin`; 0 = Skyrim's altogether)
 - A parried or blocked Skyrim arrow no longer plays the player's being hit; it sounds your MORDHAU weapon's (or
   shield's) block, with Skyrim's block and bounce.
 - MORDHAU's music, its arena's ambience and its footsteps are silent in the mod's session; its fighting and voices are

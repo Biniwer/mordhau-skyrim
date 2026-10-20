@@ -21,7 +21,7 @@ BUILDING = NL.join([
     '- `plugin/` - the SKSE plugin (C++23, CMake, vcpkg). `plugin/src/gen/Sheets.h` is generated from `sheets/` by `tools/gen_code.py`.',
     '- `loader/` - the loader `dwmapi.dll` that checks how MORDHAU was started before anything else is loaded. `loader/gen_exports.py` writes the export tables; `tools/build_loader.bat` builds it.',
     "- `papyrus/` - the settings menu's script (Papyrus, compiled with the Creation Kit against SkyUI's and MCM Helper's script headers); `tools/make_mcm.py` writes the menu's pages for MCM Helper from `sheets/settings_menu.json`.",
-    '- `mordhau_side/` - the Lua script that runs in MORDHAU under UE4SS, and this mod\'s UE4SS signature file.',
+    '- `mordhau_side/` - the Lua script that runs in MORDHAU under UE4SS, this mod\'s UE4SS signature file, and `bones/`: `MordhauBones.dll`, a small read-only helper the script loads to read a skeleton\'s bones in one call (built by `plugin/CMakeLists.txt`).',
     '- `sheets/` - the design as data (JSON): every number and mapping the code uses. Change a sheet, then run `tools/gen_code.py`.',
     '- `tools/` - what builds the package and what was used to test it. Many are written for the author\'s PC (paths to the games at the top of each file).',
     '- `installer/` - the texts and licence files that go into the download.',
@@ -30,8 +30,8 @@ BUILDING = NL.join([
     '',
     '1. Visual Studio 2022 with the C++ workload, CMake 3.21 or newer, vcpkg, Python 3.',
     '2. Put CommonLibSSE-NG into `plugin/extern/CommonLibSSE-NG`: https://github.com/alandtse/CommonLibSSE-NG , version 10.0.0 (commit d61bca4de789428aa7d98a770b1323ddf1bb855c).',
-    '3. `python tools/gen_code.py`',
-    '4. Configure `plugin/` with CMake and the vcpkg toolchain (triplet `x64-windows-static-md`; the libraries are listed in `plugin/vcpkg.json`), then build the target `DirectionalMelee` in `RelWithDebInfo`. The result, `DirectionalMelee.dll`, is the file shipped as `MordhauSkyrim.dll`.',
+    '3. `python tools/gen_code.py`, then `python tools/offline_checks.py` (checks that need neither game: the sheets, the link sizes on both sides, no network calls; exit code 1 if one fails)',
+    '4. Configure `plugin/` with CMake and the vcpkg toolchain (triplet `x64-windows-static-md`; the libraries are listed in `plugin/vcpkg.json`), then build the targets `DirectionalMelee` and `MordhauBones` in `RelWithDebInfo`. `DirectionalMelee.dll` is the file shipped as `MordhauSkyrim.dll`; `MordhauBones.dll` is shipped under its own name.',
     '5. `tools/build_loader.bat` builds `dwmapi.dll`.',
     '6. `python tools/make_modmanager_release.py` puts the package together. It takes UE4SS v3.0.1 (https://github.com/UE4SS-RE/RE-UE4SS) from `vendor/ue4ss`, and `MordhauWeapons.esp` as `tools/make_items_esp.py` makes it from your own `Skyrim.esm`.',
     '',
@@ -41,7 +41,7 @@ BUILDING = NL.join([
     ''])
 
 take = [('plugin', ('extern', 'build')), ('papyrus', ()), ('loader', ()), ('mordhau_side', ()), ('sheets', ()), ('tools', ('__pycache__',)), ('installer', ())]
-loose = ['COPYING', 'HOW-TO-PLAY.md', 'release/description.md', 'release/credits.txt', 'release/README.txt', 'release/safety-measures.txt']
+loose = ['COPYING', 'HOW-TO-PLAY.md', 'release/description.md', 'release/credits.txt', 'release/README.txt']
 skip_ext = ('.pyc', '.obj', '.pdb', '.dll', '.exe', '.zip', '.png', '.jpg', '.mp4', '.dds', '.bin')
 # (the words to look for are personal themselves: they are kept in _deps/private_words.txt, one per line, which never
 # goes into this archive - written into this file, they were published with it)
@@ -65,7 +65,7 @@ with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as z:
                 p = os.path.join(d, f)
                 rel = os.path.relpath(p, root).replace(os.sep, '/')
                 data = open(p, 'rb').read()
-                if private.search(data) and rel != 'tools/make_source_release.py':   # (this file names the general words it looks for)
+                if private.search(data) and rel not in ('tools/make_source_release.py', 'tools/offline_checks.py'):   # (these name the general words they look for)
                     found.append(rel)
                 # (every file keeps its own name: adding .txt to scripts to get past Nexus's quarantine got the mod hidden
                 # for "disguising file types", 2026-10-15)

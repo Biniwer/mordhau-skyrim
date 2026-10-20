@@ -47,16 +47,13 @@ namespace dm::Combat
 			int                   pushMode = 1;         // pushtest=2: only people with a stand-in are thrown, never the player
 			bool                  duel = false;         // test scene: everyone else is removed, one bandit with a two-handed weapon fights the player and is replaced when he dies (duel=1)
 			float                 duelHealth = 0.0f;    // test / recordings: the duel's opponent has this much health (duelhealth=400)
+			std::string           duelName;             // test: the duel's opponents are the first ordinary character of this name (duelname=Vampire)
+			std::uint32_t         duelSpell = 0;        // test: the duel's opponents hold this spell in the left hand (duelspell=12FCD: Flames)
 			std::string           duelWeapon;           // test / recordings: the duel's opponents carry these, in turn (duelweapon=Steel Greatsword|Steel Battleaxe)
 			bool                  give = false;         // dev aid: items named in <cache>/give.txt are put into the inventory (give=1)
 			bool                  types = false;        // test: one plain weapon of every Skyrim weapon type in the inventory (types=1)
 			bool                  arsenal = false;      // test: one of every plain melee weapon in the inventory, no carry limit (arsenal=1)
-			float                 bowDown = 0.0f;       // test: with bowtest, look down by this much (radians) for each shot
-			int                   bowKind = 0;          // test: with bowtest, 1 = a long bow, 2 = a crossbow
-			float                 bowSlow = 0.0f;       // test: the player's arrows fly at this fraction of their speed, without drop (bowslow=0.03)
-			float                 bowHold = 0.0f;       // test: with bowtest, how long each draw is held (bowhold=12)
 			bool                  hybridOff = false;    // test: everyone held at Skyrim's place as before the hybrid movement (hybridoff=1)
-			bool                  pauldronsOff = false; // test: shoulder plates left on Skyrim's animation, to compare (pauldronsoff=1)
 			bool                  unarmedTest = false;  // test: 4 is pressed every 8 s from 25 s on (unarmedtest=1)
 			bool                  throwSlow = false;    // test: a thrown weapon flies at a tenth of its speed, nearly without gravity, to be looked at (throwtest=2)
 			bool                  throwTest = false;    // test: every 14 s the next throwable weapon, thrown at the nearest enemy 5 s later (throwtest=1)
@@ -74,7 +71,6 @@ namespace dm::Combat
 			bool                  duelPassive = false;  // test: every stand-in only stands to be hit - for counting the player's own hits (duelpassive=1)
 			bool                  measure = false;      // the eye view logs head heights and the eye point now and then (measure=1)
 			bool                  god = false;          // the player takes no damage (god=1); hits are still judged and logged
-			bool                  bowTest = false;      // test: the player gets a hunting bow and arrows and shoots every few seconds (bowtest=1)
 			bool                  pushTest = false;     // test: every few seconds the nearest person, then the player, is thrown as a shout would (pushtest=1)
 			bool                  demon = false;        // test: one Demon Horde Troll is put into Skyrim's world (demon=1)
 			int                   battle = 0;           // test scene: this many Stormcloak and as many Imperial soldiers fight each other in front of the player, the fallen replaced (battle=4)
@@ -240,8 +236,6 @@ namespace dm::Combat
 		RE::TESObjectWEAP* GroundWeaponItem(std::uint32_t a_owner, const std::string& a_model, RE::Actor** a_holder = nullptr);
 
 		bool Humanoid(RE::Actor* a_actor);
-		const sheets::CreatureFighterRow* FighterFor(RE::Actor* a_actor);  // the Demon Horde creature whose moves this creature fights with, or none
-		bool SkyrimsAlone(RE::Actor* a_actor);  // a kind of creature that gets no MORDHAU stand-in at all (sheets/creature_fighters.json, demon "")
 
 		inline std::atomic<bool> g_skyrimOwns{ false };  // a Skyrim scene has the player (see SkyrimScene)
 
@@ -259,14 +253,13 @@ namespace dm::Combat
 		inline std::uint32_t g_releaseNumber = 0;  // counts the player's releases (attacks, kicks)
 		inline std::unordered_map<std::uint32_t, std::uint32_t> g_creatureHitRelease;  // creature -> the release that already hit it (one hit per swing, whichever test counts it first)
 
-		// An arrow or bolt MORDHAU loosed, waiting to be put into the plugin's own flight (see FlyArrowsAndThrownWeapons).
+		// A weapon MORDHAU's character threw, waiting to be put into the plugin's own flight (see FlyThrownWeapons).
 		struct PendingShot
 		{
 			RE::NiPoint3 at, velocity;
 			float        gravity = 0.0f;
 			float        damage[4]{}, head[4]{};
-			bool         crossbow = false;
-			const char*        thrownModel = nullptr;  // a thrown weapon: its prop (cache/props/w_...), else an arrow or bolt
+			const char*        thrownModel = nullptr;  // its prop (cache/props/w_...)
 			RE::TESObjectWEAP* thrownForm = nullptr;   // ...and the Skyrim weapon it is
 			RE::TESBoundObject* thrownItem = nullptr;  // ...or whatever Skyrim item it is (a shield too)
 			bool               spins = false;
@@ -308,18 +301,6 @@ namespace dm::Combat
 		inline float g_ownStaminaSpent = 0.0f;  // fought characters whose body is Skyrim's alone right now (yielding, fleeing, kneeling)
 
 		inline Clock::time_point g_parryAsked{};  // when the parry button last went to MORDHAU
-
-		const char* RangedWish(RE::PlayerCharacter* a_player);
-
-		// The last arrow MORDHAU loosed: its damage table, for the hit Skyrim reports
-		struct LooseShot
-		{
-			float             damage[4]{};
-			float             head[4]{};
-			Clock::time_point when{};
-		};
-
-		inline LooseShot     g_shot;
 
 		inline std::uint32_t g_seenShots = 0;
 
@@ -383,26 +364,6 @@ namespace dm::Combat
 			static void thunk(RE::Actor* a_victim, RE::HitData& a_hit)
 			{
 				auto* player = RE::PlayerCharacter::GetSingleton();
-				if (a_victim && a_victim != player && a_hit.weapon && (a_hit.weapon->IsBow() || a_hit.weapon->IsCrossbow()) && Seconds(g_shot.when) < 12.0f) {
-					if (auto archer = a_hit.aggressor.get(); archer && archer.get() == player) {
-						// the player's arrow, loosed by MORDHAU: MORDHAU's damage for what the target wears (and its head bonus),
-						// then Skyrim's progression
-						int tier = 0;
-						if (auto* body = a_victim->GetWornArmor(RE::BGSBipedObjectForm::BipedObjectSlot::kBody)) {
-							tier = body->IsHeavyArmor() ? 3 : body->IsLightArmor() ? 1 : 0;
-						}
-						const bool  head = a_hit.hitPosition.z > a_victim->GetPosition().z + a_victim->GetHeight() * 0.84f;
-						const float mordhau = g_shot.damage[tier] + (head ? g_shot.head[tier] : 0.0f);
-						const float full = std::max(a_victim->AsActorValueOwner()->GetPermanentActorValue(RE::ActorValue::kHealth), 1.0f);
-						const float was = a_hit.totalDamage;
-						bool        inDamage = false;
-						const float sneak = SneakMult(player, a_victim, a_hit, &inDamage);
-						a_hit.totalDamage = full * std::min(HitFraction(player, a_victim, mordhau, inDamage ? was / sneak : was) * sneak, 1.0f);
-						a_hit.physicalDamage = a_hit.totalDamage;
-						logger::info("archery: the arrow hit {} ({}, armour tier {}): MORDHAU damage {:.0f}, Skyrim's {:.0f} becomes {:.0f}, sneak x{:.1f}", a_victim->GetDisplayFullName(),
-							head ? "head" : "body", tier, mordhau, was, a_hit.totalDamage, sneak);
-					}
-				}
 				if (a_victim && a_victim != player && IsFought(a_victim)) {
 					if (auto other = a_hit.aggressor.get(); other && other.get() != player && IsFought(other.get())) {
 						return;  // both have stand-ins: whether this lands is decided in MORDHAU
@@ -431,20 +392,12 @@ namespace dm::Combat
 					bool        stopped = false;
 					float       angle = 180.0f;
 					bool        missile = false;
-					int         missileKind = 0;   // 1 a bow, 2 a long bow, 3 a crossbow (MORDHAU's three)
-					bool        missileHigh = false;  // it struck at head height
 					RE::NiPoint3 from{};
 					if (auto source = a_hit.sourceRef.get()) {
 						if (auto* projectile = source->As<RE::Projectile>()) {
 							from = projectile->GetProjectileRuntimeData().linearVelocity * -1.0f;
 							from.z = 0.0f;
 							missile = from.Length() > 1.0f;
-							if (const auto* bow = projectile->GetProjectileRuntimeData().weaponSource) {
-								std::string name = bow->GetName() ? bow->GetName() : "";
-								std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-								missileKind = bow->IsCrossbow() ? 3 : name.find("long") != std::string::npos ? 2 : bow->IsBow() ? 1 : 0;
-							}
-							missileHigh = projectile->GetPosition().z > player->GetPosition().z + player->GetHeight() * 0.84f;
 						}
 					}
 					if (missile || attacker) {
@@ -478,20 +431,6 @@ namespace dm::Combat
 							SoundAt(g_shieldBlock.load() && PlayerShield(player) ? "WPNBlockShieldLSD" : "WPNBlockBlade1HandVsOtherSD", at);
 							SoundAt("WPNImpactArrowBounceSD", at);
 						}
-					} else if (link.live && missile && missileKind > 0 && attacker && BuildValue("enemy_arrows_mordhau") > 0.5f) {
-						// an enemy archer's arrow: MORDHAU's damage for that kind of bow against what the player wears, plus
-						// its head bonus (sheets/builds.json enemy_arrow_*), scaled into Skyrim's health as every MORDHAU hit is
-						const auto* body = player->GetWornArmor(RE::BGSBipedObjectForm::BipedObjectSlot::kBody);
-						const int   tier = body ? (body->IsHeavyArmor() ? 3 : body->IsLightArmor() ? 1 : 0) : 0;
-						static const float damage[3][4]{ { 50, 40, 26, 25 }, { 70, 50, 36, 34 }, { 60, 50, 42, 40 } };
-						static const float head[3][4]{ { 50, 30, 20, 20 }, { 50, 30, 20, 20 }, { 50, 30, 20, 20 } };
-						const float mordhau = damage[missileKind - 1][tier] + (missileHigh ? head[missileKind - 1][tier] : 0.0f);
-						const float full = std::max(player->AsActorValueOwner()->GetPermanentActorValue(RE::ActorValue::kHealth), 1.0f);
-						const float was = a_hit.totalDamage;
-						a_hit.totalDamage = g_dev.god ? 0.0f : full * HitFraction(attacker.get(), player, mordhau, 0.0f);
-						a_hit.physicalDamage = a_hit.totalDamage;
-						logger::info("archery: {}'s {} hit the player{} (armour tier {}): MORDHAU damage {:.0f}, Skyrim's {:.1f} becomes {:.1f}", attacker->GetDisplayFullName(),
-							missileKind == 3 ? "bolt" : missileKind == 2 ? "long-bow arrow" : "arrow", missileHigh ? " in the head" : "", tier, mordhau, was, a_hit.totalDamage);
 					} else if (link.live) {
 						logger::info("hit on player while MORDHAU is live: {}{} for {:.1f}, not parried (motion {} kind {} at {:.3f}s, angle {:.0f})",
 							missile ? "an arrow or bolt from " : "", attacker ? attacker->GetDisplayFullName() : "?", a_hit.totalDamage, link.motion, link.kind, link.motionTime, angle);
@@ -684,7 +623,6 @@ namespace dm::Combat
 
 		void MirrorTick(RE::PlayerCharacter* a_player, const Link::State& a_link);
 
-		void DevBowTest(RE::PlayerCharacter* a_player);
 
 		void DevPushTest(RE::PlayerCharacter* a_player);
 
@@ -714,21 +652,10 @@ namespace dm::Combat
 
 		void TrackMordhauShots(RE::PlayerCharacter* a_player);
 
-		// An arrow or bolt that stays where it struck the world for a while.
-		struct StuckArrow
-		{
-			bool              bolt = false;
-			RE::NiPoint3      at;
-			float             yaw = 0.0f, pitch = 0.0f;
-			Clock::time_point born{};
-		};
-
-		// An arrow, bolt or thrown weapon in flight by MORDHAU's rules.
+		// A thrown weapon in flight by MORDHAU's rules.
 		struct Flying
 		{
-			int               arrow = 0;     // 1 an arrow, 2 a crossbow bolt, 3 a thrown weapon
-			RE::ActorHandle   shooter;       // an enemy's arrow (empty: the player's)
-			const char*        thrownModel = nullptr;  // a thrown weapon (arrow == 3)
+			const char*        thrownModel = nullptr;  // its prop
 			RE::TESObjectWEAP* thrownForm = nullptr;
 			RE::TESBoundObject* thrownItem = nullptr;
 			bool               spins = false;
@@ -738,9 +665,8 @@ namespace dm::Combat
 			Clock::time_point born{};
 		};
 
-		void TakeOverEnemyArrows(RE::PlayerCharacter* a_player, std::vector<Flying>& flying, const Link::State& link);
 
-		void FlyArrowsAndThrownWeapons(RE::PlayerCharacter* a_player);
+		void FlyThrownWeapons(RE::PlayerCharacter* a_player);
 
 		void LogPlayerHealth(RE::PlayerCharacter* a_player);
 
@@ -755,6 +681,7 @@ namespace dm::Combat
 		void SendPlayerState(RE::PlayerCharacter* a_player, float& forward, float& right, const Link::State& link);
 
 		void SendShield(RE::PlayerCharacter* a_player, const Link::State& link);
+		void KeepSkyrimBlock(RE::PlayerCharacter* a_player, const Link::State& link);
 
 		void ShowPickUpPrompt(RE::PlayerCharacter* a_player, const Link::State& link);
 
@@ -770,7 +697,6 @@ namespace dm::Combat
 
 		void SetFightingDistance(const Link::State& link);
 
-		void PlayMordhauDrawClip(RE::PlayerCharacter* a_player, const Link::State& link);
 
 		void SyncWeaponDrawn(RE::PlayerCharacter* a_player, const Link::State& link);
 
@@ -817,7 +743,7 @@ namespace dm::Combat
 					// Crouching as in MORDHAU, if the settings menu says so ("Crouch": Hold): hold to crouch. Skyrim's sneak is a toggle,
 					// so a press is only let through while standing, and letting go is turned into the press that stands up again.
 					// (The default is Skyrim's own toggle, untouched - MORDHAU's character follows Skyrim's sneaking either way. A
-					// streamer hammered Ctrl as Skyrim players do: every tap crouched and stood up again at once, "no crouching started".)
+					// streamer hammered Ctrl as Skyrim players do: every tap crouched and stood up again at once.)
 					if (auto* sneak = event->AsButtonEvent(); sneak && Link::Current().live && sneak->QUserEvent() == RE::UserEvents::GetSingleton()->sneak &&
 						Settings::Value("crouch_mode", 0.0f) > 0.5f) {
 						auto* crouchUi = RE::UI::GetSingleton();
@@ -999,6 +925,18 @@ namespace dm::Combat
 		void ApplyLiveFov();
 
 		void ApplyLiveCamera(RE::ThirdPersonState* a_state);
+		// Skyrim's own movement step of a character (Actor::ModifyMovementData): what it is about to move it by, before
+		// collision and gravity (CombatStandIns.cpp)
+		void OnMovementData(RE::Actor* a_actor, float a_delta, RE::NiPoint3& a_translation, RE::NiPoint3& a_rotation);
+		struct MovementDataHook
+		{
+			static void thunk(RE::Actor* a_this, float a_delta, RE::NiPoint3& a_translation, RE::NiPoint3& a_rotation)
+			{
+				func(a_this, a_delta, a_translation, a_rotation);
+				OnMovementData(a_this, a_delta, a_translation, a_rotation);
+			}
+			static inline REL::Relocation<decltype(thunk)> func;
+		};
 
 		void ApplyEyeCamera(RE::ThirdPersonState* a_state);
 
@@ -1061,12 +999,6 @@ namespace dm::Combat
 						return;
 					}
 					if (a_event->IsDown()) {
-						if (auto* archer = RE::PlayerCharacter::GetSingleton(); archer && RangedWish(archer)) {
-							// a bow out: MORDHAU's block key lets a drawn arrow down again (its "cancel draw"); Skyrim's own
-							// right-button action with a bow (zoom / bash) is not started
-							Link::Request("Parry");
-							return;
-						}
 						const bool ours = StartPlayerParry();
 						if (g_dev.autotest) {
 							logger::info("input: block pressed, {}", ours ? "our parry" : "Skyrim's block");
@@ -1077,15 +1009,6 @@ namespace dm::Combat
 					}
 				}
 				if (a_event && events && a_event->QUserEvent() == events->rightAttack) {
-					if (auto* archer = RE::PlayerCharacter::GetSingleton(); archer && RangedWish(archer)) {
-						// a bow: MORDHAU's draw and release (its draw time, its stamina); Skyrim's own shot is not started
-						if (a_event->IsDown() && archer->GetCurrentAmmo()) {
-							Link::Request("FirePress");
-						} else if (a_event->IsUp()) {
-							Link::Request("FireRelease");
-						}
-						return;
-					}
 					if (g_swing) {
 						return;  // one swing at a time for now
 					}

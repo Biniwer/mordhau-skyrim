@@ -11,7 +11,7 @@ namespace dm::Link
 	namespace
 	{
 		using Clock = std::chrono::steady_clock;
-		constexpr std::size_t kStateBytes = 836 + (kGhosts - 3) * 28 + 32 + kGhosts * 20 + kGhosts * 8;  // (408 + the bow's pose, 428, + the stand-ins after the third, + their stamina)
+		constexpr std::size_t kStateBytes = 408 + (kGhosts - 3) * 28 + 32 + kGhosts * 20 + kGhosts * 8;  // (the fixed part, then the stand-ins after the third, the shield, the moves and their stamina)
 
 		std::filesystem::path g_cache;
 		std::mutex            g_lock;
@@ -33,6 +33,25 @@ namespace dm::Link
 		std::vector<Ghost>                        g_ghosts;
 		float                                     g_health = 100.0f;
 		GhostPose                                 g_ghostPoses[kGhosts];
+		// Each stand-in's last few reports, stamped with MORDHAU's clock, to be shown a little in the past and blended
+		// (sheets/builds.json standin_interp_seconds)
+		struct Sample
+		{
+			float            clock = 0.0f;
+			std::uint32_t    id = 0;
+			GhostPose        pose;
+			State::GhostMove move;
+			bool             hasMove = false;
+		};
+		std::deque<Sample> g_history[kGhosts];
+		double             g_offset = 0.0;  // Skyrim's seconds less MORDHAU's clock at the earliest arrival seen
+		bool               g_offsetKnown = false;
+		float              g_interp = 0.0f;
+		double             SkyNow()
+		{
+			static const auto began = Clock::now();
+			return std::chrono::duration<double>(Clock::now() - began).count();
+		}
 		double                                    g_mouseRight = 0.0, g_mouseUp = 0.0;  // running sums; MORDHAU's side applies the change
 	}
 
@@ -100,7 +119,7 @@ namespace dm::Link
 		logger::info("link: {} is shared memory now ({} bytes mapped)", path.filename().string(), a_size);
 		return a_shared.view;
 	}
-	constexpr std::size_t kPoseBytes = 131072, kInputBytes = 16384;  // (doubled for 24 stand-ins: each is about 4.5 KB of pose)
+	constexpr std::size_t kPoseBytes = 131072, kInputBytes = 16384;  // (room for 24 stand-ins: each is about 4.5 KB of pose, and up to ~150 bytes of input)
 
 	bool Poll(std::size_t a_bones, std::vector<float>& a_pose)
 	{
@@ -152,7 +171,7 @@ namespace dm::Link
 						std::memcpy(&g_state.playerDamage, s + 136, 4);
 						std::memcpy(&g_state.playerAttacker, s + 140, 4);
 						for (int i = 0; i < kGhosts; ++i) {
-							const char* g = i < 3 ? s + 144 + i * 28 : s + 836 + (i - 3) * 28;  // (the first three where they always were)
+							const char* g = i < 3 ? s + 144 + i * 28 : s + 408 + (i - 3) * 28;  // (the first three where they always were)
 							std::memcpy(&g_state.ghosts[i].id, g, 4);
 							std::memcpy(&g_state.ghosts[i].hits, g + 4, 4);
 							std::memcpy(&g_state.ghosts[i].damage, g + 8, 4);
@@ -163,12 +182,12 @@ namespace dm::Link
 						}
 						std::memcpy(g_state.cameraRot, s + 228, 16);
 						std::memcpy(&g_state.shots, s + 260, 4);
-						std::memcpy(&g_state.shieldHas, s + 836 + (kGhosts - 3) * 28, 4);
+						std::memcpy(&g_state.shieldHas, s + 408 + (kGhosts - 3) * 28, 4);
 						g_state.altMode = (g_state.shieldHas & 256) != 0;  // (carried in the same number: +256)
 						g_state.shieldHas &= 255;
-						std::memcpy(g_state.shield, s + 836 + (kGhosts - 3) * 28 + 4, 28);
+						std::memcpy(g_state.shield, s + 408 + (kGhosts - 3) * 28 + 4, 28);
 						for (int k = 0; k < kGhosts; ++k) {
-							const char* at = s + 836 + (kGhosts - 3) * 28 + 32 + k * 20;
+							const char* at = s + 408 + (kGhosts - 3) * 28 + 32 + k * 20;
 							std::memcpy(&g_state.moves[k].id, at, 4);
 							std::memcpy(&g_state.moves[k].right, at + 4, 4);
 							std::memcpy(&g_state.moves[k].forward, at + 8, 4);
@@ -176,15 +195,10 @@ namespace dm::Link
 							std::memcpy(&g_state.moves[k].free, at + 16, 4);
 						}
 						for (int k = 0; k < kGhosts; ++k) {
-							const char* at = s + 836 + (kGhosts - 3) * 28 + 32 + kGhosts * 20 + k * 8;
+							const char* at = s + 408 + (kGhosts - 3) * 28 + 32 + kGhosts * 20 + k * 8;
 							std::memcpy(&g_state.standinStamina[k].id, at, 4);
 							std::memcpy(&g_state.standinStamina[k].stamina, at + 4, 4);
 						}
-						std::memcpy(&g_state.bowBones, s + 408, 4);
-						std::memcpy(g_state.bow, s + 412, sizeof(g_state.bow));
-						std::memcpy(&g_state.arrowShown, s + 748, 4);
-						std::memcpy(g_state.arrowAt, s + 752, 28);
-						std::memcpy(g_state.arrowBones, s + 780, 56);
 						std::memcpy(g_state.weaponClass, s + 376, 32);
 						g_state.weaponClass[31] = 0;
 						std::memcpy(g_state.shotDir, s + 264, 12);
@@ -213,6 +227,35 @@ namespace dm::Link
 							pose.weaponState = has;
 						}
 						g_state.sequence = sequence;
+						{
+							// (the reports kept for showing them a little in the past; MORDHAU's clock set against Skyrim's by
+							// the earliest arrival, let go slowly so a drift between the two clocks is followed)
+							const double arrival = SkyNow() - g_state.clock;
+							if (!g_offsetKnown || arrival < g_offset || std::abs(arrival - g_offset) > 1.0) {
+								g_offset = arrival, g_offsetKnown = true;
+							} else {
+								g_offset += (arrival - g_offset) * 0.002;
+							}
+							for (int i = 0; i < kGhosts; ++i) {
+								auto& history = g_history[i];
+								if (!history.empty() && (history.back().id != g_state.ghosts[i].id || g_state.clock < history.back().clock)) {
+									history.clear();  // (another character in this place, or MORDHAU's clock started over)
+								}
+								if (g_state.ghosts[i].id == 0 || (!history.empty() && history.back().clock == g_state.clock)) {
+									continue;
+								}
+								Sample sample{ g_state.clock, g_state.ghosts[i].id, g_ghostPoses[i], {}, false };
+								for (const auto& move : g_state.moves) {
+									if (move.id == sample.id) {
+										sample.move = move, sample.hasMove = true;
+									}
+								}
+								history.push_back(std::move(sample));
+								while (history.size() > 8) {
+									history.pop_front();
+								}
+							}
+						}
 					}
 					g_seenOne = true;
 					g_lastSequence = sequence;
@@ -239,7 +282,126 @@ namespace dm::Link
 		g_wish = { a_forward, a_right, a_pitch, a_sprint, a_firstPerson };
 	}
 
+	void SetInterpolation(float a_seconds)
+	{
+		std::scoped_lock lock(g_lock);
+		g_interp = std::max(a_seconds, 0.0f);
+	}
+
+	namespace
+	{
+		// The two reports around the moment to show (MORDHAU's clock now, less the delay) and how far between them; the
+		// newest alone when there is nothing newer (never guessed ahead).
+		bool Around(const std::deque<Sample>& a_history, const Sample*& a_older, const Sample*& a_newer, float& a_t)
+		{
+			if (a_history.empty() || !g_offsetKnown) {
+				return false;
+			}
+			const float target = static_cast<float>(SkyNow() - g_offset) - g_interp;
+			a_older = a_newer = &a_history.back();
+			a_t = 0.0f;
+			if (target >= a_history.back().clock) {
+				return true;
+			}
+			if (target <= a_history.front().clock) {
+				a_older = a_newer = &a_history.front();
+				return true;
+			}
+			for (std::size_t k = a_history.size() - 1; k > 0; --k) {
+				const auto& older = a_history[k - 1];
+				const auto& newer = a_history[k];
+				if (older.clock <= target && target <= newer.clock) {
+					a_older = &older, a_newer = &newer;
+					a_t = newer.clock > older.clock ? (target - older.clock) / (newer.clock - older.clock) : 1.0f;
+					return true;
+				}
+			}
+			return true;
+		}
+
+		void BlendQuat(const float* a_a, const float* a_b, float a_t, float* a_out)
+		{
+			const float dot = a_a[0] * a_b[0] + a_a[1] * a_b[1] + a_a[2] * a_b[2] + a_a[3] * a_b[3];
+			const float sign = dot < 0.0f ? -1.0f : 1.0f;
+			float       length = 0.0f;
+			for (int c = 0; c < 4; ++c) {
+				a_out[c] = a_a[c] * (1.0f - a_t) + a_b[c] * sign * a_t;
+				length += a_out[c] * a_out[c];
+			}
+			length = std::sqrt(length);
+			if (length > 1e-6f) {
+				for (int c = 0; c < 4; ++c) {
+					a_out[c] /= length;
+				}
+			}
+		}
+	}
+
+	bool GhostMoveAt(std::uint32_t a_id, State::GhostMove& a_out)
+	{
+		std::scoped_lock lock(g_lock);
+		if (g_interp <= 0.0f) {
+			return false;
+		}
+		for (const auto& history : g_history) {
+			if (history.empty() || history.back().id != a_id || !history.back().hasMove) {
+				continue;
+			}
+			const Sample* older = nullptr;
+			const Sample* newer = nullptr;
+			float         t = 0.0f;
+			if (!Around(history, older, newer, t) || !older->hasMove || !newer->hasMove) {
+				return false;
+			}
+			a_out = newer->move;
+			a_out.right = older->move.right + (newer->move.right - older->move.right) * t;
+			a_out.forward = older->move.forward + (newer->move.forward - older->move.forward) * t;
+			float turn = newer->move.yaw - older->move.yaw;
+			turn -= 360.0f * std::round(turn / 360.0f);
+			a_out.yaw = older->move.yaw + turn * t;
+			return true;
+		}
+		return false;
+	}
+
 	bool GhostPoseAt(int a_slot, GhostPose& a_out)
+	{
+		if (a_slot >= 0 && a_slot < kGhosts) {
+			std::scoped_lock lock(g_lock);
+			if (g_interp > 0.0f && g_state.live && g_ghostPoses[a_slot].look > 0 && !g_history[a_slot].empty() && g_history[a_slot].back().id == g_state.ghosts[a_slot].id) {
+				const Sample* older = nullptr;
+				const Sample* newer = nullptr;
+				float         t = 0.0f;
+				if (Around(g_history[a_slot], older, newer, t) && older->pose.look > 0 && newer->pose.look > 0 && older->pose.bones.size() == newer->pose.bones.size()) {
+					a_out = newer->pose;
+					if (older != newer) {
+						const std::size_t bones = newer->pose.bones.size() / 7;
+						for (std::size_t b = 0; b < bones; ++b) {
+							const float* x = &older->pose.bones[b * 7];
+							const float* y = &newer->pose.bones[b * 7];
+							float*       o = &a_out.bones[b * 7];
+							const bool   streamed = (x[0] != 0.0f || x[1] != 0.0f || x[2] != 0.0f || x[3] != 0.0f) && (y[0] != 0.0f || y[1] != 0.0f || y[2] != 0.0f || y[3] != 0.0f);
+							if (!streamed) {
+								continue;  // (not streamed in one of them: the newer one as it is)
+							}
+							BlendQuat(x, y, t, o);
+							for (int c = 4; c < 7; ++c) {
+								o[c] = x[c] + (y[c] - x[c]) * t;
+							}
+						}
+						BlendQuat(older->pose.weaponRot, newer->pose.weaponRot, t, a_out.weaponRot);
+						for (int c = 0; c < 3; ++c) {
+							a_out.weaponPos[c] = older->pose.weaponPos[c] + (newer->pose.weaponPos[c] - older->pose.weaponPos[c]) * t;
+						}
+					}
+					return true;
+				}
+			}
+		}
+		return GhostPoseAtNewest(a_slot, a_out);
+	}
+
+	bool GhostPoseAtNewest(int a_slot, GhostPose& a_out)
 	{
 		std::scoped_lock lock(g_lock);
 		if (a_slot < 0 || a_slot >= kGhosts || !g_state.live || g_ghostPoses[a_slot].look <= 0) {
@@ -253,14 +415,6 @@ namespace dm::Link
 	{
 		std::scoped_lock lock(g_lock);
 		g_ghosts = a_ghosts;
-	}
-
-	std::string                g_weaponWish;
-
-	void SetWeaponWish(const char* a_item)
-	{
-		std::scoped_lock lock(g_lock);
-		g_weaponWish = a_item ? a_item : "";
 	}
 
 	bool                       g_downPlayer = false;
@@ -314,10 +468,10 @@ namespace dm::Link
 		std::scoped_lock lock(g_lock);
 		g_playerPlace = std::format(" pp:{:.1f},{:.1f},{:.3f}", a_xCm, a_yCm, a_facingDegrees);
 	}
-	void        SetHybrid(bool a_on, float a_engageCm, float a_snapCm, float a_holdSeconds)
+	void        SetHybrid(bool a_on, float a_engageCm)
 	{
 		std::scoped_lock lock(g_lock);
-		g_hybrid = std::format(" hy:{},{:.0f},{:.0f},{:.0f}", a_on ? 1 : 0, a_engageCm, a_snapCm, a_holdSeconds * 1000.0f);
+		g_hybrid = std::format(" hy:{},{:.0f}", a_on ? 1 : 0, a_engageCm);
 	}
 	void        SetShield(const char* a_mordhauShield)
 	{
@@ -383,6 +537,9 @@ namespace dm::Link
 				if (g.refused) {
 					line += std::format(" hr:{}", g.id);
 				}
+				if (g.hasWall) {
+					line += std::format(" gw:{},{:.3f},{:.3f},{:.0f},{:.0f}", g.id, g.wallRight, g.wallForward, g.wallCm, g.wallMarginCm);
+				}
 				if (std::abs(g.size - 1.0f) > 0.004f) {
 					line += std::format(" gz:{},{:.3f}", g.id, g.size);
 				}
@@ -431,9 +588,6 @@ namespace dm::Link
 			}
 			if (!g_playerWeapon.empty()) {
 				line += " pw:" + g_playerWeapon;
-			}
-			if (!g_weaponWish.empty()) {
-				line += " w:" + g_weaponWish;
 			}
 			if (g_downPlayer || !g_downIds.empty()) {
 				line += std::format(" down:{}", g_downPlayer ? 1 : 0);

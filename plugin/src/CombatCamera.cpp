@@ -68,8 +68,7 @@ namespace dm::Combat
 					RE::NiMatrix3      view;
 					a_state->rotation.ToRotation(view);
 					// (only across the view - sideways and up: along the view Skyrim's camera stays pulled back behind the
-					// head, which aims the same. Brought all the way to the eyes, Skyrim faded the player's own body out -
-					// "my character is now invisible")
+					// head, which aims the same. Brought all the way to the eyes, Skyrim faded the player's own body out)
 					RE::NiPoint3 miss = view.Transpose() * (eye - a_state->translation);
 					miss.y = 0.0f;
 					RE::NiPoint3 offset = a_state->posOffsetExpected + miss;
@@ -297,10 +296,10 @@ namespace dm::Combat
 							theirs = actor->GetNodeByName("NPC Head");  // (a Falmer's bones have no bracketed tags)
 						}
 						if (theirs && !actor->IsDead()) {
-							RE::NiPoint3 ahead = theirs->world.translate - player->GetPosition();
-							ahead.z = 0.0f;
+							RE::NiPoint3 toHead = theirs->world.translate - player->GetPosition();
+							toHead.z = 0.0f;
 							others += std::format(" {} {:.0f} (scale {:.2f}, feet {:+.0f}, head {:.0f} cm from the player's feet, body {:.0f})", actor->GetDisplayFullName(), (theirs->world.translate.z - actor->GetPositionZ()) / k, actor->GetHeight() / 128.0f,
-								(actor->GetPositionZ() - player->GetPositionZ()) / k, ahead.Length() / k, (actor->GetPosition() - player->GetPosition()).Length() / k);
+								(actor->GetPositionZ() - player->GetPositionZ()) / k, toHead.Length() / k, (actor->GetPosition() - player->GetPosition()).Length() / k);
 						}
 					}
 					if (!others.empty()) {
@@ -311,7 +310,7 @@ namespace dm::Combat
 				}
 			}
 			{
-				// (looking into "you see the inside of your head for a split second" in an overhead swing: where the
+				// (looking into the camera dipping inside the head for a moment in an overhead swing: where the
 				// skeleton's eye point is against the head bone and against the camera - ahead / up in the camera's level frame)
 				static Clock::time_point eyeTold{};
 				if (g_dev.measure && Seconds(eyeTold) > 1.0f) {

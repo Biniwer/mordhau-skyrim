@@ -17,7 +17,7 @@ namespace dm::CharacterRender
 	};
 
 	// Draws a MORDHAU character (models, weights and textures read from the player's own MORDHAU; packed into the
-	// cache folder by tools/bake_character.py for now) inside Skyrim's scene, on MORDHAU's own skeleton.
+	// cache folder at the first start) inside Skyrim's scene, on MORDHAU's own skeleton.
 	// a_cache: folder holding character/character.dmchar, its .dds colour maps and the .dmfull clips.
 	// a_sideOffset: Skyrim units to the player's right to stand the character at (0 = on the player).
 	// a_pose: asked every frame.
@@ -35,32 +35,21 @@ namespace dm::CharacterRender
 		bool         lengthUp = false;   // the model is long along its +Z (MORDHAU's arrows): laid along the way it faces
 	};
 	void SetProps(const std::vector<Prop>& a_props);
-	// A streak behind something in flight (an arrow): from the thing itself back to where the streak ends.
-	struct Trail
-	{
-		RE::NiPoint3 head, tail;  // Skyrim world
-		float        width = 2.0f;  // Skyrim units at the head
-		float        alpha = 0.75f;
-	};
-	void SetTrails(const std::vector<Trail>& a_trails);
 	// The weapon MORDHAU's character holds stands for the Skyrim weapon the player has equipped: show Skyrim's model.
 	void SetPlayerSkyrimWeapon(bool a_show);
-	void UpdateBlessings(RE::PlayerCharacter* a_player);  // game thread: which held weapons carry a blessing (sheets/blessings.json)
-	void SetUnsheatheWait(float a_seconds);  // how long an enemy keeps Skyrim's own pose while its stand-in is still unarmed
+	void SetUnsheatheWait(float a_seconds);
+	// A body in MORDHAU's pose drawn at a smoothed place following its physics place (sheets/builds.json standin_draw_smooth).
+	void SetDrawSmoothing(float a_perSecond, float a_most, bool a_measure);  // how long an enemy keeps Skyrim's own pose while its stand-in is still unarmed
 	void ShowHitMarker(bool a_kill);         // MORDHAU's hit marker at the crosshair for a moment (red when the hit killed)
-	// MORDHAU's draw animation on the player's upper body: 1 one-handed (left hip), 2 two-handed (back); negative = put away (backwards)
-	void PlayDraw(int a_kind);
 	void SetStandinWeaponMordhau(bool a_on);  // sheets/builds.json standin_weapon_as_mordhau
 	void SetThirdWeaponMordhau(bool a_on);  // sheets/builds.json third_person_weapon_mordhau
 	// sheets/builds.json arms_to_mordhau_hands, arms_stretch_max, skyrim_weapon_grip_in_fist, skyrim_weapon_half_turn
 	void SetAltSlide(float a_cm);  // sheets/builds.json alt_slide_<weapon>_<view> of the weapon now held
 	void SetArms(bool a_follow, float a_stretch, bool a_gripInFist, bool a_halfTurn, bool a_altOnBlade);  // + alt_grip_hands_on_blade
+	void SetHandsOntoWeapon(bool a_right, bool a_left);  // sheets/builds.json right_hand_onto_weapon, left_hand_onto_weapon
 	void SetSkyrimHasBody(std::uint32_t a_id, bool a_on);
-	void SetOwnHips(std::uint32_t a_id, const char* a_skyrimBones = "");  // a creature on a MORDHAU creature's moves: its hips stay where Skyrim has them (sheets/creature_fighters.json)  // a fought character that is Skyrim's alone right now (yielding, fleeing)
 	void SetMordhauBars(bool a_on);  // MORDHAU's health / stamina strip in Skyrim's picture (sheets/builds.json mordhau_bars)
 	void SetSkyrimShieldLook(bool a_on);  // sheets/builds.json skyrim_shield_look
-	void SetPelvisAlign(bool a_on);  // sheets/builds.json pelvis_align (read when the skeletons are first matched)
-	void SetPauldronsFollow(bool a_on);  // sheets/builds.json pauldrons_follow
 	void SetOutputScale(float a_scale);  // brightness of what this renderer draws (0 = unchanged)
 	void SetSkyrimOwnsPlayer(bool a_owns);  // a Skyrim scene has the player's body: nothing of MORDHAU's is put on it
 	// Who holds a MORDHAU weapon as a Skyrim item (0 = the player) and its model ("w_Zweihander"): on a Skyrim body
@@ -79,6 +68,7 @@ namespace dm::CharacterRender
 	// Skyrim's own models moved by MORDHAU's skeleton instead of MORDHAU bodies (sheets/builds.json skyrim_bodies).
 	void SetSkyrimBodies(bool a_on);
 	void SetLeftCasting(bool a_on);  // the player's left hand is casting: its arm keeps Skyrim's own casting animation (sheets/builds.json cast_arm_skyrim)
+	void SetCastArm(bool a_on, float a_linger);  // the same for everyone else whose left hand casts (sheets/builds.json cast_arm_skyrim, cast_arm_linger)
 	// This character's head was crushed (MORDHAU's head explosion): it is drawn without it from now on.
 	// Blood on a character (0 = the player): added to what is there, kept between 0 and 1 (negative = fades).
 	void AddBlood(std::uint32_t a_formId, float a_amount);
@@ -87,8 +77,6 @@ namespace dm::CharacterRender
 	void SeverHead(std::uint32_t a_formId, const RE::NiPoint3& a_away, bool a_mordhauHead = true);  // (false: no MORDHAU head flies - Skyrim's own severed head is in the world)
 	// MORDHAU's own voice / emote menu is open (a_menu != 0): its corner of MORDHAU's window is shown.
 	void SetMenu(int a_menu, int a_page);
-	// The player's own weapon lies on the ground (dropped or disarmed in MORDHAU): where, in Skyrim's world.
-	bool PlayerWeaponOnGround(RE::NiPoint3& a_at);
 	// The dropped weapon nearest to a point within reach: the player's own (a_owner = 0) or a fought character's.
 	// a_owner 0xFFFFFFFF = nobody's any more (its owner is dead or gone): a_model names it ("w_Longsword"), and
 	// asking takes it out of the world.

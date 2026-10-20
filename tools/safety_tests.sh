@@ -11,6 +11,8 @@ say() { echo "$*" | tee -a "$OUT"; }
 lives() { grep -c "session: MORDHAU is live" "$LOG" 2>/dev/null; }
 wait_live() { local n=$1 t=0; until [ "$(lives)" -gt "$n" ] || [ $t -ge 300 ]; do sleep 3; t=$((t + 3)); done; [ "$(lives)" -gt "$n" ]; }
 
+say "== offline checks (tools/offline_checks.py)"
+python -I tools/offline_checks.py 2>&1 | tee -a "$OUT" | grep -E "FAIL|passed|failed"
 say "== package = build: $(cmp -s build/RelWithDebInfo/DirectionalMelee.dll release/MordhauSkyrim-ModManager/SKSE/Plugins/MordhauSkyrim.dll && echo yes || echo NO)"
 say "== isolation check against $1"
 python tools/isolation_check.py "$1" 2>&1 | tee -a "$OUT" | grep -E "DIFFERENT|NOT all|all identical"

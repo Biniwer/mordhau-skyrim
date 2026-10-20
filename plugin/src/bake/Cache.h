@@ -2,7 +2,7 @@
 
 // The whole job: find the player's MORDHAU, and build this mod's local cache from it (the player's mercenary, the
 // outfits and creatures of sheets/looks.json, the props of sheets/props.json, and the small files MORDHAU's script
-// reads) - what tools/bake_looks.py, bake_props.py and bake_character.py did. Nothing is rebuilt while MORDHAU's
+// reads). Nothing is rebuilt while MORDHAU's
 // files, the player's mercenary and the sheets are the same as last time (a stamp file in the cache says so).
 
 #include "bake/Bake.h"
@@ -28,7 +28,6 @@ namespace mbake
 		std::filesystem::path cache;    // where to write
 		std::vector<LookRow>  looks;
 		std::vector<PropRow>  props;
-		std::vector<std::pair<std::string, std::string>> effectTextures;  // (id, path under Content): sheets/blessings.json textures
 		std::string           defaultMercenary;  // used when the player named none in <cache>/player.txt and has one of this name
 	};
 	struct Result
@@ -49,4 +48,6 @@ namespace mbake
 
 	// Builds whatever is out of date. a_progress is called with a short line now and then ("outfit 12 of 85 ...").
 	Result BuildCache(const Job& a_job, bool a_force, const std::function<void(const std::string&)>& a_progress);
+	// Whether BuildCache would find nothing to do (reads only the stamp and MORDHAU's file list: quick).
+	[[nodiscard]] bool CacheUpToDate(const Job& a_job);
 }

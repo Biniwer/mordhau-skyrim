@@ -192,51 +192,6 @@ namespace dm::Combat
 
 		// Who can have a MORDHAU stand-in: people, and (sheets/builds.json undead_fight) draugr and skeletons - they
 		// stand on Skyrim's human skeleton and swing weapons. Never animals, giants, dragons.
-		// (sheets/creature_fighters.json: by pieces of the race's name; looked up once per race)
-		static const sheets::CreatureFighterRow* RowFor(RE::Actor* a_actor);
-
-		const sheets::CreatureFighterRow* FighterFor(RE::Actor* a_actor)
-		{
-			const auto* row = RowFor(a_actor);
-			return row && row->demon[0] ? row : nullptr;
-		}
-
-		bool SkyrimsAlone(RE::Actor* a_actor)
-		{
-			const auto* row = RowFor(a_actor);
-			return row && !row->demon[0];
-		}
-
-		static const sheets::CreatureFighterRow* RowFor(RE::Actor* a_actor)
-		{
-			const auto* race = a_actor ? a_actor->GetRace() : nullptr;
-			if (!race || BuildValue("creature_fighters") < 0.5f || a_actor->HasKeywordString("ActorTypeNPC")) {
-				return nullptr;
-			}
-			static std::unordered_map<std::uint32_t, const sheets::CreatureFighterRow*> known;
-			if (const auto it = known.find(race->GetFormID()); it != known.end()) {
-				return it->second;
-			}
-			const char* id = race->GetFormEditorID();
-			std::string name = id && id[0] ? id : (race->GetName() ? race->GetName() : "");
-			std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-			const sheets::CreatureFighterRow* found = nullptr;
-			for (const auto& row : sheets::kCreatureFighters) {
-				std::stringstream parts(row.raceContains);
-				for (std::string part; !found && std::getline(parts, part, '|');) {
-					if (!part.empty() && name.find(part) != std::string::npos) {
-						found = &row;
-					}
-				}
-				if (found) {
-					break;
-				}
-			}
-			known[race->GetFormID()] = found;
-			logger::info("fought: creatures of the kind '{}' {}", name, found && found->demon[0] ? std::format("fight with the moves of MORDHAU's {}", found->demon) : found ? std::string("are Skyrim's alone (no MORDHAU stand-in)") : std::string("have no MORDHAU creature's moves"));
-			return found;
-		}
-
 		bool Humanoid(RE::Actor* a_actor)
 		{
 			if (a_actor->HasKeywordString("ActorTypeNPC")) {
@@ -284,7 +239,7 @@ namespace dm::Combat
 					return "drawing or putting away a weapon";
 				}
 			}
-			// magic and (while MORDHAU archery is off) bows are Skyrim's own: its body, arms and animations, untouched
+			// magic and bows are Skyrim's own: its body, arms and animations, untouched
 			if (const auto* right = a_player->GetEquippedObject(false)) {
 				const auto* weapon = right->As<RE::TESObjectWEAP>();
 				if (!weapon) {
@@ -293,7 +248,7 @@ namespace dm::Combat
 				if (weapon->IsStaff()) {
 					return "a staff in the hand (magic is Skyrim's own)";
 				}
-				if ((weapon->IsBow() || weapon->IsCrossbow()) && BuildValue("mordhau_archery") < 0.5f) {
+				if (weapon->IsBow() || weapon->IsCrossbow()) {
 					return "a bow in the hand (archery is Skyrim's own)";
 				}
 			}
@@ -441,15 +396,62 @@ namespace dm::Combat
 			logger::warn("cache: MORDHAU was not found through Steam; its characters cannot be drawn");
 			return;
 		}
-		const auto started = Clock::now();
-		const auto result = mbake::BuildCache(mbake::JobFromSheets(paks, mbake::MordhauGameIni(), g_dev.cache), false, [](const std::string& a_line) { logger::info("cache: {}", a_line); });
-		if (result.upToDate) {
-			logger::info("cache: '{}' is up to date (mercenary {})", g_dev.cache.string(), result.mercenary);
-		} else {
-			logger::info("cache: '{}' {} in {:.1f} s from {} (mercenary {}, {} built, {} failed)", g_dev.cache.string(), result.ok ? "built" : "NOT built", Seconds(started), paks.string(),
-				result.mercenary, result.built, result.failed);
-			g_cacheFailed = !result.ok;
+		const auto job = mbake::JobFromSheets(paks, mbake::MordhauGameIni(), g_dev.cache);
+		const auto build = [job, paks]() {
+			const auto started = Clock::now();
+			const auto result = mbake::BuildCache(job, false, [](const std::string& a_line) { logger::info("cache: {}", a_line); });
+			if (result.upToDate) {
+				logger::info("cache: '{}' is up to date (mercenary {})", g_dev.cache.string(), result.mercenary);
+			} else {
+				logger::info("cache: '{}' {} in {:.1f} s from {} (mercenary {}, {} built, {} failed)", g_dev.cache.string(), result.ok ? "built" : "NOT built", Seconds(started), paks.string(),
+					result.mercenary, result.built, result.failed);
+				g_cacheFailed = !result.ok;
+			}
+		};
+		if (mbake::CacheUpToDate(job)) {
+			build();
+			return;
 		}
+		// The preparation holds Skyrim's main thread for a minute or more (first start, a MORDHAU update): a message box
+		// says so first, and the preparation begins only once that box is on the screen - it stays there meanwhile.
+		// Without it, the frozen main menu looked like a softlock and was closed (manual-install test, 2026-10-18).
+		static const std::string kText = "MORDHAU x Skyrim is preparing MORDHAU's models from your own copy of MORDHAU (the first start, or after MORDHAU was updated).\n\nSkyrim does not respond while it does: this can take a few minutes. Please wait - MORDHAU starts by itself when it is done.";
+		auto* factories = RE::MessageDataFactoryManager::GetSingleton();
+		auto* strings = RE::InterfaceStrings::GetSingleton();
+		auto* creator = factories && strings ? factories->GetCreator<RE::MessageBoxData>(strings->messageBoxData) : nullptr;
+		auto* box = creator ? creator->Create() : nullptr;
+		if (!box) {
+			logger::info("cache: no message box could be made; preparing at once");
+			build();
+			return;
+		}
+		box->bodyText = kText.c_str();
+		box->buttonText.push_back("OK");
+		using func_t = void(RE::MessageBoxData*);
+		REL::Relocation<func_t> queue{ RELOCATION_ID(51422, 52271) };  // MessageBoxData::QueueMessage
+		queue(box);
+		logger::info("cache: out of date - the message box is shown first, then MORDHAU's models are prepared");
+		struct Wait
+		{
+			static void Next(std::function<void()> a_build, int a_shownFrames, Clock::time_point a_since)
+			{
+				SKSE::GetTaskInterface()->AddTask([a_build, a_shownFrames, a_since]() {
+					const auto* current = RE::MessageBoxMenu::GetCurrentMessageBoxData();
+					const bool  ours = current && std::string_view(current->bodyText.c_str()) == kText;
+					const int   frames = ours ? a_shownFrames + 1 : 0;
+					// (a few frames with the box up, so that it is drawn. Another box - the first-start one - is waited
+					// for as long as it is open; only when no box at all has been up for 10 s is the wait given up.)
+					const auto since = current ? Clock::now() : a_since;
+					if (frames >= 10 || Seconds(since) > 10.0f) {
+						logger::info("cache: the message box is {} - preparing now", ours ? "on the screen" : "not seen");
+						a_build();
+						return;
+					}
+					Next(a_build, frames, since);
+				});
+			}
+		};
+		Wait::Next(build, 0, Clock::now());
 	}
 
 	void Install()
@@ -464,7 +466,6 @@ namespace dm::Combat
 		}
 		if (g_dev.character && !g_dev.cache.empty()) {
 			Link::SetCache(g_dev.cache);
-			CharacterRender::SetPelvisAlign(BuildValue("pelvis_align") > 0.5f);
 			CharacterRender::Install(g_dev.cache, g_dev.charOffset, g_dev.charLight, CurrentPose);
 		}
 		if (g_hitSite) {
@@ -477,6 +478,12 @@ namespace dm::Combat
 			REL::Relocation<std::uintptr_t> hudVtbl{ RE::VTABLE_HUDMenu[0] };
 			HudMovieHook::func = hudVtbl.write_vfunc(0x5, HudMovieHook::thunk);  // IMenu::AdvanceMovie
 			logger::info("combat: HUD calls run on the HUD's own thread");
+		}
+		{
+			// (Skyrim's own movement step of a non-player character - measured first, sheets/builds.json hybrid_movement_hook)
+			REL::Relocation<std::uintptr_t> characterVtbl{ RE::VTABLE_Character[0] };
+			MovementDataHook::func = characterVtbl.write_vfunc(0x11A, MovementDataHook::thunk);
+			logger::info("combat: characters' movement step hooked (Actor::ModifyMovementData)");
 		}
 		REL::Relocation<std::uintptr_t> firstPersonVtbl{ RE::VTABLE_FirstPersonState[0] };
 		FirstPersonUpdateHook::func = firstPersonVtbl.write_vfunc(0x3, FirstPersonUpdateHook::thunk);

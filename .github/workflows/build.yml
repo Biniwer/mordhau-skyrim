@@ -54,7 +54,7 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=x64-windows-static-md
 
       - name: Build plugin
-        run: cmake --build build --config RelWithDebInfo --target DirectionalMelee
+        run: cmake --build build --config RelWithDebInfo --target DirectionalMelee MordhauBones
 
       - uses: ilammy/msvc-dev-cmd@v1
 
@@ -79,6 +79,8 @@ jobs:
           Copy-Item build\RelWithDebInfo\DirectionalMelee.pdb "$plugins\MordhauSkyrim.pdb"
           Copy-Item installer\modmanager\MordhauSkyrim.ini $plugins
           Copy-Item build\loader\dwmapi.dll $side
+          # (the script's bones helper, beside the mordhau folder: the plugin copies it into the mod's cache folder)
+          Copy-Item build\dist\MordhauBones.dll "$plugins\MordhauSkyrim"
 
           Invoke-WebRequest $env:UE4SS_URL -OutFile ue4ss.zip
           if ((Get-FileHash ue4ss.zip -Algorithm SHA256).Hash -ne $env:UE4SS_SHA256) { throw 'UE4SS zip: checksum differs' }
@@ -91,12 +93,10 @@ jobs:
             -replace '^(GuiConsoleEnabled|GuiConsoleVisible|EnableHotReloadSystem)\s*=.*$', '$1 = 0' `
             -replace '^bUseUObjectArrayCache\s*=.*$', 'bUseUObjectArrayCache = true' |
             Set-Content "$side\UE4SS-settings.ini"
-          foreach ($mod in 'ConsoleEnablerMod', 'Keybinds', 'shared') {
-            Copy-Item -Recurse "ue4ss\ue4ss\Mods\$mod" "$side\Mods\$mod"
-          }
-          # (UE4SS's own console and key binding mods are shipped switched off: the script needs neither, and with
-          # ConsoleEnablerMod on, MORDHAU's render thread crashed drawing its UI right after the start)
-          "ConsoleEnablerMod : 0`r`nKeybinds : 0`r`nPoseStream : 1" | Set-Content "$side\Mods\mods.txt"
+          # (only this mod's script: UE4SS's own example mods are not shipped - with ConsoleEnablerMod on, MORDHAU's render
+          # thread crashed drawing its UI right after the start)
+          New-Item -ItemType Directory -Force "$side\Mods" | Out-Null
+          "PoseStream : 1" | Set-Content "$side\Mods\mods.txt"
           New-Item -ItemType Directory -Force "$side\Mods\PoseStream\Scripts", "$side\UE4SS_Signatures" | Out-Null
           Copy-Item mordhau_side\PoseStream\Scripts\main.lua "$side\Mods\PoseStream\Scripts"
           Copy-Item mordhau_side\UE4SS_Signatures\*.lua "$side\UE4SS_Signatures"

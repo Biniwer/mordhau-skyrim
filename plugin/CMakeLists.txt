@@ -41,10 +41,24 @@ add_custom_command(TARGET DirectionalMelee POST_BUILD
 
 # Dev: the plugin's own baker (src/bake: reads MORDHAU's files, writes the local cache) as a small test program, to
 # compare its output with what the Python tools wrote. Not shipped.
-add_executable(mordhau_bake_test tools/bake_test.cpp src/bake/Bake.cpp src/bake/Spec.cpp src/bake/Cache.cpp)
-target_link_libraries(mordhau_bake_test PRIVATE advapi32.lib)
-target_include_directories(mordhau_bake_test PRIVATE src)
-target_compile_definitions(mordhau_bake_test PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
-if(MSVC)
-	target_compile_options(mordhau_bake_test PRIVATE /W4 /permissive- /utf-8)
+# (its source is not in the published repository since 0.1.21: only built where it is there)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/tools/bake_test.cpp)
+	add_executable(mordhau_bake_test tools/bake_test.cpp src/bake/Bake.cpp src/bake/Spec.cpp src/bake/Cache.cpp)
+	target_link_libraries(mordhau_bake_test PRIVATE advapi32.lib)
+	target_include_directories(mordhau_bake_test PRIVATE src)
+	target_compile_definitions(mordhau_bake_test PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+	if(MSVC)
+		target_compile_options(mordhau_bake_test PRIVATE /W4 /permissive- /utf-8)
+	endif()
 endif()
+
+# MordhauBones.dll: the MORDHAU-side script's native helper (reads bone transforms; mordhau_side/bones). Built with the
+# plugin, copied next to it in build/dist; the release tools put it into the script's folder.
+add_library(MordhauBones SHARED ${CMAKE_CURRENT_SOURCE_DIR}/../mordhau_side/bones/MordhauBones.cpp)
+target_compile_definitions(MordhauBones PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+if(MSVC)
+	target_compile_options(MordhauBones PRIVATE /W4 /permissive- /utf-8)
+endif()
+add_custom_command(TARGET MordhauBones POST_BUILD
+	COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:MordhauBones>" "${CMAKE_BINARY_DIR}/dist/MordhauBones.dll"
+	VERBATIM)

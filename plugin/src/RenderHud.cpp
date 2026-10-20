@@ -58,7 +58,9 @@ namespace dm::CharacterRender
 							const int   x0 = static_cast<int>(pictureW * part.left), x1 = static_cast<int>(pictureW * part.right), y0 = static_cast<int>(pictureH * part.top), y1 = static_cast<int>(pictureH * part.bottom);
 							const int   cw = x1 - x0, ch = y1 - y0;
 							g_hud.pixels[k].resize(static_cast<std::size_t>(cw) * ch * 4);
-							for (int y = 0; y < ch; ++y) {
+							// (MORDHAU's health / stamina bars are not shown - sheets/builds.json mordhau_bars: their pixels are
+							// not copied. The part keeps its size, which is what tells a fresh picture from none.)
+							for (int y = 0; y < ch && (k != 0 || g_mordhauBars.load()); ++y) {
 								std::memcpy(&g_hud.pixels[k][static_cast<std::size_t>(y) * cw * 4], &full[(static_cast<std::size_t>(y0 + y) * w + x0) * 4], static_cast<std::size_t>(cw) * 4);
 							}
 							g_hud.width[k] = cw;
@@ -81,7 +83,7 @@ namespace dm::CharacterRender
 			if (!g_hud.started) {
 				g_hud.started = true;
 				std::thread(HudCaptureLoop).detach();
-				logger::info("character: reading MORDHAU's own HUD (health / stamina, attack-direction indicator) from its window");
+				logger::info("character: reading MORDHAU's own HUD (crosshair with the attack-direction indicator, voice / emote menu) from its window");
 			}
 			std::scoped_lock lock(g_hud.lock);
 			if (g_hud.width[0] <= 0 || std::chrono::duration<float>(std::chrono::steady_clock::now() - g_hud.when).count() > 1.5f) {
@@ -279,10 +281,12 @@ namespace dm::CharacterRender
 		}
 		}
 
-		// Health and stamina bars drawn by the plugin itself, for when no picture of MORDHAU's window can be had.
+		// Health and stamina bars drawn by the plugin itself, for when no picture of MORDHAU's window can be had - only
+		// while MORDHAU's bars are shown at all (sheets/builds.json mordhau_bars). With them off, Skyrim's own bars
+		// are the only ones: before, these showed while MORDHAU's window was still opening, and beside Skyrim's.
 		void DrawFallbackBars(RE::PlayerCharacter* player, ID3D11DeviceContext* context, D3D11_TEXTURE2D_DESC& sd, const Link::State& link, D3D11_MAPPED_SUBRESOURCE& map, const UINT stride, const UINT offset, bool& hudStreamed)
 		{
-		if (!hudStreamed && link.live && g_hudVs && g_hudPs && g_hudVb && g_depthOff && player->AsActorState()->IsWeaponDrawn()) {
+		if (g_mordhauBars.load() && !hudStreamed && link.live && g_hudVs && g_hudPs && g_hudVb && g_depthOff && player->AsActorState()->IsWeaponDrawn()) {
 			auto*       values = player->AsActorValueOwner();
 			const float healthMax = std::max(values->GetPermanentActorValue(RE::ActorValue::kHealth), 1.0f);
 			const float health = std::clamp(values->GetActorValue(RE::ActorValue::kHealth) / healthMax, 0.0f, 1.0f);

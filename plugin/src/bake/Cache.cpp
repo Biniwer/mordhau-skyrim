@@ -116,7 +116,10 @@ namespace mbake
 		return std::filesystem::path(EnvironmentPath(L"LOCALAPPDATA")) / "MordhauSkyrim" / "cache";
 	}
 
-	Result BuildCache(const Job& a_job, bool a_force, const std::function<void(const std::string&)>& a_progress)
+	namespace
+	{
+		// a_checkOnly: only whether the cache is up to date (result.upToDate); nothing is built.
+		Result Build(const Job& a_job, bool a_force, bool a_checkOnly, const std::function<void(const std::string&)>& a_progress)
 	{
 		Result     result;
 		const auto say = [&](const std::string& a_line) {
@@ -190,38 +193,6 @@ namespace mbake
 					sheets = Crc(*field + "|", sheets);
 				}
 			}
-			// the blessing effects' textures (sheets/blessings.json): their own small folder and stamp, so adding them does
-			// not rebuild every model
-			{
-				std::string effectsStamp = stamp.str();
-				for (const auto& [id, path] : a_job.effectTextures) {
-					effectsStamp += id + " " + path + "\n";
-				}
-				const auto        effects = a_job.cache / "effects";
-				std::ifstream     in(effects / "baked.txt", std::ios::binary);
-				std::stringstream had;
-				had << in.rdbuf();
-				in.close();
-				if (a_force || !in || had.str() != effectsStamp) {
-					step = "preparing MORDHAU's blessing effects";
-					std::filesystem::remove_all(effects, ec);
-					std::filesystem::create_directories(effects, ec);
-					PakIndex effectsIndex;
-					if (effectsIndex.Open(a_job.paks) > 0) {
-						std::string list;
-						for (const auto& [id, path] : a_job.effectTextures) {
-							try {
-								list += id + " " + WriteDds(effectsIndex, path, effects, 512) + "\n";
-							} catch (const std::exception& ex) {
-								say("blessing texture " + id + " FAILED: " + ex.what());
-							}
-						}
-						WriteText(effects / "textures.txt", list);
-						WriteText(effects / "baked.txt", effectsStamp);
-						say("MORDHAU's blessing effects are ready");
-					}
-				}
-			}
 			stamp << "sheets " << sheets << "\n";
 			stamp << "mercenary " << result.mercenary << " " << Crc(profileLine) << "\n";
 			const auto stampFile = a_job.cache / "baked.txt";
@@ -233,6 +204,9 @@ namespace mbake
 					result.ok = result.upToDate = true;
 					return result;
 				}
+			}
+			if (a_checkOnly) {
+				return result;
 			}
 			std::filesystem::remove(stampFile, ec);
 
@@ -330,7 +304,7 @@ namespace mbake
 			}
 
 			// what MORDHAU's script reads: which mercenary to spawn as, how many outfits there are, the bone names
-			std::string config = "-- written by tools/bake_looks.py: which of the player's own mercenaries MORDHAU spawns; enemies = one entry per\n"
+			std::string config = "-- written by the mod's first start: which of the player's own mercenaries MORDHAU spawns; enemies = one entry per\n"
 								 "-- baked outfit (the MORDHAU-side script only counts them)\nreturn {\n";
 			config += "    profile_index = " + std::to_string(Mordhau::ProfileIndex(a_job.gameIni, result.mercenary)) + ", profile_name = \"" + result.mercenary + "\",\n    enemies = {\n";
 			for (const auto& row : a_job.looks) {
@@ -352,5 +326,16 @@ namespace mbake
 			say(std::string("preparing MORDHAU's models failed while ") + step + ": " + ex.what());
 		}
 		return result;
+	}
+	}
+
+	Result BuildCache(const Job& a_job, bool a_force, const std::function<void(const std::string&)>& a_progress)
+	{
+		return Build(a_job, a_force, false, a_progress);
+	}
+
+	bool CacheUpToDate(const Job& a_job)
+	{
+		return Build(a_job, false, true, nullptr).upToDate;
 	}
 }

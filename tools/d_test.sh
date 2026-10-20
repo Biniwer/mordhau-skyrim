@@ -20,7 +20,7 @@ if [ "$1" = "start" ]; then
   [ "$(grep -c "^*" "$LIST")" -ge 3 ] && cp "$LIST" downloads/Plugins.before-d-test.txt   # (never a list a test has already cut down)
   printf '*MordhauWeapons.esp\r\n' > "$LIST"
   : > "$LOG"
-  (cd "$S" && SteamAppId=489830 SteamGameId=489830 MORDHAU_SKYRIM= cmd //c start "" skse64_loader.exe)
+  (cd "$S" && SteamAppId=489830 SteamGameId=489830 cmd //c start "" skse64_loader.exe)
   until grep -q "session: MORDHAU is live" "$LOG" || ! tasklist | grep -qi SkyrimSE; do sleep 3; done
   tasklist | grep -qi SkyrimSE || { echo "SKYRIM IS GONE (crashed?)"; tail -3 "$LOG"; exit 1; }
   bash tools/skyrim_coc.sh "${3:-WhiterunOrigin}" 3 >/dev/null 2>&1

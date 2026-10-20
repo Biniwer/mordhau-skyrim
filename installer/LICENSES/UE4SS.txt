@@ -1,8 +1,7 @@
 UE4SS (RE-UE4SS) v3.0.1 by the UE4SS-RE team - MIT licence.
-Included unchanged: UE4SS.dll and the Lua mods that ship with it (Mods/ConsoleEnablerMod, Mods/Keybinds,
-Mods/shared/UEHelpers, Mods/shared/jsbProfiler).
+Included unchanged: UE4SS.dll.
 Included with this mod's changes: UE4SS-settings.ini (engine version set to 4.26, the console window off) and
-Mods/mods.txt (only this mod's script and UE4SS's key binds switched on).
+Mods/mods.txt (only this mod's script on it).
 Not UE4SS's but this mod's own: UE4SS_Signatures/GUObjectArray.lua, Mods/PoseStream and the loader dwmapi.dll
 (see MordhauSkyrim.txt).
 https://github.com/UE4SS-RE/RE-UE4SS

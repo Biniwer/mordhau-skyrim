@@ -2,7 +2,7 @@
 -- of the mashup while Skyrim is the world half:
 --   out: the local character's bones exactly as MORDHAU's own animation system posed them, its attack stage, blade
 --        trace, stamina and health  -> cache/live_pose.bin (read by the Skyrim plugin)
---   in:  what the player is doing in Skyrim (move, sprint, attack direction, parry, jump) <- cache/live_input.txt,
+--   in:  what the player is doing in Skyrim (move, sprint, attack direction, parry, jump) <- cache/live_input.mem,
 --        handed to MORDHAU's own input functions, so its own combat rules decide what happens.
 --
 -- live_pose.bin (little endian): 'DMLP', uint32 sequence, float time, int32 bones, then per bone 7 floats: rotation
@@ -12,25 +12,27 @@
 -- char[48] motion name, float[4] weapon rotation xyzw + float[3] weapon position (character space), int32 has weapon;
 -- then uint32 sequence again so a reader can tell a complete write from a torn one.
 -- After the weapon block: uint32 times the player was hit, float damage of the last one (MORDHAU's, of 100), uint32 id
--- of the stand-in that did it; then 3 x (uint32 id, uint32 times hit by the player, float damage of the last hit,
--- int32 stage of its attack or -1).
--- Stand-ins: Skyrim sends up to 3 nearby characters as "g:id,right,forward,up,yaw,attacks,blocking" (cm and degrees
+-- of the stand-in that did it; then the first 3 stand-ins as (uint32 id, uint32 times hit by the player, float damage
+-- of the last hit, int32 stage of its attack or -1, + the three numbers below); stand-ins 4 to 24 follow later, after
+-- the player's weapon block (the full layout: sheets/live_link.json).
+-- Stand-ins: Skyrim sends up to 24 nearby characters as "g:id,right,forward,up,yaw,attacks,blocking" (cm and degrees
 -- relative to the player). Each is given one MORDHAU bot with its own AI switched off, held at that place relative to
 -- the MORDHAU player, told to attack when the Skyrim character attacks and to parry when it blocks. So MORDHAU's own
 -- combat decides what hits, what is parried, clashes, ripostes, stamina. Nobody dies in MORDHAU: health is put back.
 -- Then float[4] camera rotation xyzw + float[3] camera position in character space and int32 "is first person":
 -- Skyrim draws MORDHAU's first-person view by putting this camera on its own.
--- Then per stand-in slot (3): int32 look (1.. = which baked look it is drawn with, 0 = empty slot), 158 x 7 floats local
+-- Then per stand-in slot (24): int32 look (1.. = which baked look it is drawn with, 0 = empty slot), 158 x 7 floats local
 -- bone transforms (a rotation of all zeros = "not read, use the model's own rest pose"), float[4]+float[3] weapon
 -- transform in ITS character space, int32 has weapon.
 -- Reading a bone costs ~25 microseconds here, so only bones that animate are read every time: the player's body and
 -- fingers each pose, the face and shape bones once a second; a stand-in's body 20 times a second, its fingers rarely.
 -- Each stand-in entry also carries: uint32 times hit by ANOTHER stand-in, float damage of the last such hit, uint32
 -- id of that stand-in (two Skyrim characters fighting each other).
--- live_input.txt (one line): sequence forward right sprint pitch mouseRightSum mouseUpSum, then "id:Action" pairs for
--- the latest requests.
+-- live_input.mem (one line, with its length before it and the sequence again after it): sequence forward right sprint
+-- pitch mouseRightSum mouseUpSum, then "id:Action" pairs for the latest requests.
 -- Where the cache shared with Skyrim's plugin is: the folder named in cache_dir.txt beside this mod's Scripts folder
--- (the launcher writes it), else %LOCALAPPDATA%\MordhauSkyrim\cache (where the plugin builds it by default).
+-- (the plugin writes it when it starts a session), else %LOCALAPPDATA%\MordhauSkyrim\cache (where the plugin builds it
+-- by default).
 if not CACHE then
     local here = (debug.getinfo(1, "S").source or ""):gsub("^@", ""):gsub("[/\\][^/\\]*$", "")   -- ...\Mods\PoseStream\Scripts
     for _, path in ipairs({ here .. "\\..\\cache_dir.txt", "Mods\\PoseStream\\cache_dir.txt" }) do
@@ -44,20 +46,21 @@ if not CACHE then
     CACHE = CACHE or ((os.getenv("LOCALAPPDATA") or ".") .. "\\MordhauSkyrim\\cache\\")
 end
 do
-    -- the cache is built by Skyrim's plugin (from this MORDHAU's own files) the first time Skyrim is started through
-    -- the launcher: without it there is nothing to do here
+    -- the cache is built by Skyrim's plugin (from this MORDHAU's own files) the first time Skyrim is started with the
+    -- mod: without it there is nothing to do here
     local made = io.open(CACHE .. "bone_names.lua", "r")
     if not made then
-        print("[PoseStream] no cache at " .. CACHE .. " yet: start through Play-Mashup.ps1 (Skyrim's plugin builds it on a first start)\n")
+        print("[PoseStream] no cache at " .. CACHE .. " yet: start Skyrim with the mod (its plugin builds it on a first start)\n")
         return
     end
     made:close()
 end
 
 -- OFFLINE ONLY. This script is never to be in a MORDHAU that is, or could go, online. Two guards:
--- (1) MORDHAU was started any other way than by the mashup's launcher (which leaves the time in
---     cache/live_session.txt just before it starts MORDHAU) - a normal start from Steam, with the loader left behind in
---     the folder: MORDHAU is closed again at once, with a notice saying how to clean the folder.
+-- (1) MORDHAU was started any other way than by the plugin's session (which writes the time and a key into
+--     cache/live_session.txt and gives the MORDHAU it starts the same key as MORDHAU_SKYRIM_SESSION) - a normal start
+--     from Steam, with the loader left behind in the folder, has no key: MORDHAU is closed again at once, with a notice
+--     saying how to clean the folder.
 -- (2) In a mashup session, the moment the game is anything but a stand-alone local match (it joined a server, or
 --     hosts one): MORDHAU is closed. Looked at every second (see PS_offline_guard).
 -- A window with the reason is shown (PowerShell's message box; the game itself is on its way out).
@@ -155,7 +158,7 @@ local OUT = (CACHE .. "live_pose.bin")
 local IN = (CACHE .. "live_input.mem")
 -- Shared memory with Skyrim: two fixed-size files kept open for the whole session (Skyrim's plugin maps them into its
 -- memory; Lua can only use file handles, which Windows backs with the same pages). Written and read in place.
-local POSE_BYTES, INPUT_BYTES = 131072, 16384   -- (doubled for 24 stand-ins; the plugin's kPoseBytes, kInputBytes)
+local POSE_BYTES, INPUT_BYTES = 131072, 16384   -- (room for 24 stand-ins; the plugin's kPoseBytes, kInputBytes)
 local function shared(path, size)
     local f = io.open(path, "r+b")
     if not f then
@@ -209,7 +212,13 @@ end
 local BODY_SHIFT_MOST = 150  -- cm: the most a stand-in's body is raised or lowered against its capsule (sheets/builds.json standin_body_shift_most)
 function PS_body_height(a_char, a_bot, a_lift)
     pcall(function()
-        local base = (PAWN and PAWN:IsValid() and PAWN.BaseTranslationOffset.Z) or -97
+        -- (the player's base offset read once a frame, and the bot's own remembered: two property reads per stand-in per
+        -- frame were part of the placing's cost - timing 2026-10-17)
+        if PS_baseFrame ~= frameCount then
+            PS_baseFrame = frameCount
+            PS_baseZ = (PAWN and PAWN:IsValid() and PAWN.BaseTranslationOffset.Z) or -97
+        end
+        local base = PS_baseZ or -97
         local want = 0
         -- (a stand-in of another size than the player - sheets/builds.json standin_scale: its capsule is that much
         -- shorter or taller, so with the two capsules' middles level its feet are not; and the offset set here is in
@@ -224,10 +233,14 @@ function PS_body_height(a_char, a_bot, a_lift)
         else
             a_bot.lift = nil
         end
-        local has = a_char.BaseTranslationOffset
-        if math.abs(has.Z - (base + want / size)) > 0.3 then
-            PS_why["height"] = (PS_why["height"] or 0) + 1
-            a_char.BaseTranslationOffset = { X = has.X, Y = has.Y, Z = base + want / size }
+        local target = base + want / size
+        if a_bot.baseSet == nil or math.abs(a_bot.baseSet - target) > 0.3 or (frameCount or 0) % 60 == 0 then
+            local has = a_char.BaseTranslationOffset
+            if math.abs(has.Z - target) > 0.3 then
+                PS_why["height"] = (PS_why["height"] or 0) + 1
+                a_char.BaseTranslationOffset = { X = has.X, Y = has.Y, Z = target }
+            end
+            a_bot.baseSet = target
         end
     end)
 end
@@ -304,6 +317,105 @@ for i, n in ipairs(BONES) do
     else BODY[#BODY + 1] = i end
 end
 local ZERO_BONE = string.pack("<fffffff", 0, 0, 0, 0, 0, 0, 0)
+-- A stand-in's body: only the bones its Skyrim body is posed from (sheets/bone_map.json mordhau_bone and dir_mordhau_bone)
+-- and every bone above them, found once from the first stand-in's mesh - the rest stay zero (sheets/live_link.json
+-- standin_bones_read; 25 of the 28 body bones - it saves little, measured 2026-10-17)
+-- The bones read through MordhauBones.dll (mordhau_side/bones): one call for all of a stand-in's bones instead of one per
+-- bone (D: test 2026-10-17: 20 bones in 45 us against 530 us, the same values to the last digit). Checked against the
+-- slow way now and then; any difference and it is switched off for the session (sheets/live_link.json standin_bones_read).
+PS_MS = PS_MS or { tried = false, read = nil, off = false, meshes = {}, reads = 0 }
+local MS_HEX = {}
+for i = 0, 255 do MS_HEX[string.format("%02x", i)] = string.char(i) end
+local MS_OFFSET = 1736   -- (where a mesh keeps its bones relative to their parents, MORDHAU as installed - found in the D: test)
+local function ms_reader()
+    if PS_MS.tried then return PS_MS.read end
+    PS_MS.tried = true
+    -- (from the mod's own cache folder, where the plugin copies it for the session - never kept in MORDHAU's folder)
+    local ok, fn = pcall(package.loadlib, CACHE .. "MordhauBones.dll", "ms_read")
+    if ok and type(fn) == "function" then
+        PS_MS.read = fn
+        log("stand-in bones: MordhauBones.dll is used (one call per stand-in)")
+    else
+        log("stand-in bones: MordhauBones.dll not loaded (" .. tostring(fn) .. "): bones read one by one")
+    end
+    return PS_MS.read
+end
+-- Reads the listed bones (indices into BONES) of a mesh through MordhauBones.dll into 'into' (packed as read_bones does);
+-- false when the module is not there, is switched off, or the read did not come out whole - then read_bones is used.
+local function ms_read_list(mesh, list, into)
+    local reader = not PS_MS.off and ms_reader() or nil
+    if not reader then return false end
+    local ok, done = pcall(function()
+        local addr = mesh:GetAddress()
+        local key = tostring(addr) .. ":" .. tostring(list)
+        local info = PS_MS.meshes[key]
+        if not info then
+            info = { n = mesh:GetNumBones(), idx = {} }
+            for k, i in ipairs(list) do info.idx[k] = mesh:GetBoneIndex(names[i]) end
+            PS_MS.meshes[key] = info
+        end
+        local hex = reader(addr, MS_OFFSET, info.n, #info.idx, table.unpack(info.idx))
+        if type(hex) ~= "string" or #hex ~= #info.idx * 56 then
+            if not info.told then
+                info.told = true
+                local missing = 0
+                for _, x in ipairs(info.idx) do if x < 0 then missing = missing + 1 end end
+                log(string.format("bones: MordhauBones.dll gave %d of %d bones for a list (%d not on this mesh): read one by one", type(hex) == "string" and #hex // 56 or -1, #info.idx, missing))
+            end
+            return false
+        end
+        local bytes = hex:gsub("..", MS_HEX)
+        for k, i in ipairs(list) do into[i] = bytes:sub((k - 1) * 28 + 1, k * 28) end
+        PS_MS.reads = PS_MS.reads + 1
+        -- (now and then one bone the slow way as well: any difference switches it off)
+        if PS_MS.reads % 500 == 1 then
+            local k = 1 + (PS_MS.reads // 500) % #list
+            local t = mesh:GetSocketTransform(names[list[k]], RTS_ParentBoneSpace)
+            local r, p = t.Rotation, t.Translation
+            local v = { string.unpack("<fffffff", bytes, (k - 1) * 28 + 1) }
+            local sign = (v[1] * r.X + v[2] * r.Y + v[3] * r.Z + v[4] * r.W) < 0 and -1 or 1
+            local worst = math.max(math.abs(v[1] * sign - r.X), math.abs(v[2] * sign - r.Y), math.abs(v[3] * sign - r.Z), math.abs(v[4] * sign - r.W),
+                math.abs(v[5] - p.X) / 100, math.abs(v[6] - p.Y) / 100, math.abs(v[7] - p.Z) / 100)
+            if worst > 0.001 then
+                PS_MS.off = true
+                log(string.format("bones: MordhauBones.dll differs from the slow way (%.4f on bone %s): switched off", worst, BONES[list[k]]))
+            end
+        end
+        return true
+    end)
+    return ok and done == true
+end
+local GHOST_NEED = { "Hips", "LowerBack", "Spine", "Spine1", "Neck", "head", "Head", "RightShoulder", "RightArm", "RightForeArm", "RightHand", "RightHandFinger03_01", "LeftShoulder", "LeftArm", "LeftForeArm", "LeftHand", "LeftHandFinger03_01", "RightUpLeg", "RightLeg", "RightFoot", "RightToeBase", "LeftUpLeg", "LeftLeg", "LeftFoot", "LeftToeBase", "RightWeapon" }
+local GHOST_BODY = nil
+local function ghost_body(mesh)
+    if GHOST_BODY then return GHOST_BODY end
+    local index = {}
+    for i, n in ipairs(BONES) do index[n:lower()] = i end
+    local wanted = {}
+    local ok = pcall(function()
+        for _, n in ipairs(GHOST_NEED) do
+            local name = n
+            for _ = 1, 40 do
+                local i = index[name:lower()]
+                if not i or wanted[i] then break end
+                wanted[i] = true
+                local parent = mesh:GetParentBone(FName(name)):ToString()
+                if parent == "" or parent == "None" then break end
+                name = parent
+            end
+        end
+    end)
+    local list = {}
+    for _, i in ipairs(BODY) do if wanted[i] then list[#list + 1] = i end end
+    if not ok or #list < #GHOST_NEED / 2 then
+        log("stand-in bones: could not be narrowed down - all " .. #BODY .. " body bones are read")
+        GHOST_BODY = BODY
+    else
+        log("stand-in bones: " .. #list .. " of " .. #BODY .. " body bones are read (what the Skyrim body is posed from)")
+        GHOST_BODY = list
+    end
+    return GHOST_BODY
+end
 local function read_bones(mesh, list, into)
     for k = 1, #list do
         local i = list[k]
@@ -315,7 +427,6 @@ end
 
 -- the Skyrim side's wishes
 local input = { seq = -1, forward = 0, right = 0, sprint = false, pitch = 0, stamp = 0 }
-function PS_get_input() return input end   -- (dev: for snippets)
 local lastAction = nil       -- highest action id already carried out (nil: adopt whatever is in the file at start)
 local sprinting = false
 local releaseBlockAt = nil
@@ -412,8 +523,6 @@ local ACTIONS = {
     -- however long the button is held - 80% of swings hit through a "held" block).
     BlockDown = function(p) releaseBlockAt = nil; PS_blockHeld = true; PS_wall_up(p) end,
     BlockUp = function(p) PS_blockHeld = false; PS_wall_down(p) end,
-    FirePress = function(p) p:FirePressed() end,     -- a bow: draw (held) ...
-    FireRelease = function(p) p:FireReleased() end,  -- ... and loose
     Kick = function(p) p:RequestKick() end,
     -- Skyrim's weapon is put away: MORDHAU's own Holster (its 0 key): the weapon goes to the belt, the arms hang by
     -- the side. (1 = the argument that does it, found by trying; SwitchToFists raised the fists instead.)
@@ -560,13 +669,19 @@ local function read_input()
     -- (Skyrim is paused - a menu: every stand-in is passive for as long, so none walks, strikes or parries)
     if rest:find(" pz:1", 1, true) then setmetatable(PS_passive, { __index = function() return true end }) end
     PS_refused = {}
+    -- (a wall near a walked stand-in's Skyrim body: its normal in the player's frame, distance and margin, cm -
+    -- sheets/live_link.json standin_wall)
+    PS_wall = {}
+    for id, wr, wf, wd, wm in rest:gmatch(" gw:(%d+),([%-%d%.]+),([%-%d%.]+),([%d%.]+),([%d%.]+)") do
+        PS_wall[tonumber(id)] = { right = tonumber(wr), forward = tonumber(wf), cm = tonumber(wd), margin = tonumber(wm) }
+    end
     for id in rest:gmatch(" hr:(%d+)") do PS_refused[tonumber(id)] = true end
     -- (how big each fought character is against the player in Skyrim: sheets/builds.json standin_scale)
     PS_ghostSize = {}
     for id, size in rest:gmatch(" gz:(%d+),([%d%.]+)") do PS_ghostSize[tonumber(id)] = tonumber(size) end
     do
-        local on, engage, snap, hold = rest:match(" hy:(%d),(%d+),(%d+),?(%d*)")
-        PS_HYBRID = on == "1"; PS_ENGAGE = tonumber(engage) or 450; PS_SNAP = tonumber(snap) or 110; PS_HOLD = (tonumber(hold) or 500) / 1000
+        local on, engage = rest:match(" hy:(%d),(%d+)")
+        PS_HYBRID = on == "1"; PS_ENGAGE = tonumber(engage) or 450
         local px, py, pf = rest:match(" pp:([%-%d%.]+),([%-%d%.]+),([%-%d%.]+)")
         input.pp = px and { x = tonumber(px), y = tonumber(py), fa = tonumber(pf) } or nil
     end
@@ -594,7 +709,6 @@ local function read_input()
         input.downPlayer = dp == "1"
         for id in ids:gmatch("(%d+)") do input.down[tonumber(id)] = true end
     end
-    input.weaponWish = rest:match(" w:([%w_/]+)")   -- a bow or crossbow is out in Skyrim: the MORDHAU item to hold
     input.ghosts = {}
     for id, r, f, u, yaw, attacks, blocking, vr, vf, weapon, hp in rest:gmatch("g:(%d+),([%-%d%.]+),([%-%d%.]+),([%-%d%.]+),([%-%d%.]+),(%d+),(%d),([%-%d%.]+),([%-%d%.]+),([%w_/%-]+),(%d+)") do
         input.ghosts[#input.ghosts + 1] = { id = tonumber(id), right = tonumber(r), forward = tonumber(f), up = tonumber(u), yaw = tonumber(yaw),
@@ -850,7 +964,7 @@ end
 
 -- ---------------------------------------------------------------------------------------------------------------
 -- Stand-ins for Skyrim's characters
-local MAX_GHOSTS = 5   -- (the plugin's Link::kGhosts; the first three's states sit where they always did, the rest after the bow's pose)
+local MAX_GHOSTS = 24   -- (the plugin's Link::kGhosts; the first three's states sit where they always did, the rest after the player's weapon block)
 -- Nobody may die inside MORDHAU (a dead character is destroyed, and its stand-in with it): the match's damage is
 -- scaled down so even a 100-damage hit leaves health, health is put back each frame, and what we report to Skyrim is
 -- scaled back up to MORDHAU's real number.
@@ -882,7 +996,7 @@ function PS_ai_row(level)
 end
 local HEALTH_FLOOR = 30
 local DAMAGE_FACTOR = 0.15
--- On unless cache/live_options.lua says otherwise (the launcher writes it; -SimpleEnemies turns it off). Tested on
+-- On unless cache/live_options.lua says otherwise (the plugin writes it; SimpleEnemies=1 in MordhauSkyrim.ini turns it off). Tested on
 -- for 12 minutes and off for 25 minutes of continuous fighting.
 if BOT_BRAINS == nil then
     BOT_BRAINS = true
@@ -915,11 +1029,13 @@ local function scan_bots(pc)
         end
     end
     bots = list
-    -- (a dead one comes back by itself: MORDHAU respawns its bots; only ask when there really are too few)
-    if aiCharacters < MAX_GHOSTS and os.clock() - lastBotAsk > 30 then
+    -- (a dead one comes back by itself: MORDHAU respawns its bots; only ask when there really are too few - as many
+    -- as Skyrim sends stand-ins for, two spare, at least five: sheets/live_link.json stand_ins)
+    local wanted = math.min(MAX_GHOSTS, math.max(5, #(input.ghosts or {}) + 2))
+    if aiCharacters < wanted and os.clock() - lastBotAsk > 5 then
         lastBotAsk = os.clock()
-        pcall(function() pc:AddBots(MAX_GHOSTS - aiCharacters) end)
-        log("asked MORDHAU for " .. (MAX_GHOSTS - aiCharacters) .. " stand-in(s)")
+        pcall(function() pc:AddBots(wanted - aiCharacters) end)
+        log("asked MORDHAU for " .. (wanted - aiCharacters) .. " stand-in(s) (" .. aiCharacters .. " there, " .. wanted .. " wanted)")
     end
 end
 
@@ -1087,7 +1203,6 @@ end
 -- enemy's swing 4-6 m from the player met one of them and was thrown back (BlockedMotion) at nothing to be seen
 -- (sheets/builds.json mordhau_world_hits = 0: "npcs are hitting invisible objects", 2026-10-15; 21 such swings in one
 -- test). Every attack - the player's and the stand-ins' - gets MORDHAU's own bDisableWorldCollision as it begins.
--- (Skyrim's walls stopping a blade is the plugin's, sheets/builds.json wall_cut - off for now.)
 function PS_no_world_hits(pawn)
     local function off(ch)
         pcall(function()
@@ -1324,7 +1439,6 @@ function PS_place_walls(pawn)
     local l, yaw
     for i = 1, 3 do
         local d = fresh and input.walls and input.walls[i] or 0
-        if PS_wallTest then d = PS_wallTest[i] end   -- (dev)
         local W = (d > 0 or PS_walls[i]) and wall_piece(pawn, i) or nil
         if W then
             if d >= 45 then
@@ -1373,7 +1487,7 @@ local function arm(b)
     local path = b.wantWeapon
     if not path then return end
     if b.armedFor ~= path and b.armingFor ~= path then
-        b.armingFor = path; b.armed = false; b.armGaveUp = false; b.armStep = 0; b.armTry = -10; b.armDrops = 0; b.armBegan = os.clock()   -- a new character (or a new weapon): start over
+        b.armingFor = path; b.armed = false; b.armGaveUp = false; b.armStep = 0; b.armTry = -10; b.armDrops = 0; b.armBegan = os.clock(); b.armClear = false   -- a new character (or a new weapon): start over
     end
     if b.armed or b.armGaveUp then wake(b) end
     if b.armed or b.armGaveUp then return end
@@ -1420,6 +1534,43 @@ local function arm(b)
     local holding = class_name(c.RightHandEquipment)
     local full = holding ~= "" and not holding:find("Fists", 1, true)
     if b.armStep == 1 then
+        -- (a bow held in the left hand is not let go by RequestDrop: an archer's stand-in whose Skyrim character took
+        -- out its sword kept the bow ("could not be handed ...; it keeps its own weapon" in this log), so archers could not
+        -- take out their melee weapons, 2026-10-16. A bow it should no longer hold is taken away.)
+        -- (whatever the new weapon is: from one bow to another the old one was dropped and stayed on MORDHAU's ground -
+        -- the stray sweep left bows alone, 2026-10-16)
+        do
+            for _, hand in ipairs({ "LeftHandEquipment", "RightHandEquipment" }) do
+                pcall(function()
+                    local w = c[hand]
+                    if there(w) and class_name(w):lower():find("bow", 1, true) then
+                        w:K2_DestroyActor()
+                        b.armClear = true   -- (from a bow, the hand-over failed most often: its slots are emptied too)
+                        log("arming stand-in " .. tostring(b.look) .. ": its bow is taken away for " .. want)
+                    end
+                end)
+            end
+        end
+        -- (its three slots emptied - all but a shield - when a hand-over failed once, or after a bow: the weapon made for
+        -- it had no free slot to go into, and the stand-in was left with its fists, 2026-10-16.
+        -- The same as for bare hands below.)
+        if b.armClear then
+            local gone = 0
+            pcall(function()
+                local e = c.Equipment
+                for i = 1, #e do
+                    local w = e[i]
+                    if there(w) and not class_name(w):find("Fists", 1, true) and not class_name(w):find("Shield", 1, true) then w:K2_DestroyActor(); gone = gone + 1 end
+                end
+            end)
+            for _, hand in ipairs({ "RightHandEquipment", "LeftHandEquipment" }) do
+                pcall(function()
+                    local w = c[hand]
+                    if there(w) and not class_name(w):find("Fists", 1, true) and not class_name(w):find("Shield", 1, true) then w:K2_DestroyActor(); gone = gone + 1 end
+                end)
+            end
+            if gone > 0 then log("arming stand-in " .. tostring(b.look) .. ": " .. gone .. " item(s) taken out of its slots for " .. want) end
+        end
         c:RequestDrop()   -- its hands and a slot must be free (a bot can spawn with all three slots taken)
     elseif b.armStep == 2 and full and (b.armDrops or 0) < 4 then
         b.armDrops = (b.armDrops or 0) + 1; b.armStep = 1; b.armGap = 0.5   -- (still holding its own: drop again)
@@ -1454,9 +1605,13 @@ local function arm(b)
         local slot = ({ 1, 2, 3, 1, 2, 3 })[b.armStep - 2]   -- the picked-up weapon is in one of the three slots
         c["EquipSlot" .. slot](c)
         b.armGap = 1.0
+    elseif not b.armClear then
+        -- (once more, with its slots emptied first)
+        b.armClear = true; b.armStep = 0; b.armTry = os.clock(); b.armGap = 0.5; b.armDrops = 0
+        log("stand-in " .. b.look .. " could not be handed " .. want .. ": once more, with its slots emptied")
     else
         b.armGaveUp = true
-        log("stand-in " .. b.look .. " could not be handed " .. want .. "; it keeps its own weapon")
+        log("stand-in " .. b.look .. " could not be handed " .. want .. " even with its slots emptied; it keeps what it has")
     end
 end
 
@@ -1475,8 +1630,6 @@ end
 -- stand-in is that creature itself (spawned here once, with MORDHAU's own controller), so its moves are its own.
 local DEMONS = "/Game/Mordhau/Blueprints/GameModes/Horde/DemonInvasion/Enemies/"
 PLAYER_BLADE_NEAR = 110   -- cm: how near the player's blade must pass to a stand-in's middle line for its lost health to be the player's hit (a big Demon Horde creature is up to 50 cm round, a person 35, and a blow lands on the arm or the shoulder)
-PS_DEMON_BANNED = { Gremlin = { "GremlinLeap", "GremlinGrapple" } }   -- sheets/creature_fighters.json 'banned'
-PS_DEMON_STRIKES = { Gremlin = true }   -- sheets/creature_fighters.json 'person_strikes'
 local lastDemonAsk = -100
 local function spawn_demon(pawn, name)
     if os.clock() - lastDemonAsk < 6 then return end
@@ -1532,15 +1685,8 @@ local function ranged_item(pawn)
     return nil, ""
 end
 function PS_player_ranged(pawn)
-    local wish = os.clock() - input.stamp < 0.5 and input.weaponWish or nil
-    local held, heldName = ranged_item(pawn)
     local me = pawn:GetFullName()
     if bow.owner ~= me then bow = { owner = me } end
-    -- (the bow itself is handed over by PS_player_arm, as melee weapons are; here its quiver is kept full)
-    if wish and held and os.clock() - (bow.fill or 0) > 1.0 then
-        bow.fill = os.clock()
-        pcall(function() held:SetAmmo(held:GetCurrentMaxAmmo()) end)
-    end
     -- an arrow loosed just now?
     local m = pawn:GetMotion()
     local mname = class_name(m)
@@ -1605,7 +1751,6 @@ function PS_shot_block()
 end
 
 local lastPlayerStage = -1
-PS_PLAYER_GAP = 101   -- cm: MORDHAU's characters are 50 cm round (CapsuleRadius, read in play), so two of them never stand nearer than 100 - set nearer, MORDHAU throws the stand-in back out the next frame
 local function update_ghosts(pawn, pc)
     local okRanged, rangedErr = pcall(PS_player_ranged, pawn)
     if not okRanged and (bow.errs or 0) < 3 then bow.errs = (bow.errs or 0) + 1; log("archery failed: " .. tostring(rangedErr)) end
@@ -1681,10 +1826,10 @@ local function update_ghosts(pawn, pc)
                 log("stand-in " .. tostring(b.look) .. " is gone: " .. why)
                 goto continue
             end
+            PS_ta = os.clock()   -- (dev timing: sheets of the stand-ins' part, see PS_prof_report)
             if not b.prepared then prepare(b) end
             local g = b.ghost and byId[b.ghost]
             b.wantWeapon = g and not b.demon and (g.weapon or "Specific/OneHanded/BP_ArmingSword") or nil
-            if g and b.demon and g.weapon then b.wantWeapon = g.weapon:match("^Demon/%a+/(.+)$") end   -- (sheets/creature_fighters.json weapon)
             if g and not b.demon and not b.voiceChecked then b.voiceChecked = true; PS_human_voice(c, pawn) end
             if g then PS_mute_voice(b, c) end
             if g and not b.demon then pcall(PS_standin_shield, b, c) end
@@ -1845,7 +1990,9 @@ local function update_ghosts(pawn, pc)
             pcall(keep_down, c, b, g and input.down and input.down[b.ghost] or false)
             if not (g and input.down and input.down[b.ghost]) then b.downLogged = nil end
             if not okArm and not b.armErr then b.armErr = true; log("arming a stand-in failed: " .. tostring(armErr)) end
+            PS_prof_add("g_setup", os.clock() - PS_ta)
             pcall(function()
+                PS_tb = os.clock()
                 if g then
                     -- (On sloping ground the Skyrim character stands a little higher or lower than the player; set down that
                     -- much into or above MORDHAU's flat floor, the bot's legs folded up to meet it: an odd crouch, seen in play
@@ -1860,8 +2007,7 @@ local function update_ghosts(pawn, pc)
                     local home = { X = l.X + f.X * g.forward + r.X * g.right, Y = l.Y + f.Y * g.forward + r.Y * g.right, Z = l.Z + up - 97 * (1 - (b.size or 1)) }   -- (a smaller stand-in's capsule is shorter: set lower by that, so its feet are right)
                     local free = false
                     if PS_HYBRID and input.pp and BOT_BRAINS and b.armed and not b.demon and not (PS_passive and PS_passive[b.ghost])
-                        and not (input.down and input.down[b.ghost]) and os.clock() >= (b.holdUntil or 0)
-                        and math.abs(g.up) < 80 then   -- (on another level than the player - a ledge, stairs - it is held as before)
+                        and not (input.down and input.down[b.ghost]) and os.clock() >= (b.holdUntil or 0) then
                         local opponent, at = pawn, l
                         local foe = PS_ghostTarget and PS_ghostTarget[b.ghost]
                         if foe then
@@ -1893,7 +2039,7 @@ local function update_ghosts(pawn, pc)
                         if b.held == 1 or b.held % 200 == 0 then log("hybrid: stand-in " .. tostring(b.look) .. " walks against something Skyrim does not let it through (" .. b.held .. " frames so far)") end
                     end
                     if free and not b.free then
-                        b.free = true; b.astray = nil
+                        b.free = true
                         -- (onto MORDHAU's floor first: held, it stood at Skyrim's height against the player, which can be
                         -- under MORDHAU's ground or in the air above it - set free there it fell and stayed in its landing
                         -- animation, where nothing could hurt it)
@@ -1918,8 +2064,11 @@ local function update_ghosts(pawn, pc)
                         -- world is the player's own frame. So a free bot is shifted against whatever the player has
                         -- walked and turned in Skyrim since last time - it stays where it is in Skyrim's world.
                         local pp = input.pp
+                        -- (where it stands, asked once and kept up to date after each move below - it was asked up to
+                        -- seven times a frame: timing 2026-10-17)
+                        local here = c:K2_GetActorLocation()
                         if b.ppFa and (pp.x ~= b.ppX or pp.y ~= b.ppY or pp.fa ~= b.ppFa) then
-                            local cl = c:K2_GetActorLocation()
+                            local cl = here
                             local dx, dy = cl.X - spot.X, cl.Y - spot.Y
                             local R, F = dx * r.X + dy * r.Y, dx * f.X + dy * f.Y
                             local a0, a1 = math.rad(b.ppFa), math.rad(pp.fa)
@@ -1931,7 +2080,8 @@ local function update_ghosts(pawn, pc)
                             local R1, F1 = ox * math.cos(a1) - oy * math.sin(a1), ox * math.sin(a1) + oy * math.cos(a1)
                             local turn = pp.fa - b.ppFa
                             local rot = c:K2_GetActorRotation()
-                            PS_why["playerframe"] = (PS_why["playerframe"] or 0) + 1; PS_place(c, { X = spot.X + f.X * F1 + r.X * R1, Y = spot.Y + f.Y * F1 + r.Y * R1, Z = cl.Z }, { Pitch = 0, Yaw = rot.Yaw - turn, Roll = 0 }, false)
+                            here = { X = spot.X + f.X * F1 + r.X * R1, Y = spot.Y + f.Y * F1 + r.Y * R1, Z = cl.Z }
+                            PS_why["playerframe"] = (PS_why["playerframe"] or 0) + 1; PS_place(c, { X = here.X, Y = here.Y, Z = here.Z }, { Pitch = 0, Yaw = rot.Yaw - turn, Roll = 0 }, false)
                             if math.abs(turn) > 0.01 then
                                 pcall(function() local cr = c.Controller:GetControlRotation(); c.Controller:SetControlRotation({ Pitch = cr.Pitch, Yaw = cr.Yaw - turn, Roll = 0 }) end)
                             end
@@ -1939,48 +2089,44 @@ local function update_ghosts(pawn, pc)
                         b.ppX, b.ppY, b.ppFa = pp.x, pp.y, pp.fa
                         -- (its height: the BODY is raised or lowered against the ground MORDHAU has it walk on, so that it
                         -- stands against the player as Skyrim has the two)
-                        if c:K2_GetActorLocation().Z < l.Z - 180 then PS_why["fell"] = (PS_why["fell"] or 0) + 1; PS_seat(c, l.Z) end   -- (through MORDHAU's ground)
+                        if here.Z < l.Z - 180 then PS_why["fell"] = (PS_why["fell"] or 0) + 1; PS_seat(c, l.Z); here = c:K2_GetActorLocation() end   -- (through MORDHAU's ground)
                         -- (the WHOLE difference Skyrim has between the two, g.up - not the part left after the slope
                         -- allowance: with the enemy 25 cm uphill in Skyrim and level here, a swing aimed at his chest
                         -- met his head: measured at the player's own hits)
-                        PS_body_height(c, b, (l.Z + g.up) - c:K2_GetActorLocation().Z)
-                        pcall(function() local mode = c.CharacterMovement.MovementMode; if mode == 5 or mode == 0 then c.CharacterMovement:SetMovementMode(1, 0) end end)
-                        -- (never nearer to the player's spot than Skyrim lets two characters stand - sheets/builds.json
-                        -- hybrid_player_gap. MORDHAU's player walks on the spot, so walking INTO a fighter in Skyrim only shifts
-                        -- his stand-in towards that spot, through it if need be; his Skyrim body is held off at the gap, the two
-                        -- came apart and the stand-in was set back to the body - "he starts teleporting back then runs back to
-                        -- me". Held off at the same distance here, he is simply pushed along.)
-                        do
-                            local at = c:K2_GetActorLocation()
-                            local gx, gy = at.X - spot.X, at.Y - spot.Y
-                            local near = math.sqrt(gx * gx + gy * gy)
-                            if near < PS_PLAYER_GAP then
-                                if near < 1 then gx, gy, near = f.X, f.Y, 1 end
-                                PS_why["gap"] = (PS_why["gap"] or 0) + 1
-                                PS_place(c, { X = spot.X + gx / near * PS_PLAYER_GAP, Y = spot.Y + gy / near * PS_PLAYER_GAP, Z = at.Z }, c:K2_GetActorRotation(), false)
-                            end
+                        PS_body_height(c, b, (l.Z + g.up) - here.Z)
+                        if (frameCount or 0) % 10 == (b.look or 0) % 10 then   -- (its walking mode looked at every tenth frame)
+                            pcall(function() local mode = c.CharacterMovement.MovementMode; if mode == 5 or mode == 0 then c.CharacterMovement:SetMovementMode(1, 0) end end)
                         end
-                        -- (Skyrim did not follow - its character is elsewhere for a third of a second: back to it)
-                        local cl = c:K2_GetActorLocation()
-                        if (cl.X - home.X) ^ 2 + (cl.Y - home.Y) ^ 2 > (PS_SNAP or 110) ^ 2 then
-                            b.astray = b.astray or os.clock()
-                            if os.clock() - b.astray > 0.1 then
-                                b.astray = nil
-                                PS_why["astray"] = (PS_why["astray"] or 0) + 1; PS_place(c, { X = home.X, Y = home.Y, Z = cl.Z }, c:K2_GetActorRotation(), true)
-                                b.snaps = (b.snaps or 0) + 1
-                                if b.snaps == 1 or b.snaps % 10 == 0 then log("hybrid: stand-in " .. tostring(b.look) .. " set back to its Skyrim character (" .. b.snaps .. " so far)") end
-                            end
-                        else
-                            b.astray = nil
-                        end
+                        b.here = here   -- (for the wall line and the report below, this frame)
                     else
                     b.ppFa = nil
+                    b.here = nil
                     PS_body_height(c, b, g.up - up)   -- (held at Skyrim's place less the slope allowance: the body makes up the rest)
                     PS_why["held"] = (PS_why["held"] or 0) + 1; PS_place(c, home, { Pitch = 0, Yaw = yaw + g.yaw, Roll = 0 }, false)
+                    b.here = { X = home.X, Y = home.Y, Z = home.Z }
                     end
+                    -- (a free stand-in is kept short of a wall its Skyrim body has near it: MORDHAU's floor has no walls,
+                    -- and it walked where the body could not follow - sheets/builds.json standin_wall_reach)
+                    if free and PS_wall and PS_wall[b.ghost] then
+                        pcall(function()
+                            local w = PS_wall[b.ghost]
+                            local nx, ny = f.X * w.forward + r.X * w.right, f.Y * w.forward + r.Y * w.right
+                            local cl = b.here or c:K2_GetActorLocation()
+                            local towards = -((cl.X - home.X) * nx + (cl.Y - home.Y) * ny)   -- (how far it stands from its body towards the wall)
+                            local past = towards - math.max(w.cm - w.margin, 0)
+                            if past > 0 then
+                                PS_why["wall"] = (PS_why["wall"] or 0) + 1
+                                PS_place(c, { X = cl.X + nx * past, Y = cl.Y + ny * past, Z = cl.Z }, c:K2_GetActorRotation(), false)
+                                b.here = { X = cl.X + nx * past, Y = cl.Y + ny * past, Z = cl.Z }
+                                b.walled = (b.walled or 0) + 1
+                                if b.walled == 1 or b.walled % 200 == 0 then log("hybrid: stand-in " .. tostring(b.look) .. " kept short of a wall its body has near it (" .. b.walled .. " frames so far)") end
+                            end
+                        end)
+                    end
+                    PS_prof_add("g_place", os.clock() - PS_tb); PS_tb = os.clock()
                     -- (where it stands and faces now, for Skyrim: sheets/live_link.json standin_move)
                     do
-                        local cl = c:K2_GetActorLocation()
+                        local cl = b.here or c:K2_GetActorLocation()   -- (the place this frame, as set above)
                         local dx, dy = cl.X - spot.X, cl.Y - spot.Y
                         PS_moveOut = PS_moveOut or {}
                         local R, F = dx * r.X + dy * r.Y, dx * f.X + dy * f.Y
@@ -2008,16 +2154,15 @@ local function update_ghosts(pawn, pc)
                         -- walk closer, so the Skyrim character's decision to attack is what sets it off)
                         -- (only from where a MORDHAU blade can reach: Skyrim characters start their attacks from farther away)
                         local reach = math.sqrt(g.forward * g.forward + g.right * g.right) <= 215
-                        -- (a Demon Horde stand-in attacks by its own brain - except one whose own attack is left out
-                        -- (sheets/creature_fighters.json 'banned': the Gremlin has nothing but its leap): that one strikes
-                        -- as a person's stand-in does, when its Skyrim creature attacks)
-                        local own = b.demon and not PS_DEMON_STRIKES[b.demon]
+                        -- (a Demon Horde stand-in attacks by its own brain)
+                        local own = b.demon
                         if not BOT_BRAINS or (not own and reach and class_name(c:GetMotion()) == "IdleMotion") then
                             local how = STRIKES[math.random(#STRIKES)]
                             local ok, err = pcall(function() c[how](c) end)
                             if b.demon and (b.struck or 0) < 6 then b.struck = (b.struck or 0) + 1; log("stand-in " .. tostring(b.look) .. " (" .. b.demon .. ") is asked for " .. how .. (ok and "" or ": " .. tostring(err))) end
                         end
                     end
+                    PS_prof_add("g_report", os.clock() - PS_tb); PS_tb = os.clock()
                     -- it looks at the player's character, not at the spot on the ground its brain wants to walk to
                     -- (looking there made it swing at the ground)
                     -- ... and it aims at the player's body with every frame: where it looks (side and height) is where its
@@ -2067,23 +2212,13 @@ local function update_ghosts(pawn, pc)
                             pcall(function() ctrl:K2_SetFocus(pawn) end)
                         end
                     end
+                    PS_prof_add("g_aim", os.clock() - PS_tb); PS_tb = os.clock()
                     -- the Skyrim character is blocking: its stand-in parries the player's attack as it comes in
                     if g.blocking and releaseBegan and not BOT_BRAINS then pcall(function() c:FeintOrBlockPressed() end); b.parryUp = os.clock() + 0.12 end
                     -- The stand-in parries the player's swing as it is let go (sheets/enemy_ai.json standin_skill): with
                     -- its own brain the bot often stood idle or played an emote and never parried at all.
-                    -- A Demon Horde stand-in (sheets/creature_fighters.json): its moves that are left out are ended as
-                    -- they begin (the Gremlin's leap, the Troll's thrown stone), and it is as big as its Skyrim creature.
-                    -- (Both were inside the part below, which is for people's stand-ins only: neither ever ran.)
+                    -- A Demon Horde stand-in is as big as its Skyrim creature.
                     if b.demon then
-                        local mine = class_name(c:GetMotion())
-                        for _, piece in ipairs(PS_DEMON_BANNED[b.demon] or {}) do
-                            if mine:find(piece, 1, true) then
-                                pcall(function() c:GetMotion():OnEnded() end)
-                                b.banned = (b.banned or 0) + 1
-                                if b.banned == 1 or b.banned % 20 == 0 then log("stand-in " .. tostring(b.look) .. " (" .. b.demon .. "): its " .. mine .. " was broken off (" .. b.banned .. " so far)") end
-                                break
-                            end
-                        end
                         local size = PS_ghostSize and PS_ghostSize[b.ghost] or 1
                         if math.abs((b.size or 1) - size) > 0.004 then
                             b.size = size
@@ -2169,7 +2304,7 @@ local function update_ghosts(pawn, pc)
                             b.trailLast = mine
                             b.trail = (b.trail or "") .. (b.trail and " > " or "") .. (mine:gsub("^BP_", ""):gsub("Motion_C$", ""):gsub("Motion$", ""))
                         end
-                        -- (looking into "i am looking at the top of his head": every 5 s, where this stand-in's feet,
+                        -- (looking into stand-ins standing too low against the player: every 5 s, where this stand-in's feet,
                         -- hips and head are against the player's character inside MORDHAU, and how far its body is shifted)
                         -- (dev: only with a file cache/measure.txt)
                         if PS_measure == nil then local mf = io.open(CACHE .. "measure.txt", "r"); PS_measure = mf ~= nil; if mf then mf:close() end end
@@ -2200,6 +2335,33 @@ local function update_ghosts(pawn, pc)
                             b.trail, b.trailAt = (mine:gsub("^BP_", ""):gsub("Motion_C$", ""):gsub("Motion$", "")), os.clock()
                         end
                         local near = math.sqrt(g.forward * g.forward + g.right * g.right) <= 230
+                        -- (its hand holds only its Skyrim character's weapon: a bot can come with a smoke bomb, a firebomb or
+                        -- throwing knives in its other slots, switch to one and throw it (a smoke bomb was thrown,
+                        -- 2026-10-16). Whatever else it takes into its weapon hand is taken away.)
+                        if b.armed and b.armedFor and not b.demon and not b.armedFor:lower():find("bow", 1, true) and not b.armedFor:find("Fists", 1, true) then
+                            pcall(function()
+                                local w = c.RightHandEquipment
+                                local n = class_name(w)
+                                local want = b.armedFor:match("([%w_]+)$") .. "_C"
+                                if there(w) and n ~= "" and n ~= want and not n:find("Fists", 1, true) and not n:find("Shield", 1, true) then
+                                    w:K2_DestroyActor()
+                                    log("stand-in " .. tostring(b.look) .. " took " .. n .. " into its hand: taken away (it fights with " .. want .. ")")
+                                end
+                            end)
+                        end
+                        -- (a passive stand-in with a bow has an empty quiver: ending its draw let the arrow go - "RangedDraw >
+                        -- RangedRelease" in this log - and its MORDHAU arrows hit the player while Skyrim showed the archer in
+                        -- its own pose, 2026-10-16)
+                        if PS_passive and PS_passive[b.ghost] and os.clock() - (b.quiverEmptied or 0) > 0.5 then
+                            b.quiverEmptied = os.clock()
+                            pcall(function()
+                                local e = ranged_item(c)
+                                if there(e) then
+                                    e:SetAmmo(0)
+                                    if not b.quiverTold then b.quiverTold = true; log("stand-in " .. tostring(b.look) .. " is passive: its quiver is emptied (it cannot shoot)") end
+                                end
+                            end)
+                        end
                         -- a passive stand-in (its Skyrim character shoots, or does not fight) never attacks: whatever
                         -- attack its brain begins is ended at once
                         if PS_passive and PS_passive[b.ghost] and (mine:find("Strike", 1, true) or mine:find("Stab", 1, true) or mine:find("Kick", 1, true) or mine:find("Parry", 1, true) or mine:find("Block", 1, true) or mine:find("Ranged", 1, true)) then   -- (nor does it parry: archers had parried with their bows out)
@@ -2225,7 +2387,7 @@ local function update_ghosts(pawn, pc)
                             b.yields = (b.yields or 0) + 1
                             if b.yields == 1 or b.yields % 20 == 0 then log("stand-in " .. tostring(b.look) .. ": its " .. mine .. " was ended (" .. b.yields .. " so far)") end
                             -- (MORDHAU's yield lets go of the weapon as it begins - before it can be ended here: bandits
-                            -- "do the mordhau cower and lose their weapon". A stop-gap until bots
+                            -- cowered and lost their weapon. A stop-gap until bots
                             -- cannot yield at all: the stand-in is armed again at once - still holding it, it counts as armed
                             -- in the next frame; without it, a new one is made and picked up.)
                             if mine:find("Yield", 1, true) and b.armed then
@@ -2366,10 +2528,11 @@ local function update_ghosts(pawn, pc)
                     local want = g and math.max(HEALTH_FLOOR, math.min(100, math.floor(g.hp + 0.5))) or 100
                     if h ~= want then c:OffsetHealth(want - h, false) end
                     -- (what it really has now: a Demon Horde creature did not take the health given back, and the
-                    -- difference counted again as a fresh hit every frame - "swinging at its feet hits it 100 times")
+                    -- difference counted again as a fresh hit every frame: one swing at its feet hit it a hundred times)
                     local now = c.Health
                     b.health = (type(now) == "number" and now < want) and now or want
                 end
+                PS_prof_add("g_fight", os.clock() - (PS_tb or os.clock()))
             end)
             ::continue::
         end
@@ -2501,10 +2664,9 @@ function PS_silent_unhand(pawn)
     return n
 end
 function PS_player_arm(pawn)
-    -- (a bow or crossbow out in Skyrim comes as input.weaponWish, relative to Equipment/; melee as playerWeapon, relative to Equipment/Weapons/)
-    local ranged = input.weaponWish ~= nil and input.weaponWish ~= ""
-    local path = ranged and input.weaponWish or input.playerWeapon
-    local base = ranged and "/Game/Mordhau/Blueprints/Equipment/" or WEAPONS
+    -- (the Skyrim weapon comes as playerWeapon, relative to Equipment/Weapons/)
+    local path = input.playerWeapon
+    local base = WEAPONS
     local life = pawn:GetFullName()
     if PS_armLife ~= life then PS_armLife = life; PS_armedFor = nil; PS_playerArm = nil end
     if not path or path == "" or path == PS_armedFor then return end
@@ -2529,8 +2691,6 @@ function PS_player_arm(pawn)
     A.t = os.clock()
     local want = path:match("([%w_]+)$") .. "_C"
     local have = class_name(pawn.RightHandEquipment)
-    local _, bowName = ranged_item(pawn)   -- (a bow sits in the left hand)
-    if bowName ~= "" then have = bowName end
     if have == want then
         PS_armedFor = path; PS_playerArm = nil
         log("the player holds " .. want .. " (for the Skyrim weapon)")
@@ -2604,69 +2764,6 @@ function PS_shield_block(pawn, mesh)
     pcall(function() if pawn.RightHandEquipment.bIsUsingAlternateMode == true then has = has + 256 end end)
     return string.pack("<i4fffffff", has, q[1], q[2], q[3], q[4], t[1], t[2], t[3])
 end
--- The bow in the hand, as MORDHAU poses it (428 bytes; sheets/live_link.json bow_pose): number of bones (0 = no bow),
--- 12 bones x 7 floats in the bow's own space (its limbs and string), then the arrow on the string: shown or not, where
--- its part sits in the bow's space, and its 2 bones in its own space.
-local BOW_EMPTY = string.rep("\0", 428)
-local RTS_Component = 2
-function PS_bow_block(pawn)
-    local out = nil
-    pcall(function()
-        local e = pawn.LeftHandEquipment
-        if not there(e) then return end
-        local cn = class_name(e)
-        if not cn:lower():find("bow", 1, true) then return end
-        local m = e.SkeletalMeshComponent
-        if not there(m) then return end
-        local key = e:GetFullName()
-        if PS_bowKey ~= key then
-            PS_bowKey = key; PS_bowNames = {}; PS_arrowNames = {}
-            for i = 0, math.min(m:GetNumBones(), 12) - 1 do PS_bowNames[#PS_bowNames + 1] = m:GetBoneName(i) end
-            local mi = e.Missile
-            if there(mi) then for i = 0, math.min(mi:GetNumBones(), 2) - 1 do PS_arrowNames[#PS_arrowNames + 1] = mi:GetBoneName(i) end end
-            log("archery: the bow's " .. #PS_bowNames .. " bones and the arrow's " .. #PS_arrowNames .. " are streamed")
-        end
-        local parts = { string.pack("<i4", #PS_bowNames) }
-        for i = 1, 12 do
-            if PS_bowNames[i] then
-                local t = m:GetSocketTransform(PS_bowNames[i], RTS_Component)
-                local r, q = t.Rotation, t.Translation
-                parts[#parts + 1] = string.pack("<fffffff", r.X, r.Y, r.Z, r.W, q.X, q.Y, q.Z)
-            else
-                parts[#parts + 1] = string.pack("<fffffff", 0, 0, 0, 1, 0, 0, 0)
-            end
-        end
-        local mi = e.Missile
-        local shown, rel = 0, string.pack("<fffffff", 0, 0, 0, 1, 0, 0, 0)
-        local bones = { rel, rel }
-        if there(mi) and #PS_arrowNames > 0 then
-            local vis = false
-            pcall(function() vis = mi:IsVisible() end)
-            if vis then
-                shown = 1
-                local B, A = m:K2_GetComponentToWorld(), mi:K2_GetComponentToWorld()
-                local a, q = B.Rotation, A.Rotation
-                local ax, ay, az, aw = -a.X, -a.Y, -a.Z, a.W
-                local x, y, z = to_local(B, A.Translation)
-                rel = string.pack("<fffffff", aw * q.X + ax * q.W + ay * q.Z - az * q.Y, aw * q.Y - ax * q.Z + ay * q.W + az * q.X,
-                    aw * q.Z + ax * q.Y - ay * q.X + az * q.W, aw * q.W - ax * q.X - ay * q.Y - az * q.Z, x, y, z)
-                for i = 1, 2 do
-                    if PS_arrowNames[i] then
-                        local t = mi:GetSocketTransform(PS_arrowNames[i], RTS_Component)
-                        local r, v = t.Rotation, t.Translation
-                        bones[i] = string.pack("<fffffff", r.X, r.Y, r.Z, r.W, v.X, v.Y, v.Z)
-                    end
-                end
-            end
-        end
-        parts[#parts + 1] = string.pack("<i4", shown)
-        parts[#parts + 1] = rel
-        parts[#parts + 1] = bones[1]
-        parts[#parts + 1] = bones[2]
-        out = table.concat(parts)
-    end)
-    return (out and #out == 428) and out or BOW_EMPTY
-end
 function PS_wall_is_up(p)
     local up = false
     pcall(function() local m = p:GetMotion(); up = class_name(m):find("ShieldParry", 1, true) ~= nil and m.Stage == 0 end)
@@ -2707,7 +2804,7 @@ function PS_player_shield(pawn)
     -- (PickUp leaves a spawned shield on the ground, and PickUp(w, true) crashed MORDHAU; PickUpToSlot(w, 2) puts it in
     -- the third slot and onto the arm - found)
     local fresh = os.clock() - input.stamp < 0.5
-    local want = fresh and input.shield and not (input.weaponWish and input.weaponWish ~= "") and input.shield or nil
+    local want = fresh and input.shield or nil
     if want == "1" then want = "BP_KiteShield" end
     local l = pawn.LeftHandEquipment
     local have = (there(l) and class_name(l):find("Shield", 1, true)) and class_name(l) or nil
@@ -2812,13 +2909,29 @@ function PS_ghost_poses()
                 -- a stand-in that is doing something (attacking, parrying, flinching) has its body sent with every pose
                 -- written, so what Skyrim shows is not behind what MORDHAU judges; one that stands idle every third
                 local busy = class_name(b.obj:GetMotion()) ~= "IdleMotion"
-                if busy or PS_standins == 1 or ghostTick % 5 == (n - 1) % 5 or not b.read then   -- (an idle one every fifth pose, as with five)
-                    read_bones(mesh, BODY, b.parts)
-                    if not b.read or ghostTick % 45 == n - 1 then read_bones(mesh, FINGERS, b.parts) end
+                -- (one that is walking is busy too: read only every few poses, walkers moved in jerks, 2026-10-16)
+                pcall(function()
+                    local l = b.here or b.obj:K2_GetActorLocation()   -- (the place the stand-in logic had for it, when it has one)
+                    if b.lastAt and (l.X - b.lastAt.X) ^ 2 + (l.Y - b.lastAt.Y) ^ 2 + (l.Z - b.lastAt.Z) ^ 2 > 0.25 then busy = true end
+                    b.lastAt = { X = l.X, Y = l.Y, Z = l.Z }
+                end)
+                -- (an idle one every fifth pose, as with five; with many, so that about four idle ones are read a pose)
+                local every = math.max(5, math.ceil((PS_standins or 0) / 4))
+                if busy or PS_standins == 1 or ghostTick % every == (n - 1) % every or not b.read then
+                    local tb = os.clock()
+                    local list = ghost_body(mesh)
+                    local fast = ms_read_list(mesh, list, b.parts)
+                    if not fast then read_bones(mesh, list, b.parts) end
+                    PS_prof_add("ghostbones", os.clock() - tb)
+                    if not b.read or ghostTick % 45 == n - 1 then
+                        if not ms_read_list(mesh, FINGERS, b.parts) then read_bones(mesh, FINGERS, b.parts) end
+                    end
                     b.read = true
                 end
                 b.weapon = b.weapon or {}
+                local tw = os.clock()
                 wq, wt, hasWeapon = PS_weapon_of(b.obj, mesh, b.weapon)
+                PS_prof_add("ghostweapon", os.clock() - tw)
                 -- (what a bot lets go of while it is being handed its Skyrim character's weapon is not a disarm)
                 if hasWeapon == 2 and not b.armed and not b.armGaveUp then hasWeapon = 0 end
                 if hasWeapon ~= b.hasLogged then   -- (each change, for looking into disarms: 0 none, 1 hand, 2 ground, 3 put away)
@@ -2837,11 +2950,15 @@ function PS_ghost_poses()
         end
     end
     PS_standins = n
+    -- only the places in use are written, and one freed since the last pose is blanked once (every place on the first
+    -- write: what an earlier session left in the shared file must not be read as a stand-in); the closing sequence
+    -- number goes to the block's fixed end (sheets/live_link.json stand_ins)
     local empty = nil
-    for _ = n + 1, MAX_GHOSTS do
+    for _ = n + 1, math.min(MAX_GHOSTS, PS_posesWritten or MAX_GHOSTS) do
         empty = empty or (string.pack("<i4", 0) .. string.rep(ZERO_BONE, #names) .. string.pack("<fffffffi4", 0, 0, 0, 1, 0, 0, 0, 0))
         out[#out + 1] = empty
     end
+    PS_posesWritten = n
     return table.concat(out)
 end
 
@@ -2896,10 +3013,39 @@ local function state_block(pawn, mesh)
     local stamina, health = 0, 0
     pcall(function() stamina = pawn.Stamina; health = pawn.Health end)
     return string.pack("<ffffffi4i4fffffc48", sx, sy, sz, ex, ey, ez, stage, kind, elapsed, stamina, health, vr, vf, name:sub(1, 47))
-        .. string.pack("<fffffffi4", wq[1], wq[2], wq[3], wq[4], wt[1], wt[2], wt[3], hasWeapon)
+      .. string.pack("<fffffffi4", wq[1], wq[2], wq[3], wq[4], wt[1], wt[2], wt[3], hasWeapon)
 end
 
 local playerParts, playerKey, streamTick = {}, nil, 0
+-- (dev: where the script's time goes each frame - every 5 s a log line with the milliseconds per frame of its big parts,
+-- the number of stand-ins and the poses written; os.clock is wall time on Windows. 2026-10-17: the pose rate fell with
+-- many stand-ins and the cause was not known)
+PS_prof = PS_prof or { frames = 0, poses = 0, since = os.clock() }
+-- (only when the file timing_on.txt is in the cache folder - a dev switch, looked for every 10 s; off, nothing is added up
+-- or logged. tools' measuring runs put the file there.)
+PS_timing = PS_timing or { on = false, checked = -100 }
+function PS_prof_add(key, seconds) if PS_timing.on then PS_prof[key] = (PS_prof[key] or 0) + seconds end end
+function PS_prof_report()
+    if os.clock() - PS_timing.checked > 10 then
+        PS_timing.checked = os.clock()
+        local f = io.open(CACHE .. "timing_on.txt", "r")
+        local was = PS_timing.on
+        PS_timing.on = f ~= nil
+        if f then f:close() end
+        if PS_timing.on ~= was then PS_prof = { frames = 0, poses = 0, since = os.clock() }; log("timing: " .. (PS_timing.on and "on (timing_on.txt in the cache folder)" or "off")) end
+    end
+    if not PS_timing.on then return end
+    local p = PS_prof
+    local span = os.clock() - p.since
+    if span < 5 or p.frames == 0 then return end
+    local parts = {}
+    for _, k in ipairs({ "frame", "stream", "playerbones", "ghostposes", "ghostbones", "ghostweapon", "write", "inputs", "home", "ghosts", "g_setup", "g_place", "g_report", "g_aim", "g_fight", "rest" }) do
+        if p[k] then parts[#parts + 1] = string.format("%s %.2f", k, 1000 * p[k] / p.frames) end
+    end
+    log(string.format("timing: %d frames in %.1f s (%.0f/s), %d poses (%.0f/s), %d stand-ins; ms per frame: %s", p.frames, span, p.frames / span, p.poses, p.poses / span, PS_standins or 0, table.concat(parts, ", ")))
+    PS_prof = { frames = 0, poses = 0, since = os.clock() }
+end
+
 local function stream(pawn, mesh)
     local parts = playerParts
     streamTick = streamTick + 1
@@ -2909,8 +3055,11 @@ local function stream(pawn, mesh)
             playerKey = key
             read_bones(mesh, STILL, parts)
         end
-        read_bones(mesh, BODY, parts)
-        read_bones(mesh, FINGERS, parts)
+        -- (through MordhauBones.dll when it is there: one call instead of one per bone - timing 2026-10-17)
+        local tp = os.clock()
+        if not ms_read_list(mesh, BODY, parts) then read_bones(mesh, BODY, parts) end
+        if not ms_read_list(mesh, FINGERS, parts) then read_bones(mesh, FINGERS, parts) end
+        PS_prof_add("playerbones", os.clock() - tp)
     end)
     if not ok then
         if not reported then reported = true; log("reading bones failed: " .. tostring(err)) end
@@ -2922,13 +3071,21 @@ local function stream(pawn, mesh)
     if f then
         -- (60 zero bytes after the shot block: the bear trap and toolbox / firebomb blocks were here; kept so nothing after them moves)
         -- (the time of this report is MORDHAU's own game time - it advances with the game's frames, which the places and
-        -- poses in it belong to; the script's own clock runs between them. sheets/builds.json hybrid_smooth)
+        -- poses in it belong to; the script's own clock runs between them)
         local stamp = os.clock()
         pcall(function() if PS_ks and PS_ks:IsValid() and there(PS_pc) then stamp = PS_ks:GetGameTimeInSeconds(PS_pc) end end)
-        local block = table.concat({ string.pack("<c4I4fi4", "DMLP", sequence, stamp, #names), table.concat(parts), state_block(pawn, mesh), ghost_block(),
-            PS_camera_block(pawn, PS_pc, mesh), PS_shot_block(), string.rep("\0", 60), PS_player_weapon_block(), PS_bow_block(pawn), PS_ghostExtra or string.rep("\0", (MAX_GHOSTS - 3) * 28), PS_shield_block(pawn, mesh), PS_move_block(), PS_staminaBlock or string.rep(string.pack("<I4f", 0, -1), MAX_GHOSTS), PS_ghost_poses(), string.pack("<I4", sequence) })
+        local head = table.concat({ string.pack("<c4I4fi4", "DMLP", sequence, stamp, #names), table.concat(parts), state_block(pawn, mesh), ghost_block(),
+            PS_camera_block(pawn, PS_pc, mesh), PS_shot_block(), string.rep("\0", 60), PS_player_weapon_block(), PS_ghostExtra or string.rep("\0", (MAX_GHOSTS - 3) * 28), PS_shield_block(pawn, mesh), PS_move_block(),
+            PS_staminaBlock or string.rep(string.pack("<I4f", 0, -1), MAX_GHOSTS) })
+        local tg = os.clock()
+        local poses = PS_ghost_poses()
+        PS_prof_add("ghostposes", os.clock() - tg)
+        -- (the block's full size, as the plugin reads it: every place's pose, used or not, then the sequence again)
+        local full = #head + MAX_GHOSTS * (4 + #names * 28 + 32) + 4
         f:seek("set", 0)
-        f:write(block)
+        f:write(head, poses)
+        f:seek("set", full - 4)
+        f:write(string.pack("<I4", sequence))
         f:flush()
     end
     if not reported then
@@ -3146,6 +3303,12 @@ local function frame()
                     if b.weapon and there(b.weapon.held) then keep[b.weapon.held:GetFullName()] = true end
                 end
                 if PS_pickLater and there(PS_pickLater.w) then keep[PS_pickLater.w:GetFullName()] = true end
+                -- (and whatever is in anyone's hands - the player's bow among them: bows are swept too since 2026-10-16)
+                for _, who in ipairs({ pawn }) do
+                    for _, hand in ipairs({ "LeftHandEquipment", "RightHandEquipment" }) do
+                        pcall(function() local h = who[hand]; if there(h) then keep[h:GetFullName()] = true end end)
+                    end
+                end
                 local gone = 0
                 for _, w in ipairs(FindAllOf("MordhauWeapon") or {}) do
                     PS_strayDone = PS_strayDone or {}
@@ -3158,7 +3321,7 @@ local function frame()
                             loose = near and not there(w:GetAttachParentActor()) and not there(w:GetOwner())
                         end)
                         local name = class_name(w)
-                        if loose and not name:find("Fists", 1, true) and not name:lower():find("bow", 1, true) and not name:find("ToolBox", 1, true) and not name:find("Bomb", 1, true) and not name:find("Trap", 1, true) then
+                        if loose and not name:find("Fists", 1, true) and not name:find("ToolBox", 1, true) and not name:find("Bomb", 1, true) and not name:find("Trap", 1, true) then
                             PS_strayDone[w:GetFullName()] = true   -- (asked once: some stay listed although gone)
                             w:K2_DestroyActor(); gone = gone + 1
                         end
@@ -3180,14 +3343,23 @@ local function frame()
     -- First of all, before anything is moved: MORDHAU's camera as it was drawn last frame, the body where it stood
     -- then and the pose it had then all belong together. (Read after the character was put back on its spot, the
     -- camera was a few centimetres off the body from frame to frame: the first-person view shook.)
+    local t0 = os.clock()
     if os.clock() - lastStream >= STREAM_EVERY then
         lastStream = os.clock()
         stream(pawn, mesh)
+        PS_prof.poses = PS_prof.poses + 1
     end
+    local t1 = os.clock()
     setup(pawn)
     apply_input(pawn, pc)
+    local t2 = os.clock()
     keep_near_home(pawn)
+    local t3 = os.clock()
     local ok, err = pcall(update_ghosts, pawn, pc)
+    local t4 = os.clock()
+    PS_prof_add("stream", t1 - t0); PS_prof_add("inputs", t2 - t1); PS_prof_add("home", t3 - t2); PS_prof_add("ghosts", t4 - t3)
+    PS_prof.frames = PS_prof.frames + 1
+    PS_prof_report()
     if not ok and PS_ghostError ~= tostring(err) then PS_ghostError = tostring(err); log("stand-in error: " .. PS_ghostError) end
     -- the local match must not end (time or score): Skyrim's session goes on as long as the player likes
     if os.clock() - (lastKeepAlive or -100) > 20 then
@@ -3295,7 +3467,7 @@ if watchFile and not PS_exitWatch then
 end
 
 -- The loop is started once and calls whatever PS_tick currently is, so the dev tools can load a newer copy of this
--- file into the running game (tools/mordhau_lua.sh --reload) without UE4SS's own mod restart, which can hang here.
+-- file into the running game (tools/d_lua.sh) without UE4SS's own mod restart, which can hang here.
 PS_tick = tick
 PS_frame = frame
 if not PS_loop then

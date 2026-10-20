@@ -11,6 +11,8 @@ BUILD=$ROOT/build-cross
 MOD_DIR=${MOD_DIR:-/mnt/fast/Limo/SkyrimSE/46}
 CROSS=$ROOT/linux/cross
 
+ML=$(command -v llvm-ml || command -v llvm-ml-19 || true)
+[ -n "$ML" ] || { echo "missing: llvm-ml (apt install llvm)" >&2; exit 1; }
 for tool in clang-cl lld-link llvm-rc llvm-lib ninja; do
 	command -v "$tool" > /dev/null || { echo "missing: $tool (see the setup at the top of this script)" >&2; exit 1; }
 done
@@ -50,7 +52,15 @@ if [ ! -f "$BUILD/build.ninja" ]; then
 		-DVCPKG_CHAINLOAD_TOOLCHAIN_FILE="$CROSS/clang-cl-msvc.cmake" \
 		-DVCPKG_TARGET_TRIPLET=x64-windows-static-md -DVCPKG_OVERLAY_TRIPLETS="$CROSS/triplets" -DVCPKG_HOST_TRIPLET=x64-linux
 fi
-cmake --build "$BUILD" --target DirectionalMelee
+cmake --build "$BUILD" --target DirectionalMelee MordhauBones
+# MORDHAU's loader (dwmapi.dll; as CI builds it - loader/exports.asm is generated on Windows by gen_exports.py)
+X=$TOOLS/xwin-sdk
+mkdir -p "$BUILD/loader"
+"$ML" -m64 /nologo /c /Fo"$BUILD/loader/exports.obj" "$ROOT/loader/exports.asm" > /dev/null
+clang-cl --target=x86_64-pc-windows-msvc /nologo /c /O1 /MT /W4 /EHs-c- /GS- /imsvc"$X/crt/include" /imsvc"$X/sdk/include/ucrt" \
+	/imsvc"$X/sdk/include/um" /imsvc"$X/sdk/include/shared" /Fo"$BUILD/loader/" "$ROOT/loader/loader.cpp" "$ROOT/loader/exports_table.cpp"
+lld-link /nologo /DLL /OUT:"$BUILD/loader/dwmapi.dll" /DEF:"$ROOT/loader/exports.def" /NOIMPLIB "$BUILD"/loader/{loader,exports_table,exports}.obj \
+	kernel32.lib user32.lib /libpath:"$X/crt/lib/x86_64" /libpath:"$X/sdk/lib/um/x86_64" /libpath:"$X/sdk/lib/ucrt/x86_64"
 
 [ "${1:-}" = "--no-install" ] && exit 0
 if ps -eo comm | grep -qE '^(SkyrimSE|Mordhau-Win64)'; then
@@ -60,14 +70,19 @@ fi
 dest=$MOD_DIR/SKSE/Plugins
 backup=$TOOLS/bridge-dll-backup/$(date +%Y%m%d-%H%M%S)
 mkdir -p "$backup"
-cp -p "$dest/MordhauSkyrim.dll" "$dest/MordhauSkyrim.pdb" "$backup/" 2> /dev/null || true
+cp -p "$dest/MordhauSkyrim.dll" "$dest/MordhauSkyrim.pdb" "$dest/MordhauSkyrim/MordhauBones.dll" "$backup/" 2> /dev/null || true
 # (copied over the staged files, not replaced: the mod manager's hard links in Skyrim's Data see the new build at once)
 cp "$BUILD/DirectionalMelee.dll" "$dest/MordhauSkyrim.dll"
 cp "$BUILD/DirectionalMelee.pdb" "$dest/MordhauSkyrim.pdb"
-# MORDHAU's side of the link (the plugin copies it into MORDHAU's folder at every start)
+# (the script's bones helper: the plugin copies it into the mod's cache folder at every start)
+mkdir -p "$dest/MordhauSkyrim"
+cp "$BUILD/MordhauBones.dll" "$dest/MordhauSkyrim/MordhauBones.dll"
+# MORDHAU's side of the link (the plugin copies it into the mod's own folder for UE4SS, <cache>/ue4ss, at every start;
+# the loader goes into MORDHAU's folder only while MORDHAU starts)
 side=$dest/MordhauSkyrim/mordhau
 if [ -d "$side" ]; then
-	cp -p "$side/Mods/PoseStream/Scripts/main.lua" "$backup/" 2> /dev/null || true
+	cp -p "$side/Mods/PoseStream/Scripts/main.lua" "$side/dwmapi.dll" "$backup/" 2> /dev/null || true
+	cp "$BUILD/loader/dwmapi.dll" "$side/dwmapi.dll"
 	cp "$ROOT/mordhau_side/PoseStream/Scripts/main.lua" "$side/Mods/PoseStream/Scripts/main.lua"
 	cp "$ROOT"/mordhau_side/UE4SS_Signatures/*.lua "$side/UE4SS_Signatures/"
 fi

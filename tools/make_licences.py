@@ -43,6 +43,10 @@ write('MordhauSkyrim.txt', NL.join([
     'built with. The plugin is built on CommonLibSSE-NG (GPL-3.0-or-later with a modding and linking exception, see',
     'CommonLibSSE-NG.txt) and is conveyed under the same licence and exception.',
     '',
+    'Contributed: how the player\'s own weapon is held (the plugin\'s RenderWeapons.cpp - the weapon kept on MORDHAU\'s line',
+    'and the hands moved onto it, 0.1.22) was written by MilanPenak, from this mod\'s source, and is part of it under the',
+    'same licence.',
+    '',
     'Source code: the complete corresponding source of this version is offered on the mod\'s page on Nexus Mods, under',
     'Files, as "Source code" (https://www.nexusmods.com/skyrimspecialedition/mods/194747?tab=files).',
     '',
@@ -82,7 +86,7 @@ write('SkyCraft.txt', NL.join([
     read(os.path.join(root, '_deps', 'SkyCraft', 'LICENSE')),
 ]))
 write('TrueDirectionalMovement.txt', NL.join([
-    'True Directional Movement by ersh1 - https://github.com/ersh1/TrueDirectionalMovement',
+    'True Directional Movement by Ersh (ersh1 on GitHub) - https://github.com/ersh1/TrueDirectionalMovement',
     'Licence: GPL-3.0 (as its repository states; full text: GPL-3.0.txt beside this file).',
     'Its modder interface header, TrueDirectionalMovementAPI.h, is part of the source of MordhauSkyrim.dll (plugin/src/api),',
     'copied as the file itself asks, so that the plugin can ask a running True Directional Movement to leave the player\'s',
@@ -90,10 +94,9 @@ write('TrueDirectionalMovement.txt', NL.join([
     '',
 ]))
 ue = read(os.path.join(out, 'UE4SS.txt'))
-if 'jsbProfiler' not in ue:
+if 'Included unchanged:' not in ue:
     head, rest = ue.split(NL, 1)
-    write('UE4SS.txt', 'UE4SS (RE-UE4SS) by the UE4SS-RE team - included unchanged: UE4SS.dll, UE4SS-settings.ini and the Lua mods that ship with it' + NL +
-          '(Mods/ConsoleEnablerMod, Mods/Keybinds, Mods/shared/UEHelpers, Mods/shared/jsbProfiler, Mods/mods.txt).' + NL +
+    write('UE4SS.txt', 'UE4SS (RE-UE4SS) by the UE4SS-RE team - Included unchanged: UE4SS.dll. With this mod\'s settings: UE4SS-settings.ini and Mods/mods.txt.' + NL +
           'UE4SS_Signatures/GUObjectArray.lua and Mods/PoseStream are this mod\'s own (see MordhauSkyrim.txt); the loader dwmapi.dll is this mod\'s own too, not UE4SS\'s.' + NL + rest)
 old = os.path.join(out, 'Ultimate-ASI-Loader.txt')
 print('kept for the old launcher package only:', os.path.basename(old), os.path.exists(old))

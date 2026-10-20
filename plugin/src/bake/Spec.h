@@ -1,8 +1,8 @@
 #pragma once
 
 // What a MORDHAU character looks like, worked out from MORDHAU's own data: the player's mercenary from Game.ini, or
-// an outfit put together from named wearables (sheets/looks.json). Ported from tools/profile.py and
-// tools/character_spec.py; the result goes to BakePieces (Bake.h).
+// an outfit put together from named wearables (sheets/looks.json). The result goes to
+// BakePieces (Bake.h).
 
 #include "bake/Bake.h"
 
@@ -73,7 +73,7 @@ namespace mbake
 		// A weapon in a given make: one piece per chosen part.
 		[[nodiscard]] std::vector<SpecPiece> WeaponPieces(const std::string& a_weapon, const std::vector<int>& a_parts, const std::vector<int>& a_colours, int a_skin = 0);
 		// The same for an enemy's weapon in its default make; parts whose material does not name its maps the usual
-		// way get them by their file-name endings (as tools/bake_props.py did).
+		// way get them by their file-name endings.
 		[[nodiscard]] std::vector<SpecPiece> DefaultWeapon(const std::string& a_weapon);
 
 		// (colour map, normal map, surface map) a material names, by the usual file-name endings; "" where none.

@@ -1,99 +1,104 @@
 # MORDHAU x Skyrim - how to play
 
-**Experimental.** Both games run at once. **Skyrim is the world**: places, people, quests, loot, saves, magic, bows.
-**MORDHAU is the fighter**: your melee swings, parries, feints, kicks and stamina, and the enemies you fight hand to
-hand are moved and fought by MORDHAU's own AI. Nothing is copied out of either game: what you see is your own two
-installs working together.
+Experimental. Both games run at once. Skyrim is the world: places, people, quests, loot, saves, magic and bows.
+MORDHAU does the fighting: your melee swings, parries, feints, kicks and stamina, and the people you fight hand to hand
+are moved and fought by MORDHAU's bots. Nothing is copied out of either game; it's your own two installs working
+together.
 
-> **MORDHAU is run OFFLINE only** - a local match on your PC, in a window behind Skyrim. This does not touch MORDHAU's
-> anti-cheat and must never be used for online play. Start MORDHAU from Steam as usual when you want to play it online;
-> none of this is loaded then.
+> MORDHAU only runs offline here: a local match on your PC, in a window behind Skyrim, started and closed by the mod.
+> It doesn't touch MORDHAU's anti-cheat and must never be used for online play. To play MORDHAU online, start it from
+> Steam as usual - none of this is loaded then.
 
-> **Before you play MORDHAU online again** - and after any crash - run `Make-Mordhau-Online-Safe.ps1`. It makes sure
-> nothing of the mashup is left in MORDHAU's folder. See the README.
+> After a crash, before you play MORDHAU online again: look in MORDHAU's `Mordhau\Binaries\Win64` folder and delete
+> `dwmapi.dll` if it's there. See the README.
 
-## Start
+## Starting
 
-```
-powershell -NoProfile -ExecutionPolicy Bypass -File Play-Mashup.ps1
-```
+Start Skyrim through SKSE from your mod manager, as usual.
 
-1. A console window opens and stays open. Leave it: it starts MORDHAU, waits for its local match (about a minute),
-   then starts Skyrim, and closes MORDHAU again when you quit Skyrim.
-2. **The very first start** prepares MORDHAU's models from your own MORDHAU first (about 2 GB, under a minute on a fast
-   disk). Skyrim opens during that; just wait for the console to say MORDHAU is live.
-3. In Skyrim: load a save (use a new one or one you do not mind losing) and **draw a melee weapon**.
-4. Keep MORDHAU's window open behind Skyrim. Do not minimise it and do not play in it.
+1. MORDHAU opens by itself in a window and Skyrim keeps the keyboard. It takes one to four minutes to open its match
+   and spawn your mercenary. Skyrim plays normally until then.
+2. On the very first start the mod prepares MORDHAU's models from your copy of MORDHAU once Skyrim's main menu is up
+   (about 2 GB, under a minute on a fast disk). MORDHAU starts after that.
+3. Load a save (a new one, or one you don't mind losing). When "MORDHAU is live" shows at the top left, draw a melee
+   weapon.
+4. Leave MORDHAU's window open behind Skyrim. Don't minimise it or play in it. It closes with Skyrim.
 
-In first and in third person you see your own Skyrim character, armour and weapon, moving as MORDHAU moves. In first
-person you look out of its eyes and can see your arms, body and legs.
+In first person you see through your character's eyes, with MORDHAU's arms. In third person you see your Skyrim
+character moving the way MORDHAU moves.
 
-## Controls (with a melee weapon or your fists out)
+## Controls (melee weapon or fists out)
 
-| Input | What happens |
+| Input | What it does |
 | --- | --- |
 | Attack + move the mouse | A strike from the side you moved the mouse towards (MORDHAU's angles) |
 | Attack again during a swing | Combo. During a windup, with another direction: morph |
 | Mouse wheel up | Stab |
-| Mouse wheel down | Overhead strike |
-| Block | Parry - timed, it is not held. Attack straight after a parry: riposte |
-| Q, or thumb mouse button | Feint, while your attack is winding up (at any other time Q is Skyrim's quick menu) |
+| Mouse wheel down | Overhead |
+| Block | Parry. It's timed, not held. Attack right after a parry to riposte |
+| Q, or thumb mouse button | Feint while your attack winds up (otherwise Q is Skyrim's quick menu) |
 | F | Kick |
-| Middle mouse | Cast the spell in your left hand (a one-handed weapon in the right fights as MORDHAU's) |
-| R | The weapon's other grip (longsword, messer, halberd ...). A weapon without one is **thrown** (axe, mace, maul, dagger ...) and lies where it lands |
-| 4 | Fists: weapon and shield are put away. 4 again brings them back |
-| 1 / 0 | Draw / put away the weapon |
-| G | Drop the weapon. E on it picks it up again |
+| Middle mouse | Cast the spell in your left hand (a one-handed weapon in the right still fights MORDHAU's way) |
+| R | The weapon's other grip (longsword, messer, halberd...). Weapons without one are thrown (axe, mace, maul, dagger...) and lie where they land |
+| 4 | Fists: weapon and shield put away. 4 again brings them back |
+| 1 / 0 | Draw / put away |
+| G | Drop the weapon. E on it picks it up |
 | E on an enemy's dropped weapon | Take it (it goes into your Skyrim inventory) |
-| Left Shift | Sprint (MORDHAU's) |
-| Left Ctrl (hold) | Crouch |
+| Left Shift | Sprint |
+| Left Ctrl | Crouch (toggle, or hold - see the settings) |
 | P | First / third person (F is the kick) |
 | V | Battle cry. C: voice menu. X: emote menu |
-| F8 | How skilled the enemies are (five levels) |
+| F8 | Enemy skill (five levels) |
 
-Movement, jumping, looting, talking, menus and everything else are Skyrim's as usual.
+Moving, jumping, looting, talking and menus are Skyrim's as usual.
 
-**Shields.** A shield on your arm in Skyrim works as one of MORDHAU's five, by what it is made of: iron and banded ->
-targe; hide, elven, glass -> buckler (both: timed parry only); steel, imperial, dwarven, orcish -> heater; guard,
-Stormcloak, Nordic -> round shield; ebony, daedric, dragon -> kite (these three can also be **held up**: keep block
-pressed). Kicks go through a shield. Holding R with a shield throws it.
+Shields: a shield in Skyrim works as one of MORDHAU's five, by material. Iron and banded become a targe; hide, elven
+and glass a buckler (both only for timed parries); steel, imperial, dwarven and orcish a heater; guard, Stormcloak and
+Nordic a round shield; ebony, daedric and dragon a kite. The last three can also be held up: keep block pressed. Kicks
+go through a shield. Holding R with a shield throws it.
 
 ## Who fights how
 
-- **People, draugr and skeletons with a melee weapon (or bare hands)**, within about 10 metres of you, up to five at a
-  time: MORDHAU fighters. They parry, feint, riposte and step around you like MORDHAU's bots. Plain repeated swings get
-  parried - change angle, feint, morph, kick.
-- **Archers** shoot the Skyrim way. You can hit them; they do not parry.
-- **Anyone holding a spell or a staff** is left to Skyrim entirely. You can hit them and parry their blade.
-- **Creatures** (wolves, spiders, bears, dragons ...) attack the Skyrim way; a MORDHAU parry stops their attacks.
-  Blunt weapons stop in them, blades carry through.
-- **Followers** near you fight as MORDHAU fighters too and pick the nearest enemy.
-- **Your own magic and bows** are plain Skyrim: with a spell or a bow in the hand Skyrim has your character.
-- **Damage and health are Skyrim's.** MORDHAU judges whether and where a blow lands; your level, your weapon and the
-  target's armour decide what it does. A killing strike to the head takes it off; a blunt one crushes it.
-- Sitting, riding, swimming, kill moves, being staggered, drawing and putting away: Skyrim's own animations.
+- Everyone fighting within 10 metres of you fights by MORDHAU's rules, nearest first, up to 12 at a time - enemies and
+  allies alike. Both numbers can be changed in the settings (5-20 m, 1-24 people). They parry, feint, riposte and step
+  around you like MORDHAU's bots. Repeating the same swing gets it parried: change angle, feint, morph, kick.
+- Archers still shoot the Skyrim way. In MORDHAU they hold a matching bow, so they can't parry; your melee hits on them
+  are judged by MORDHAU.
+- Anyone with a spell or a staff in hand is left to Skyrim. You can hit them and parry their blade.
+- Creatures (wolves, spiders, bears, dragons...) attack the Skyrim way, and a MORDHAU parry stops their attacks. Blunt
+  weapons stop in them, blades carry through.
+- Your own magic and bows are plain Skyrim.
+- Damage and health are Skyrim's. MORDHAU decides whether and where a blow lands; your level, your weapon and the
+  target's armour decide how much it does. A killing strike to the head takes it off; a blunt one crushes it.
+- Sitting, riding, swimming, kill moves, staggers, drawing and sheathing use Skyrim's own animations.
 
-## Known to be rough
+## Rough edges
 
-- It was built on one PC. On yours something may simply not work; see *If something is wrong*.
-- Tight indoor spaces: enemies pushed against walls can look stiff, and now and then a swing passes through one.
+- It was built on one PC, so something may just not work on yours. See below.
+- In tight indoor spaces fighters can bump into tables and walls, and now and then a swing passes through someone.
 - A killing blow with a blunt weapon stops in the body (in MORDHAU it would carry on).
-- Battles between many of Skyrim's people away from you are plain Skyrim.
-- Horseback fighting, werewolf and vampire lord forms: untested.
-- Other Skyrim mods that change combat, the camera or the first-person body will clash with this.
-- A MORDHAU update can break it until the mashup is updated.
+- Fights between Skyrim's people further away than the radius are plain Skyrim.
+- Fighting on horseback, and werewolf or vampire lord forms, are untested.
+- Other mods that change combat, the camera or the first-person body will clash with this.
+- A MORDHAU update can break it until the mod is updated.
 
-## If something is wrong
+## If something's wrong
 
-- **MORDHAU's character never appears / attacks do nothing:** look at the console window. If it says MORDHAU closed or
-  never went live, look at MORDHAU's own window - if it shows a menu, join the match and spawn by hand once.
-- **Everything is back to normal Skyrim combat in the middle of a session:** MORDHAU closed. The console starts it
-  again by itself within a minute.
-- **Logs to send along with a report:** `Documents\My Games\Skyrim Special Edition\SKSE\MordhauSkyrim.log` and
-  `UE4SS.log` in MORDHAU's `Mordhau\Binaries\Win64` folder.
-- **To get rid of it:** `Uninstall-Mashup.ps1`.
+- MORDHAU's character never shows up, or attacks do nothing: look at MORDHAU's window. If it shows a menu, join the
+  match and spawn by hand once. If there's no MORDHAU window at all, check `MordhauSkyrim.log` (Documents\My Games\
+  Skyrim Special Edition\SKSE).
+- Combat goes back to normal Skyrim in the middle of a session: MORDHAU closed. The mod starts it again within a
+  minute.
+- Logs to send with a report: `Documents\My Games\Skyrim Special Edition\SKSE\MordhauSkyrim.log`, and `UE4SS.log` in
+  `%LOCALAPPDATA%\MordhauSkyrim\cache\ue4ss`.
+- To remove it: see "Remove" in the README.
 
 ## Settings
 
-Which mercenary: put its name alone in a file `player.txt` in the `cache` folder. Easier, simpler enemies: start with
-`Play-Mashup.ps1 -SimpleEnemies`.
+In game, with SkyUI and MCM Helper: Esc -> System -> Mod Configuration -> MORDHAU x Skyrim. Combat, how many people
+fight MORDHAU's way and how far around you, sound mix, your character's voice, crouch toggle or hold, enemy skill, and
+whether MORDHAU starts with Skyrim.
+
+`MordhauSkyrim.ini` next to the plugin (`Data\SKSE\Plugins`): where MORDHAU is if Steam doesn't know, easier enemies
+(`SimpleEnemies=1`), the size of MORDHAU's window, or the mod switched off (`StartMordhau=0`). To pick a mercenary, put
+its name alone in a file called `player.txt` in the cache folder (`%LOCALAPPDATA%\MordhauSkyrim\cache`).

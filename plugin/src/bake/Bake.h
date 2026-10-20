@@ -3,10 +3,9 @@
 // Reads MORDHAU's own files from the player's install and writes this mod's local cache (models as
 // character.dmchar, textures as .dds copied block for block): what tools/*.py did before the plugin could.
 // Nothing is authored here and nothing leaves the player's PC. Standard C++ only (no Skyrim, no Windows types),
-// so the same code builds into the plugin and into the small test program (plugin/tools/bake_test.cpp).
+// so the same code could also build into a small stand-alone program.
 //
-// Ported from: tools/paklist.py + uasset.py (PakIndex, Package), texture.py (Texture), skelmesh.py and
-// staticmesh.py (Mesh), bake_character.py (Bake).
+// Ported from the first Python versions of these readers (PakIndex, Package, Texture, the mesh readers, Bake).
 
 #include <cstdint>
 #include <filesystem>
@@ -61,7 +60,7 @@ namespace mbake
 		std::vector<char> raw;                  // its bytes
 	};
 
-	// A decoded property value, as far as the bakers need (what tools/uasset.py's value() gave).
+	// A decoded property value, as far as the bakers need.
 	struct Value
 	{
 		enum class Kind { kNone, kNumber, kBool, kText, kList, kMap };

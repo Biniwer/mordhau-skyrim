@@ -1,8 +1,0 @@
-# which file each function of Combat.cpp goes to (functions not named stay in Combat.cpp)
-CombatDev.cpp: LoadDevConfig Probe ProbeArm DevBowTest DevPushTest DevGiveItems DevGiveWeaponTypes DevSkirmishScene DevCrowdScene DevDuelScene DevDemonScene DevBattleScene DevNpcFight DevShieldShow DevUnarmedTest DevThrowTest DevShieldTest DevArrowTest DevDemoSceneSetup DevDemoScene DevSceneTest FaceNearestActor AutotestTick
-CombatHits.cpp: ThrowHeads SegmentDistance Blade BladeTarget ResolveHitProcessing TorsoNode Progress HitFraction ApplyHit ApplyHitOnPlayer PushDown FallFromMordhau CalmBodies
-CombatOwnSwings.cpp: SwingForAngle GetClip StartPlayerSwing ApplyActiveSwing ClipFor StartPlayerParry ApplyActiveParry CurrentPose
-CombatStandIns.cpp: IsMirrored SpawnDemon ReportDemon WalkAfterStandIn LeaveYieldingBodyToSkyrim ApplyStandInVerdicts MirrorOneEnemy MirrorTick SetAiLevel LoadAiLevel ShowAiMenu
-CombatArchery.cpp: RangedWish TrackMordhauShots TakeOverEnemyArrows MoveFlights FlyArrowsAndThrownWeapons
-CombatCamera.cpp: CameraValue ApplyLiveFov ApplyLiveCamera ApplyEyeCamera ApplyLiveEye
-CombatLive.cpp: DisableBashing ApplyMovementTable ApplyMovementRules LiveToWorld LogPlayerHealth SendPlayerState SendShield ShowPickUpPrompt PlaceDroppedWeapons MatchEnbBrightness SendWalls SendWeaponWish UpdateSkyrimHud SetFightingDistance PlayMordhauDrawClip SyncWeaponDrawn LiveTick

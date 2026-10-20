@@ -5,7 +5,7 @@
 // attack stage, blade and stamina, and Skyrim gives what the player is doing.
 namespace dm::Link
 {
-	inline constexpr int kGhosts = 5;  // how many enemies fight by MORDHAU's rules at once (sheets/live_link.json stand_ins; the script's MAX_GHOSTS)
+	inline constexpr int kGhosts = 24;  // how many enemies fight by MORDHAU's rules at once (sheets/live_link.json stand_ins; the script's MAX_GHOSTS)
 
 	struct State
 	{
@@ -43,11 +43,6 @@ namespace dm::Link
 		bool          altMode = false;            // the weapon in MORDHAU's hand is in its alternate mode (its other grip)
 		int           shieldHas = 0;              // MORDHAU's character carries a shield
 		float         shield[7]{};                // ...there, in character space (rotation xyzw, position cm)
-		int           bowBones = 0;               // a bow in the hand: how many of its bones follow (0 = none)
-		float         bow[12][7]{};               // ...each in the bow's own space (rotation xyzw, position cm), MORDHAU's axes
-		int           arrowShown = 0;             // MORDHAU shows the arrow on the string
-		float         arrowAt[7]{};               // the arrow part in the bow's space
-		float         arrowBones[2][7]{};         // its two bones in its own space
 		char          weaponClass[32]{};          // MORDHAU class of the weapon the character holds or last held
 		bool          menuOpen = false;           // MORDHAU's own voice / emote menu is open
 		int           weaponState = 0;            // 0 none, 1 in the hand, 2 lying in the world (dropped, disarmed), 3 put away on the character
@@ -93,7 +88,7 @@ namespace dm::Link
 	void SetCrouch(bool a_crouch);
 	// Enemy skill level 1..5 (sheets/enemy_ai.json skill_levels).
 	void SetAiLevel(int a_level);
-	void SetHybrid(bool a_on, float a_engageCm, float a_snapCm, float a_holdSeconds);
+	void SetHybrid(bool a_on, float a_engageCm);
 	void SetPaused(bool a_paused);  // Skyrim's game is paused (a menu): MORDHAU's fighters hold still too
 	void SetPlayerPlace(float a_xCm, float a_yCm, float a_facingDegrees);  // where the player is in Skyrim's world (for free stand-ins)  // sheets/builds.json hybrid_*
 	void SetShield(const char* a_mordhauShield);  // the MORDHAU shield for the one on the player's arm ("" = none)     // the player carries a shield in Skyrim
@@ -120,6 +115,8 @@ namespace dm::Link
 		float         health = 100.0f;  // its Skyrim health, percent of full
 		float         size = 1.0f;      // its body's size against the player's (sheets/builds.json standin_scale)
 		bool          refused = false;  // hybrid movement: Skyrim refused its stand-in's step this frame (a wall, a ledge)
+		bool          hasWall = false;  // a wall near its walked body (sheets/builds.json standin_wall_reach): its normal in the player's frame, distance, margin
+		float         wallRight = 0.0f, wallForward = 0.0f, wallCm = 0.0f, wallMarginCm = 0.0f;
 		std::uint32_t target = 0;   // whom it fights in Skyrim, when that is not the player (0: the player)
 		const char*   shield = "";  // MORDHAU shield class for the shield it wears in Skyrim ("" = none)
 		const char*   weapon = "";  // MORDHAU weapon for its moves and reach (sheets/weapon_families.json: mordhau_weapon), by what it holds in Skyrim
@@ -130,8 +127,6 @@ namespace dm::Link
 	void SetGhosts(const std::vector<Ghost>& a_ghosts);
 	// Who is limp in Skyrim right now (thrown by a shout, knocked down): the player and/or stand-ins by id. MORDHAU's own
 	// ragdoll fall is started on them.
-	// A bow or crossbow is out in Skyrim: the MORDHAU item its character should hold ("" = none, melee)
-	void SetWeaponWish(const char* a_item);
 	void SetDown(bool a_player, const std::vector<std::uint32_t>& a_ids);
 
 	// What a stand-in looks like right now in MORDHAU (slot = index into State::ghosts): which baked look it is drawn
@@ -146,7 +141,11 @@ namespace dm::Link
 		bool               hasWeapon = false;
 		int                weaponState = 0;  // as State::weaponState
 	};
-	bool GhostPoseAt(int a_slot, GhostPose& a_out);
+	bool GhostPoseAt(int a_slot, GhostPose& a_out);  // (shown standin_interp_seconds in the past and blended, when that is set)
+	bool GhostPoseAtNewest(int a_slot, GhostPose& a_out);
+	// Where a stand-in stands, shown the same moment in the past as its pose; false when that is not set or not known.
+	bool GhostMoveAt(std::uint32_t a_id, State::GhostMove& a_out);
+	void SetInterpolation(float a_seconds);  // sheets/builds.json standin_interp_seconds; 0 = the newest report
 	// Raw mouse movement since the last call (right and up positive): MORDHAU's own attack-angle input reads it.
 	void AddMouse(float a_right, float a_up);
 	void Flush();

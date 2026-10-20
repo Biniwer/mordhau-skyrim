@@ -4,7 +4,7 @@
 
 namespace dm
 {
-	// One MORDHAU clip converted to Skyrim model space (tools/bake_clip.py; the plugin's own reader replaces
+	// One MORDHAU clip converted to Skyrim model space (the plugin's own reader replaces
 	// that tool later). Per bone and frame: the rotation from MORDHAU's rest pose to the animated pose.
 	struct Clip
 	{

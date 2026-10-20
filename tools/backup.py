@@ -1,7 +1,7 @@
 """Dev: snapshot the project into backups/<name>.zip so work can be rolled back to this point.
 
 In: all source we wrote (plugin/src, plugin build files, tools, sheets, mordhau_side, the launcher, docs, the patch
-scripts under _deps), the built plugin, the baked cache (local only; made from the player's own MORDHAU install), and
+scripts under _deps), the built plugin, and
 the files installed into the two game folders. Out: third-party toolchains and libraries (re-downloadable), build
 intermediates, recordings and screenshots except the ones named S..A / demo.
 usage: backup.py <name>
@@ -23,7 +23,7 @@ with zipfile.ZipFile(out, 'w', zipfile.ZIP_DEFLATED, compresslevel=6) as z:
             for f in files:
                 p = os.path.join(d, f)
                 add(p, os.path.join('project', os.path.relpath(p, root)))
-    for rel, skip in (('plugin', ('extern',)), ('tools', ('__pycache__',)), ('sheets', ()), ('mordhau_side', ()), ('cache', ()), ('build/dist', ()),
+    for rel, skip in (('plugin', ('extern',)), ('tools', ('__pycache__',)), ('sheets', ()), ('mordhau_side', ()), ('build/dist', ()),
                       # (2026-10-11: these were missing - the loader that guards MORDHAU's launch had its source in no backup)
                       ('loader', ()), ('build/loader', ()), ('installer', ()), ('release', ()), ('vendor', ())):
         tree(rel, skip)

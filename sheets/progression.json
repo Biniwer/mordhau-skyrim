@@ -76,7 +76,7 @@
   {
    "id": "npc_health_per_level",
    "value": 10.0,
-   "meaning": "and per level (measured in the user's game: level 4 townsfolk 75, level 10 commander 122, level 20 guard 252)",
+   "meaning": "and per level (measured in the play-tester's game: level 4 townsfolk 75, level 10 commander 122, level 20 guard 252)",
    "verified": false
   },
   {

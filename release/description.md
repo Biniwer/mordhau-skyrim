@@ -1,85 +1,134 @@
 # MORDHAU x Skyrim (experimental)
 
-MORDHAU's melee combat inside Skyrim Special Edition.
+MORDHAU's melee combat in Skyrim Special Edition.
 
-This mod runs your own copy of MORDHAU, offline, beside Skyrim and makes it the fighter. **Skyrim stays the world**: places, people, quests, loot, saves, magic and bows. **MORDHAU does the melee**: your swings, parries, feints, kicks and stamina are MORDHAU's own, and the people you fight hand to hand are moved and fought by MORDHAU's AI. Damage, health and levels stay Skyrim's.
+The mod runs your own copy of MORDHAU offline next to Skyrim and lets it do the fighting. Skyrim stays the world:
+places, people, quests, loot, saves, magic and bows. MORDHAU does the melee: your swings, parries, feints, kicks and
+stamina, and the people you fight are moved and fought by MORDHAU's bots. Damage, health and levels stay Skyrim's.
 
 ## Read this first
 
-- **You need both games on Steam.** Nothing from either game is in the download. MORDHAU's models and animations are read from your own MORDHAU the first time you play (about 2 GB are prepared on your disk, once).
-- **Offline only.** The mod starts MORDHAU by itself in a local match on your PC, in a window behind Skyrim, and closes it when Skyrim closes. MORDHAU is an online game with anti-cheat. This mod does not touch or work around the anti-cheat and must never be used for online play.
-- **No guarantee for your MORDHAU account.** MORDHAU has anti-cheat for online play. This mod only ever runs inside its own offline MORDHAU, started with `-insecure`, and shuts the game down if it is started any other way. Even so, nobody, including the author, can promise how the anti-cheat treats it. If you cannot accept any risk to your MORDHAU account, do not install this.
-- **It writes into MORDHAU's folder.** See "What it does to MORDHAU's folder" below. If that worries you, do not install it.
-- **Experimental.** It was built on one PC and has barely been tried anywhere else. Expect things to break. Use a new save.
+- You need both games on Steam. No game files are in the download. The first time you play, the mod prepares
+  MORDHAU's models and animations from your own copy (about 2 GB, once).
+- Offline only. The mod starts MORDHAU itself in a local match in a window behind Skyrim, and closes it when Skyrim
+  closes. MORDHAU has anti-cheat for online play. The mod doesn't touch or work around it, and must never be used
+  online.
+- No guarantee for your MORDHAU account. The mod only ever runs inside its own offline MORDHAU, started with
+  `-insecure`, and shuts the game down if it's started any other way. Even so, nobody, me included, can promise how
+  the anti-cheat treats it. If you can't accept any risk to your MORDHAU account, don't install it.
+- It puts one file in MORDHAU's folder, only while it starts MORDHAU (see below).
+- Experimental. It was built on one PC and has barely been tried anywhere else. Expect bugs, and use a new save.
 - Not affiliated with or endorsed by Bethesda or Triternion.
 
-## How it keeps MORDHAU online play separate
+## How online play is kept separate
 
-The mod is built so that nothing of it is loaded when you start MORDHAU normally:
+Nothing of the mod is loaded when you start MORDHAU normally:
 
-1. **It only starts its own offline MORDHAU.** When Skyrim starts, the mod launches MORDHAU itself, in a local match, with the `-insecure` option and a one-time key that only that launch gets.
-2. **The loader checks before anything else runs.** MORDHAU only loads the mod's script if a small loader file (`dwmapi.dll`) is in its folder. That loader first checks for `-insecure` and the one-time key. Without both it ends the game within a fraction of a second, loads nothing, and renames itself so the next start is normal.
-3. **The loader removes itself.** Once it has done its job it renames itself to `dwmapi.dll.old`, which MORDHAU does not load. The mod deletes that file when MORDHAU closes or at the next session.
-4. **The script checks again.** It verifies the one-time key a second time, and closes the game if the offline session ever becomes a joined or hosted server.
-5. **A MORDHAU you started yourself is never touched.** If MORDHAU is already running when Skyrim starts, the mod waits until you have closed it.
+1. The mod only starts its own offline MORDHAU: a local match, with `-insecure` and a one-time key for that launch.
+2. MORDHAU only loads the mod's script if a small loader (`dwmapi.dll`) is in its folder, and the loader checks for
+   `-insecure` and the key first. Without both it closes the game within a fraction of a second, loads nothing, and
+   renames itself so the next start is normal.
+3. Once it has done its job the loader renames itself to `dwmapi.dll.old`, which MORDHAU doesn't load. The mod deletes
+   it at the next session. The script host itself is never in MORDHAU's folder: it lives in the mod's own folder.
+4. The script checks the key again, and closes the game if the session ever becomes a joined or hosted server.
+5. A MORDHAU you started yourself is never touched. If it's already running when Skyrim starts, the mod waits until
+   you close it.
 
-**What is not verified.** The check while the game runs rests on one question to MORDHAU's engine: "is this still a standalone local match?" The shutdown that follows a "no" or a "can't tell" is tested. Whether the engine answers "no" for every way a session could go online, and how early in a connection it does, has not been tested, because testing it would mean taking the mod online. The launch check, `-insecure` and the loader's self-removal do not depend on it.
+What isn't verified: the check while the game runs relies on asking MORDHAU's engine "is this still a standalone local
+match?". The shutdown after a "no" or an unclear answer is tested. Whether the engine says "no" for every way a session
+could go online, and how early, is not - testing that would mean taking the mod online. The launch check, `-insecure`
+and the loader removing itself don't depend on it.
 
-## How to check it yourself
+## Checking it yourself
 
-Do this after closing Skyrim and before playing MORDHAU online:
+After closing Skyrim and before playing MORDHAU online:
 
-1. **Look in the folder.** Open MORDHAU's `Mordhau\Binaries\Win64` folder. There must be no file named `dwmapi.dll`. If `dwmapi.dll.old` is there, delete it. The files `UE4SS.dll`, `UE4SS-settings.ini` and the `Mods` folder may stay: without the loader MORDHAU ignores them.
-2. **Check that nothing was loaded on a normal start.** Note the "date modified" of `UE4SS.log` in that folder, start MORDHAU from Steam, go to the main menu, quit, and look again. If the date has not changed, the mod's script host was not loaded.
-3. **Look for the loader's note.** If the loader ever had to stop a wrong start, it leaves a file named `MordhauSkyrim-closed-MORDHAU.txt` in that folder saying why. If you find it, the protection worked; delete the note and `dwmapi.dll.old`.
+1. Open MORDHAU's `Mordhau\Binaries\Win64` folder. There must be no `dwmapi.dll`. Delete `dwmapi.dll.old` if it's
+   there. Nothing else of the mod is in that folder (no `UE4SS` files, no `Mods` folder, unless you have a UE4SS of
+   your own).
+2. Note the "date modified" of `UE4SS.log` in `%LOCALAPPDATA%\MordhauSkyrim\cache\ue4ss`, start MORDHAU from Steam, go
+   to the main menu and quit. If the date hasn't changed, the script host wasn't loaded.
+3. If you find `MordhauSkyrim-closed-MORDHAU.txt`, the loader stopped a wrong start and says why. Delete it and
+   `dwmapi.dll.old`.
 
-If anything looks wrong, remove the mod and delete the files listed under "Uninstall" before playing online. These checks show the mod is not loaded; they are not a promise about how MORDHAU's anti-cheat behaves.
+If anything looks wrong, remove the mod and the files under "Uninstall" before playing online. These checks show the
+mod isn't loaded; they aren't a promise about how MORDHAU's anti-cheat behaves.
 
-## Main features
+## Features
 
-- **Directional melee with your Skyrim weapons.** Swing direction follows your mouse movement. Stabs, overheads, combos, morphs and feints work as in MORDHAU. Each Skyrim weapon stands for a MORDHAU one.
-- **Timed parries and ripostes.** Blocking is a timed parry, not a held block.
-- **Shields.** A Skyrim shield works as one of MORDHAU's five kinds, depending on what it is made of. The larger ones can be held up.
-- **Enemies fight back the MORDHAU way.** People, draugr and skeletons with melee weapons parry, feint, riposte and step around you, up to five at a time. Followers fight the same way.
-- **Alternate grips, weapon throwing, fists and kicks.**
-- **Decapitations and crushed heads** on killing head hits.
-- **MORDHAU's weapons as Skyrim items**, with MORDHAU's own models in the hand and in the inventory. The inventory models are made on your PC the first time you play and show from the next start of Skyrim.
-- **First and third person, both with your own Skyrim character.** In first person you look out of its eyes: your arms, armour, body and legs are your Skyrim ones, with the hands placed where MORDHAU has them on the weapon.
-- **Enemy skill follows the level gap.** Enemies far above your level fight like duelists, far below like peasants.
-- **In-game settings menu** (with SkyUI and MCM Helper): damage, armour, enemy skill, kicks (including a super kick), your character's MORDHAU voice, a sound mix from only Skyrim's combat sounds to only MORDHAU's, crouch toggle or hold, and more.
-- **Skyrim keeps what it does well.** Archers, spellcasters and creatures stay Skyrim's, and your own magic and bows are untouched.
+- Directional melee with your Skyrim weapons. The swing follows your mouse; stabs, overheads, combos, morphs and feints
+  work as in MORDHAU. Each Skyrim weapon fights as a MORDHAU one (tables below).
+- Timed parries and ripostes instead of a held block.
+- Shields: a Skyrim shield works as one of MORDHAU's five, by material. The bigger ones can be held up.
+- Everyone fighting near you fights the MORDHAU way - enemies and followers, up to 12 at once within 10 metres by
+  default (both adjustable). They parry, feint, riposte and move around you. Archers hold a MORDHAU bow, so they can't
+  parry.
+- Alternate grips, throwing weapons, fists and kicks.
+- Heads come off (or get crushed) on killing head hits.
+- MORDHAU's weapons as Skyrim items, with MORDHAU's models in the hand and in the inventory. The inventory models are
+  made on your PC the first time you play and show from the next start.
+- First and third person with your own Skyrim character. In first person you see your own arms, armour and legs, with
+  the hands where MORDHAU has them on the weapon.
+- Enemy skill follows the level gap: far above your level they fight like duelists, far below like peasants.
+- Settings menu (with SkyUI and MCM Helper): damage, armour, enemy skill, how many people fight MORDHAU's way and how
+  far around you, kicks (including a super kick), your character's voice, a sound mix from all Skyrim to all MORDHAU,
+  crouch toggle or hold, and more.
+- Skyrim keeps what it does well: spellcasters and creatures fight the Skyrim way, and your own magic and bows are
+  untouched.
 
 ## Requirements
 
-- The Elder Scrolls V: Skyrim Special Edition on Steam, version **1.7.104**. Backwards compatible with version **1.6.1170** (the same file; use SKSE 2.2.6 there). Other versions are untested.
-- MORDHAU, on Steam
+- Skyrim Special Edition on Steam, version 1.7.104, or 1.6.1170 (same file; use SKSE 2.2.6 there). Other versions are
+  untested.
+- MORDHAU on Steam
 - SKSE for your game version
-- Address Library for SKSE Plugins (Nexus Mods, Skyrim Special Edition mod 32444)
-- Optional, for the in-game settings menu: SkyUI and MCM Helper (both on Nexus Mods). Without them the mod runs with its default settings.
-- Windows 10 or 11, and about 3 GB of free disk space
-- A PC that can run both games at once. As an estimate: 16 GB of RAM, a graphics card with 8 GB, and an SSD.
-- Keyboard and mouse. Controllers are not supported.
+- Address Library for SKSE Plugins (Nexus mod 32444)
+- Optional: SkyUI and MCM Helper for the settings menu. Without them the defaults are used.
+- Windows 10 or 11, about 3 GB free
+- A PC that can run both games at once - roughly 16 GB of RAM, an 8 GB graphics card and an SSD
+- Keyboard and mouse (no controller support)
 
 ## Installation
 
-1. Install SKSE and the Address Library if you do not have them.
-2. Install this mod with your mod manager (Vortex or Mod Organizer 2), like any other mod.
-3. Make sure `MordhauWeapons.esp` is switched on.
+1. Install SKSE and Address Library if you don't have them.
+2. Install the mod with Vortex or Mod Organizer 2.
+3. Make sure `MordhauWeapons.esp` is enabled.
 
-There is nothing to run or copy by hand.
+Nothing else to run or copy.
 
-## How to play
+## Installing by hand
 
-1. Start Skyrim through SKSE, the way you always do with mods.
-2. MORDHAU opens by itself in a window behind Skyrim. On the very first start the mod prepares MORDHAU's models at the main menu first.
-3. Load a save. When "MORDHAU is live" appears at the top left, draw a melee weapon.
-4. Leave MORDHAU's window open behind Skyrim. Do not minimise it and do not play in it.
+Without a mod manager, all of this goes into Skyrim's own folder (the one with `SkyrimSE.exe`):
+
+1. SKSE: `skse64_loader.exe` and its `skse64_1_*.dll` next to `SkyrimSE.exe`, and the `Data` folder from its download
+   into Skyrim's `Data`. Start the game with `skse64_loader.exe` from then on.
+2. Address Library: only the file for your game version, straight into `Data\SKSE\Plugins` - `versionlib-1-6-1170-0.bin`
+   for 1.6.1170 or `versionlib-1-7-104-0.bin` for 1.7.104. Not into an `SKSE` folder next to `SkyrimSE.exe`, and not
+   into a second `Plugins` folder inside that one.
+3. This mod: unpack its download into Skyrim's `Data`, so that `Data\MordhauWeapons.esp` and
+   `Data\SKSE\Plugins\MordhauSkyrim.dll` are there.
+4. Switch the plugin on: press Win + R, open `%LOCALAPPDATA%\Skyrim Special Edition`, and add the line
+   `*MordhauWeapons.esp` to `plugins.txt`. The `*` is what switches it on; without it Skyrim ignores the plugin.
+5. The settings menu (optional): SkyUI and MCM Helper. MCM Helper's download is an installer package, so by hand take
+   `ESL\MCMHelper.esp` and `BSA\MCMHelper.bsa` into `Data` and `SkyrimSE\SKSE\Plugins\MCMHelper.dll` into
+   `Data\SKSE\Plugins`, and add `*SkyUI_SE.esp` and `*MCMHelper.esp` to `plugins.txt`.
+
+If MORDHAU never opens, look at `skse64.log` in `Documents\My Games\Skyrim Special Edition\SKSE`: "MordhauSkyrim.dll
+... disabled, address library needs to be updated" means the Address Library file is missing or in the wrong folder.
+
+## Playing
+
+1. Start Skyrim through SKSE as usual.
+2. MORDHAU opens by itself behind Skyrim. On the very first start (and after a MORDHAU update) the mod first prepares
+   MORDHAU's models at the main menu: Skyrim doesn't respond for a minute or a few while it does, so let it finish.
+3. Load a save. When "MORDHAU is live" shows at the top left, draw a melee weapon.
+4. Leave MORDHAU's window open behind Skyrim. Don't minimise it or play in it.
 
 | Input | What it does |
 | --- | --- |
 | Attack + mouse movement | Strike from that side |
 | Mouse wheel up / down | Stab / overhead |
-| Block | Timed parry; attack straight after for a riposte |
+| Block | Timed parry; attack right after to riposte |
 | Q or thumb mouse button | Feint during a windup |
 | F | Kick |
 | Middle mouse | Cast the spell in your left hand (with a one-handed weapon in the right) |
@@ -87,9 +136,9 @@ There is nothing to run or copy by hand.
 | 4 | Fists |
 | P | First / third person |
 
-The full controls are in `HOW-TO-PLAY.md` inside the mod's folder (`SKSE\Plugins\MordhauSkyrim`).
+All controls are in `HOW-TO-PLAY.md` in the mod's folder (`SKSE\Plugins\MordhauSkyrim`).
 
-To play Skyrim without it, switch the mod off in your mod manager or set `StartMordhau=0` in `MordhauSkyrim.ini`.
+To play Skyrim without it, disable the mod or set `StartMordhau=0` in `MordhauSkyrim.ini`.
 
 ## Which MORDHAU weapon each Skyrim weapon is
 
@@ -160,43 +209,83 @@ A Skyrim weapon keeps its own look and fights as a MORDHAU weapon, chosen by its
 
 **MORDHAU weapons as Skyrim items.** These are added to Skyrim as their own items with MORDHAU's models, and turn up in loot, in shops and on enemies: Zweihander, Longsword, Estoc, Messer, Executioner's Sword, Halberd, Bardiche, Billhook, Spear, Battle Axe, War Axe, Polehammer, Maul, Eveningstar, Arming Sword, Bastard Sword, Falchion, Rapier, Short Sword, Axe, Hand Axe, Warhammer, Flanged Mace, Rondel Dagger, Falx.
 
-## What it does to MORDHAU's folder
+## What goes into MORDHAU's folder
 
-Everything happens in `Mordhau\Binaries\Win64` of your MORDHAU. Nothing of MORDHAU's own is changed or replaced.
+Only one file, and only for a moment: the loader `dwmapi.dll` in `Mordhau\Binaries\Win64`. Nothing of MORDHAU's own
+is changed or replaced.
 
-- **Stays there:** the open-source script host UE4SS and this mod's script. On their own they do nothing; a normal MORDHAU start does not load them.
-- **There only for a moment:** a small loader file, `dwmapi.dll`, the mod's own. The mod puts it in and starts MORDHAU. Before anything else runs, the loader checks that MORDHAU was started by the mod (with `-insecure` and a one-time key); only then does it load the script host, and it renames itself to `dwmapi.dll.old` at that same moment.
-- **Never start MORDHAU for online play while `dwmapi.dll` is in that folder.** After a crash or a power cut, look and delete it if it is there.
-- Guards are built in. If MORDHAU is started any other way while the loader is still in the folder, for example from Steam to play online, the loader ends the game within a fraction of a second, before the script host or the game itself has started, and renames itself so the next start is normal. The script checks the one-time key a second time. And if the mod's own offline session ever stops being a local match, because a server was joined or hosted, it closes the game too.
-- **One setting outside that folder:** MORDHAU mutes itself while its window is not in front, and the mod's MORDHAU always runs behind Skyrim. Just before starting it, the mod sets MORDHAU's own setting for that (`Engine.ini`, `[Audio] UnfocusedVolumeMultiplier`, in `%LOCALAPPDATA%\Mordhau\Saved\Config\WindowsClient`) to 1, and puts your own value back as soon as MORDHAU is running.
+- The script host (UE4SS, an open-source tool) and the mod's script never go into MORDHAU's folder. They live in
+  `%LOCALAPPDATA%\MordhauSkyrim\cache\ue4ss` and the loader loads them from there. Versions before 0.1.22 kept them in
+  MORDHAU's folder; the first start with 0.1.22 takes them out (a UE4SS of your own there is left alone).
+- Only there for a moment: the mod's small loader, `dwmapi.dll`. The mod puts it in and starts MORDHAU. Before anything
+  else runs, the loader checks that the mod started MORDHAU (`-insecure` and the one-time key); only then does it load
+  the script host, renaming itself to `dwmapi.dll.old` in the same moment.
+- The script's bone reader, `MordhauBones.dll`, never goes into MORDHAU's folder. It's copied to
+  `%LOCALAPPDATA%\MordhauSkyrim` for each session and loaded from there.
+- Never start MORDHAU for online play while `dwmapi.dll` is in that folder. After a crash or a power cut, check and
+  delete it if it's there.
+- If MORDHAU is started any other way while the loader is still there - from Steam to play online, say - the loader
+  closes the game within a fraction of a second, before the script host or the game itself has started, and renames
+  itself so the next start is normal. The script checks the key again, and if the mod's own session ever stops being
+  a local match, it closes the game too.
+- One setting outside that folder: MORDHAU mutes itself when its window isn't in front, and the mod's MORDHAU always
+  runs behind Skyrim. Right before starting it, the mod sets `[Audio] UnfocusedVolumeMultiplier` in MORDHAU's
+  `Engine.ini` (`%LOCALAPPDATA%\Mordhau\Saved\Config\WindowsClient`) to 1, and puts your own value back as soon as
+  MORDHAU is running.
 
 ## Uninstall
 
-Remove the mod with your mod manager. Then delete from `Mordhau\Binaries\Win64`: `UE4SS.dll`, `UE4SS-settings.ini`, `UE4SS.mashup.txt`, `UE4SS.log`, the folders `UE4SS_Signatures` and `Mods`, and `dwmapi.dll` or `dwmapi.dll.old` if present. The prepared models are in `%LOCALAPPDATA%\MordhauSkyrim`; delete that folder too. The mod also writes model files for the inventory into Skyrim's `Data\meshes\MordhauSkyrim` and `Data	extures\MordhauSkyrim` (about 55 MB; with Mod Organizer they land in Overwrite); delete those two folders as well.
+Remove the mod in your mod manager. Then delete `dwmapi.dll` or `dwmapi.dll.old` from `Mordhau\Binaries\Win64` if
+present (and, if you last played a version before 0.1.22: `UE4SS.dll`, `UE4SS-settings.ini`, `UE4SS.mashup.txt`,
+`UE4SS.log`, the `UE4SS_Signatures` and `Mods` folders). Also delete `%LOCALAPPDATA%\MordhauSkyrim` (the prepared
+models, the script host and the bone reader), and
+the inventory model folders `Data\meshes\MordhauSkyrim` and `Data\textures\MordhauSkyrim` (about 55 MB; with Mod
+Organizer they end up in Overwrite).
+
+## Network and saves
+
+- The mod makes no internet connections and collects nothing: no telemetry, no update checks. The two games
+  themselves still do what they always do (Steam, for one).
+- It keeps nothing in your saves. If you remove it, the MORDHAU weapons from `MordhauWeapons.esp` disappear from
+  inventories; that's the only trace. Removing it in the middle of a playthrough hasn't been tested much yet.
 
 ## Known problems
 
-- Tight indoor spaces: enemies against walls can look stiff, and now and then a swing passes through one.
-- Other combat, camera and first-person-body mods will clash with it.
-- Horseback fighting, werewolf and vampire lord forms are untested.
+- People sometimes take a moment to draw their weapon.
+- In tight indoor spaces fighters can bump into tables and walls, and now and then a swing passes through someone.
+- Other combat, camera and first-person body mods will clash with it.
+- Horseback fighting and werewolf or vampire lord forms are untested.
 - A MORDHAU or Skyrim update can break it.
 
 ## Reporting a problem
 
-Say what you were doing and attach `MordhauSkyrim.log` (from `Documents\My Games\Skyrim Special Edition\SKSE`, beside the logs of your other SKSE mods; versions up to 0.1.16 wrote `DirectionalMelee.log` one folder up) and `UE4SS.log` (from MORDHAU's `Mordhau\Binaries\Win64` folder).
+Say what you were doing and attach `MordhauSkyrim.log` (in `Documents\My Games\Skyrim Special Edition\SKSE`, next to
+your other SKSE mods' logs; versions up to 0.1.16 wrote `DirectionalMelee.log` one folder up) and `UE4SS.log` (in
+`%LOCALAPPDATA%\MordhauSkyrim\cache\ue4ss`; up to 0.1.21 in MORDHAU's `Mordhau\Binaries\Win64` folder).
 
 ## Credits
 
-- **CommonLibSSE-NG** by alandtse and contributors (GPL-3.0-or-later with a modding and linking exception; a fork of CharmedBaryon's CommonLibSSE-NG, based on CommonLibSSE by Ryan McKenzie and powerof3): the library the Skyrim plugin is built on.
-- **UE4SS** v3.0.1 by the UE4SS-RE team (MIT): the script host for MORDHAU. `UE4SS.dll` and its own Lua mods are included unchanged; its settings file and mod list carry this mod's settings.
-- **SkyCraft** by chasmlol (MIT): two techniques follow its way of doing them (drawing into Skyrim's frame before post-processing; hits that show the health bar and give kill credit). No file of it is included.
-- **spdlog, {fmt}, DirectXTK, DirectXMath, rapidcsv, xbyak, JSON for Modern C++, SimpleIni, toml11**: libraries the plugin is built with (MIT or BSD-3-Clause).
-- **SkyUI** by the SkyUI team and **MCM Helper** by Exit-9B: the in-game settings menu is built on them (optional, not included; the menu's own script was compiled against their published script headers).
-- **Address Library for SKSE Plugins** by meh321: required, not included.
-- **SKSE** by the SKSE team: required, not included.
-- **MORDHAU** by Triternion and **Skyrim Special Edition** by Bethesda Game Studios: the two games this brings together.
-- Made with AI assistance: the code, tools and texts of this mod were written with the help of an AI coding assistant (Claude, by Anthropic), directed and play-tested by the author.
+- CommonLibSSE-NG by alandtse and contributors (GPL-3.0-or-later with a modding and linking exception; a fork of
+  CharmedBaryon's CommonLibSSE-NG, based on CommonLibSSE by Ryan McKenzie and powerof3): the library the Skyrim plugin
+  is built on.
+- UE4SS v3.0.1 by the UE4SS-RE team (MIT): the script host for MORDHAU. `UE4SS.dll` is included unchanged; its
+  settings file and mod list carry this mod's settings.
+- SkyCraft by chasmlol (MIT): two techniques follow its approach (drawing into Skyrim's frame before post-processing;
+  hits that show the health bar and give kill credit). No file of it is included.
+- True Directional Movement by Ersh (GPL-3.0): the plugin includes its modder interface header, so that a running True
+  Directional Movement can be asked to leave the player's movement, turning and target lock alone while MORDHAU is
+  linked. No other file of it is included.
+- spdlog, {fmt}, DirectXTK, DirectXMath, rapidcsv, xbyak, JSON for Modern C++, SimpleIni, toml11: libraries the plugin
+  is built with (MIT or BSD-3-Clause).
+- SkyUI by the SkyUI team and MCM Helper by Parapets: the settings menu is built on them (optional, not included; the
+  menu's script was compiled against their published script headers).
+- Address Library for SKSE Plugins by meh321, and SKSE by the SKSE team: required, not included.
+- MORDHAU by Triternion and Skyrim Special Edition by Bethesda Game Studios: the two games this brings together.
+- MilanPenak: the fix that keeps your weapon in your hand (0.1.22), made from this mod's source.
+- Made with AI help: the code, tools and texts were written with an AI coding assistant (Claude, by Anthropic),
+  directed and play-tested by me.
 
 ## Licence and source
 
-This mod is free software under the **GPL-3.0-or-later**, as the library it is built on requires. You may use it, change it and share it, including in your own mods, under that licence. The complete source of each version is under **Files** on this page, as "Source code". Every licence text is in the `LICENSES` folder of the download.
+GPL-3.0-or-later, as the library it's built on requires. You can use, change and share it, including in your own mods,
+under that licence. The full source of each version is under Files on this page ("Source code"). All licence texts are in the `LICENSES` folder of the download.
