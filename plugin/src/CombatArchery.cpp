@@ -432,16 +432,7 @@ namespace dm::Combat
 
 			static std::vector<StuckArrow> stuckArrows;
 			// Skyrim's own sound of an arrow striking, where it struck
-			const auto arrowSound = [](const char* a_id, const RE::NiPoint3& a_at) {
-				if (auto* audio = RE::BSAudioManager::GetSingleton()) {
-					RE::BSSoundHandle handle;
-					audio->GetSoundHandleByName(handle, a_id, 0x1A);
-					if (handle.IsValid()) {
-						handle.SetPosition(a_at);
-						handle.Play();
-					}
-				}
-			};
+			const auto arrowSound = [](const char* a_id, const RE::NiPoint3& a_at) { SoundAt(a_id, a_at); };
 			// Enemy arrows: each one Skyrim launches for somebody else is taken over at once (sheets/builds.json enemy_arrows_own)
 			const auto link = Link::Current();
 			TakeOverEnemyArrows(a_player, flying, link);

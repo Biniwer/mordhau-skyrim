@@ -537,6 +537,22 @@ namespace dm::Combat
 					if (stopped && missile) {
 						// (an arrow parried or blocked: not given to Skyrim at all - with no damage and marked blocked, Skyrim still
 						// played the player's being hit, the user 2026-10-18. Its block and bounce sounds are played above.)
+						// (...and the arrow itself is taken away: Skyrim had already stuck it into the player's body. On the next frame -
+						// now Skyrim is still in the middle of that arrow's impact)
+						Link::Request("ParrySound");  // (MORDHAU's own block sound of the weapon: Skyrim's above alone was hardly heard)
+						if (auto source = a_hit.sourceRef.get(); source && source->As<RE::Projectile>()) {
+							const RE::ObjectRefHandle arrow = source->CreateRefHandle();
+							SKSE::GetTaskInterface()->AddTask([arrow]() {
+								if (auto ref = arrow.get()) {
+									const bool shown = ref->Get3D() != nullptr;
+									ref->Disable();
+									ref->SetDelete(true);
+									logger::info("parried: the arrow is taken away ({})", shown ? "it was stuck in the player" : "it had no model left");
+								} else {
+									logger::info("parried: the arrow was already gone");
+								}
+							});
+						}
 						return;
 					}
 				}

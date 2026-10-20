@@ -46,7 +46,8 @@ Store, a few gameplay additions, and a CI build. Everything else - and how to pl
   hit. (`limp_hits_skyrim`, `limp_speed_limit`)
 - Enemies with a blade and a spell (a Vigilant of Stendarr): the blade fights by MORDHAU's rules, the spells stay
   Skyrim's - while one casts, its body is Skyrim's. Pure mages and staff users stay Skyrim's. (`spellsword_standin`)
-- A parried or blocked Skyrim arrow no longer plays the player's being hit.
+- A parried or blocked Skyrim arrow no longer plays the player's being hit; it sounds your MORDHAU weapon's (or
+  shield's) block, with Skyrim's block and bounce.
 - MORDHAU's music, its arena's ambience and its footsteps are silent in the mod's session; its fighting and voices are
   heard.
 - The settings menu's MORDHAU volume and voice choices are applied at every start (they were often lost).

@@ -136,9 +136,28 @@ namespace dm::Combat
 			if (auto* audio = RE::BSAudioManager::GetSingleton()) {
 				RE::BSSoundHandle handle;
 				audio->GetSoundHandleByName(handle, a_id, 0x1A);
+				if (!handle.IsValid()) {
+					// (Skyrim SE keeps no editor IDs of its sounds, so the name finds nothing - a parried arrow was silent,
+					// the user 2026-10-18: the sounds used here by their records in Skyrim.esm)
+					static const std::unordered_map<std::string_view, RE::FormID> kSkyrimSounds{
+						{ "WPNBlockBlade1HandVsOtherSD", 0x03C73C }, { "WPNBlockShieldLSD", 0x03C740 }, { "WPNImpactArrowBounceSD", 0x03C84E },
+						{ "WPNImpactArrowStickSD", 0x03C845 }, { "WPNImpactArrowVsFleshSD", 0x03C849 }, { "WPNImpactArrowVsFleshPLAYER", 0x0EA9F8 },
+					};
+					const auto  known = kSkyrimSounds.find(a_id);
+					auto*       data = RE::TESDataHandler::GetSingleton();
+					auto*       sound = known != kSkyrimSounds.end() && data ? data->LookupForm<RE::BGSSoundDescriptorForm>(known->second, "Skyrim.esm") : nullptr;
+					if (sound) {
+						audio->GetSoundHandle(handle, sound, 0x1A);
+					}
+				}
 				if (handle.IsValid()) {
 					handle.SetPosition(a_at);
 					handle.Play();
+				} else {
+					static std::unordered_set<std::string> told;
+					if (told.insert(a_id).second) {
+						logger::warn("sound: {} not found - not played", a_id);
+					}
 				}
 			}
 		}

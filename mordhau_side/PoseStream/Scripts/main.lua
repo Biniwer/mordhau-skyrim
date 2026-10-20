@@ -388,6 +388,23 @@ local ACTIONS = {
         local cue = StaticFindObject("/Game/Mordhau/Audio/Cues/UI/SC_HitIndicator.SC_HitIndicator")
         if there(gs) and there(cue) then gs:PlaySound2D(p, cue, 1.0, 1.0, 0.0, nil, nil, true) end
     end,
+    -- a Skyrim arrow the player parried or blocked: MORDHAU's own sound of the character's weapon (or shield) blocking
+    -- (Skyrim's block sound alone was "very subtle", the user 2026-10-18). Which of the weapon's sounds it is, is logged once.
+    ParrySound = function(p)
+        local gs = StaticFindObject("/Script/Engine.Default__GameplayStatics")
+        local played = nil
+        for _, hand in ipairs({ "LeftHandEquipment", "RightHandEquipment" }) do
+            pcall(function()
+                local w = p[hand]
+                if played or not there(w) or (hand == "LeftHandEquipment" and not class_name(w):find("Shield", 1, true)) then return end
+                for _, name in ipairs({ "BlockedSound", "WasBlockedSound" }) do
+                    local cue = w[name]
+                    if not played and there(cue) then gs:PlaySound2D(p, cue, 1.0, 1.0, 0.0, nil, nil, true); played = class_name(w) .. "." .. name end
+                end
+            end)
+        end
+        if not PS_parrySoundTold then PS_parrySoundTold = true; log("parry sound: " .. tostring(played or "none found on the weapon")) end
+    end,
     -- a shield: the block is held for as long as Skyrim's block button is (no timed release)
     -- MORDHAU's held shield block is its "shield wall": the shield's alternate mode (MORDHAU's R with a shield on the
     -- arm) raises it and it stays up (the parry motion stays in its blocking stage); pressing block lowers it. Found
@@ -2804,6 +2821,10 @@ function PS_ghost_poses()
                 wq, wt, hasWeapon = PS_weapon_of(b.obj, mesh, b.weapon)
                 -- (what a bot lets go of while it is being handed its Skyrim character's weapon is not a disarm)
                 if hasWeapon == 2 and not b.armed and not b.armGaveUp then hasWeapon = 0 end
+                if hasWeapon ~= b.hasLogged then   -- (each change, for looking into disarms: 0 none, 1 hand, 2 ground, 3 put away)
+                    log(string.format("stand-in %s's weapon: %s -> %s%s", tostring(b.look), tostring(b.hasLogged), tostring(hasWeapon), b.armed and "" or " (being armed)"))
+                    b.hasLogged = hasWeapon
+                end
                 -- disarmed: like a MORDHAU bot it goes without for a while, then has its weapon in hand again
                 if hasWeapon == 2 and b.weapon.has == 2 and os.clock() - (b.weapon.since or 0) > 12.0 and not b.demon then
                     b.weapon.since = os.clock()
