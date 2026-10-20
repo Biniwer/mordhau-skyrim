@@ -43,6 +43,8 @@ Store, a few gameplay additions, and a CI build. Everything else - and how to pl
   character loses too, and its regeneration waits meanwhile. (`player_stamina_drain`)
 - Slows: a Skyrim slow on a fought enemy (a frost spell's, or any mod's) slows its stand-in's movement; Skyrim's world
   time (Slow Time) its whole pace, attacks included. (`standin_slow`)
+- The same for the player: a Skyrim slow (an enemy's frost spell, or any mod's; a speed boost too) slows your MORDHAU
+  character as much, and the pace set for your Skyrim body keeps it - it was cancelled out before. (`player_slow`)
 - Enemies lying limp (paralysed, knocked down): the body seen in Skyrim can be struck - MORDHAU's blade reaching it is a
   clean hit, as well as MORDHAU's own verdict on its falling stand-in (once a swing) - and it no longer flies off when
   hit. (`limp_hits_skyrim`, `limp_speed_limit`)

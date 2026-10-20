@@ -656,6 +656,7 @@ local function read_input()
             if not first then input.staminaGain = tonumber(gp) end   -- (what was in the file when the script started is old)
         end
         input.playerDrained = tonumber(rest:match(" pd:([%d%.]+)"))   -- (Skyrim's drains of the player's stamina so far, percent of full)
+        input.playerSlow = tonumber(rest:match(" ps:([%d%.]+)"))   -- (Skyrim's slows on the player: its speed against normal)
         local level = tonumber(rest:match(" ai:(%d)"))
         if level and PS_ai_levels[level] and level ~= PS_ai_level then
             PS_ai_level = level
@@ -784,6 +785,9 @@ local function apply_input(pawn, pc)
         PS_me.drainTotal = total
     end
     if PS_me.regenHeld or PS_me.drainUntil then PS_hold_regen(PS_me, PS_me.drainUntil ~= nil and os.clock() < PS_me.drainUntil) end
+    -- Skyrim's slows on the player (sheets/builds.json player_slow): its MORDHAU character moves as slowly, so the pace
+    -- MORDHAU sets for the Skyrim body is the slowed one
+    if (input.playerSlow or 1) ~= 1 or PS_me.slowed then PS_apply_slow(PS_me, input.playerSlow or 1, 1) end
     -- what Skyrim drained from a fought character (a frost spell, a poison, any mod's effect) its stand-in loses too: the
     -- plugin sends running totals, so only the part not yet taken is (PS_drainSeen: by the plugin's id, kept across
     -- rebuilds of the stand-in list; a total lower than seen is a new count from the plugin). Stamina takes whole
@@ -1283,7 +1287,7 @@ function PS_apply_slow(b, move, time)
     pcall(function() b.obj.CustomTimeDilation = time end)
     if os.clock() - (b.slowLogged or -10) > 2.0 or not b.slowed then
         b.slowLogged = os.clock()
-        log(string.format("slow: stand-in %s moves at %.0f%% (%s), its pace %.0f%%", tostring(b.ghost), move * 100, how, time * 100))
+        log(string.format("slow: %s moves at %.0f%% (%s), its pace %.0f%%", PS_who(b), move * 100, how, time * 100))
     end
 end
 -- (dev, once a session with cache/probe.txt: what MORDHAU's character class and its stamina component offer that bears on stamina, stun,

@@ -114,6 +114,21 @@ namespace dm::Combat
 			const float dt = std::clamp(Seconds(g_move.last), 0.0f, 0.1f);
 			g_move.last = Clock::now();
 			auto* values = player->AsActorValueOwner();
+			// Skyrim's slows on the player (a frost spell's, or any mod's): what its effects add to SpeedMult beyond the
+			// base this function sets - points against a normal 100. The pace set below keeps them, and MORDHAU's character
+			// is slowed as much (sheets/builds.json player_slow). Before, the base was set to MORDHAU's pace and the
+			// measuring below took the slow for a wrong gain: the slow was lost.
+			const float slowPoints = values->GetActorValue(RE::ActorValue::kSpeedMult) - values->GetBaseActorValue(RE::ActorValue::kSpeedMult);
+			const float slow = BuildValue("player_slow") > 0.5f ? std::clamp((100.0f + slowPoints) / 100.0f, BuildValue("standin_slow_least"), 1.5f) : 1.0f;
+			const float kept = BuildValue("player_slow") > 0.5f ? slowPoints : 0.0f;  // (off: the base is set as before)
+			Link::SetPlayerSlow(slow);
+			{
+				static float told = 1.0f;
+				if (std::abs(slow - told) > 0.05f || (slow == 1.0f && told != 1.0f)) {
+					told = slow;
+					logger::info("movement: Skyrim's effects put the player's speed at {:.0f}% (SpeedMult {:+.0f}): MORDHAU's character too", slow * 100.0f, slowPoints);
+				}
+			}
 
 			// MORDHAU's stamina cost for a jump, on take-off
 			const bool airborne = player->IsInMidair();
@@ -143,6 +158,7 @@ namespace dm::Combat
 				const float buildup = std::clamp(g_move.sprintHeld / std::max(g_stats.Move("sprint_buildup"), 0.01f), 0.0f, 1.0f);
 				desired = base * (1.0f + (std::max(g_stats.Move("sprint_factor"), 1.0f) - 1.0f) * buildup);
 			}
+			desired *= slow;  // (side-by-side MORDHAU's slowed character gives the pace below instead)
 			// side-by-side: MORDHAU's own character sets the pace (its weapon's weight, sprint build-up, slowing in an attack)
 			if (const auto link = Link::Current(); link.live && wants) {
 				float back = std::abs(intent) > g_stats.Move("backpedal_angle") ? g_stats.Move("backpedal_factor") : 1.0f;
@@ -160,7 +176,9 @@ namespace dm::Combat
 			// (only what can be a normal run or sprint counts: Skyrim moves the player at the speeds this mod gave it from MORDHAU,
 			// so at SpeedMult 100 it delivers about what MORDHAU allows - half or less was walk mode, a slope, a crowd or a
 			// load; taken as the gain, it made the player 2.2 times too fast for the whole session: "i am going super fast")
-			const float sample = a_measuredSpeed / std::max(g_move.mult / 100.0f, 0.2f);
+			// (by the SpeedMult Skyrim really moves at: the base set here and its effects' points)
+			const float effective = g_move.mult + slowPoints;
+			const float sample = a_measuredSpeed / std::max(effective / 100.0f, 0.2f);
 			const bool  plausible = sample > 0.6f * desired && sample < 1.6f * desired;
 			if (!g_move.calibrated[state] && g_move.steady > 0.5f && a_measuredSpeed > 60.0f && plausible) {
 				g_move.gainSum[state] += sample;
@@ -175,7 +193,7 @@ namespace dm::Combat
 			// for two seconds, not held at a limit, measures this state again
 			{
 				static float off[2]{};
-				const bool   atLimit = g_move.mult <= 20.5f || g_move.mult >= 249.5f;
+				const bool   atLimit = effective <= 20.5f || effective >= 249.5f;
 				const bool   wrong = g_move.calibrated[state] && g_move.steady > 0.5f && !atLimit && !heavy && !player->AsActorState()->IsSwimming() && a_measuredSpeed > 30.0f &&
 				                   (a_measuredSpeed > 1.35f * desired || a_measuredSpeed < 0.65f * desired);
 				off[state] = wrong ? off[state] + dt : 0.0f;
@@ -194,7 +212,9 @@ namespace dm::Combat
 			// speeds, which made swimming crawl)
 			const bool  swimming = player->AsActorState()->IsSwimming();
 			// (nor during any other Skyrim scene - bound, at the start of the game, the player crept along)
-			const float wanted = (!wants || swimming || heavy || g_skyrimOwns.load()) ? 100.0f : std::clamp(100.0f * desired / std::max(g_move.gain[state], 1.0f), 20.0f, 250.0f);
+			// (the base, so that with its effects' points Skyrim moves at MORDHAU's pace)
+			const float wanted = (!wants || swimming || heavy || g_skyrimOwns.load()) ? 100.0f :
+			                                                                           std::max(std::clamp(100.0f * desired / std::max(g_move.gain[state], 1.0f), 20.0f, 250.0f) - kept, 1.0f);
 			if (!measuring && std::abs(wanted - g_move.mult) > 0.5f) {
 				g_move.mult = wanted;
 				values->SetActorValue(RE::ActorValue::kSpeedMult, wanted);

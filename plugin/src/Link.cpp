@@ -481,6 +481,12 @@ namespace dm::Link
 	int   g_staminaGains = 0;
 	float g_staminaGain = 0.0f;
 	float g_staminaDrained = 0.0f;  // (a running total, percent of full: the script takes what it has not yet)
+	float g_playerSlow = 1.0f;
+	void  SetPlayerSlow(float a_move)
+	{
+		std::scoped_lock lock(g_lock);
+		g_playerSlow = a_move;
+	}
 	void  DrainStamina(float a_percent)
 	{
 		std::scoped_lock lock(g_lock);
@@ -576,6 +582,9 @@ namespace dm::Link
 			}
 			if (g_staminaDrained > 0.0f) {
 				line += std::format(" pd:{:.2f}", g_staminaDrained);
+			}
+			if (std::abs(g_playerSlow - 1.0f) > 0.01f) {
+				line += std::format(" ps:{:.2f}", g_playerSlow);
 			}
 			if (g_staminaGains > 0) {
 				line += std::format(" sg:{},{:.1f}", g_staminaGains, g_staminaGain);

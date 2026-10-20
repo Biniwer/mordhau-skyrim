@@ -12,11 +12,10 @@ Open points found in play (as of 2026-10-20). Nothing here is built yet; pick be
 5. Level gap: how much a large level difference counts (`level_max`, `level_soften`).
 6. Critical hits from Skyrim's perks do nothing.
 7. Skyrim staggers (shield bash, Unrelenting Force) could knock the stand-in back (MORDHAU's `Knockback()`).
-8. Slows on the player (an enemy's frost spell) probably do not slow the player's MORDHAU character.
-9. The camera sits 10-14 cm higher than MORDHAU's.
-10. Fear is cancelled while an enemy fights by MORDHAU's rules.
-11. Power attacks do not exist.
-12. Skyrim's maximum stamina and stamina regeneration do not affect MORDHAU: its stamina is always 0-100, Skyrim's bar
+8. The camera sits 10-14 cm higher than MORDHAU's.
+9. Fear is cancelled while an enemy fights by MORDHAU's rules.
+10. Power attacks do not exist.
+11. Skyrim's maximum stamina and stamina regeneration do not affect MORDHAU: its stamina is always 0-100, Skyrim's bar
     only shows it as a share. Could scale MORDHAU's `StaminaCostModifier` / `StaminaRegenPerTick`.
 
 Not to do: stun instead of disarm (`bAlwaysStunInsteadOfDisarm`); the spell hand's look in first person; a wider

@@ -160,6 +160,14 @@
    "verified": false
   },
   {
+   "id": "player_slow",
+   "value": 1.0,
+   "unit": "1 = on",
+   "meaning": "Skyrim's slows reach the player: what Skyrim's effects add to the player's SpeedMult (a frost spell's slow, or any mod's; points against a normal 100) slows MORDHAU's character as much (its MaxWalkSpeed), and the pace this mod sets for the Skyrim body keeps them. Before, the base SpeedMult was set to MORDHAU's pace and the speed measuring took the slow for a wrong gain: the slow was lost. Least as standin_slow_least; at most 1.5 (a speed boost)",
+   "source": "the user, 2026-10-20 ('Slows on the player')",
+   "verified": false
+  },
+  {
    "id": "standin_slow_least",
    "value": 0.2,
    "meaning": "standin_slow: the slowest a stand-in is made, as a share of its normal speed or pace (MORDHAU's motions are not made for a standstill)",
