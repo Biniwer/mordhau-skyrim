@@ -265,6 +265,29 @@ namespace dm::Combat
 			return mult;
 		}
 
+		float CritMult(RE::Actor* a_attacker, RE::Actor* a_target, const RE::HitData& a_hit, float* a_critDamage)
+		{
+			// Skyrim's critical hit (rolled by the game when the hit was made: the weapon's critical damage, raised by perks
+			// such as Bladesman or Bone Breaker), as a multiplier on the hit's share of health - sheets/builds.json skyrim_crits.
+			// It was in Skyrim's damage, which only moves the capped offence: the crit did almost nothing (2026-10-20).
+			*a_critDamage = 0.0f;
+			if (BuildValue("skyrim_crits") < 0.5f || !a_hit.flags.any(RE::HitData::Flag::kCritical) || !a_hit.weapon) {
+				return 1.0f;
+			}
+			float crit = static_cast<float>(a_hit.weapon->GetCritDamage());
+			RE::BGSEntryPoint::HandleEntryPoint(RE::BGSEntryPoint::ENTRY_POINT::kCalculateMyCriticalHitDamage, a_attacker, a_hit.weapon, a_target, std::addressof(crit));
+			if (crit <= 0.0f) {
+				return 1.0f;
+			}
+			// (the game adds it to the hit's damage: the rest is the ordinary hit. Should the rest look too small for that, the
+			// crit is taken as on top of the whole)
+			const float total = a_hit.totalDamage;
+			const bool  inside = total - crit > 0.3f * total;
+			const float plain = inside ? total - crit : total;
+			*a_critDamage = inside ? crit : 0.0f;
+			return plain > 0.0f ? (plain + crit) / plain : 1.0f;
+		}
+
 		float HitFraction(RE::Actor* a_attacker, RE::Actor* a_target, float a_mordhauDamage, float a_skyrimDamage)
 		{
 			auto*       player = RE::PlayerCharacter::GetSingleton();
@@ -346,9 +369,15 @@ namespace dm::Combat
 					const float full = std::max(a_target->AsActorValueOwner()->GetPermanentActorValue(RE::ActorValue::kHealth), 1.0f);
 					bool        inDamage = false;
 					const float sneak = a_attacker == RE::PlayerCharacter::GetSingleton() ? SneakMult(a_attacker, a_target, *hit, &inDamage) : 1.0f;
-					hit->totalDamage = full * std::min(HitFraction(a_attacker, a_target, a_mordhauDamage, inDamage ? hit->totalDamage / sneak : hit->totalDamage) * sneak, 1.0f);
+					float       critPart = 0.0f;
+					const float crit = CritMult(a_attacker, a_target, *hit, &critPart);
+					const float plain = hit->totalDamage - critPart;
+					hit->totalDamage = full * std::min(HitFraction(a_attacker, a_target, a_mordhauDamage, inDamage ? plain / sneak : plain) * sneak * crit, 1.0f);
 					if (sneak > 1.0f) {
 						logger::info("progress: sneak attack on {}: x{:.1f} ({})", a_target->GetDisplayFullName(), sneak, inDamage ? "Skyrim's" : "worked out here");
+					}
+					if (crit > 1.0f) {
+						logger::info("progress: critical hit on {}: x{:.2f} (crit damage {:.0f} of Skyrim's {:.0f})", a_target->GetDisplayFullName(), crit, critPart, plain + critPart);
 					}
 					hit->physicalDamage = hit->totalDamage;
 				} else {
@@ -412,7 +441,12 @@ namespace dm::Combat
 			float       damage = 0.0f;
 			if (auto* hit = RE::HitData::Create(a_attacker, a_player, a_attacker->GetEquippedEntryData(false), false)) {
 				// one health pool, Skyrim's progression: MORDHAU judges the hit, sheets/progression.json says what share of full health it takes
-				hit->totalDamage = std::max(values->GetPermanentActorValue(RE::ActorValue::kHealth), 1.0f) * HitFraction(a_attacker, a_player, a_mordhauDamage, 0.0f);
+				float       critPart = 0.0f;
+				const float crit = CritMult(a_attacker, a_player, *hit, &critPart);
+				hit->totalDamage = std::max(values->GetPermanentActorValue(RE::ActorValue::kHealth), 1.0f) * std::min(HitFraction(a_attacker, a_player, a_mordhauDamage, 0.0f) * crit, 1.0f);
+				if (crit > 1.0f) {
+					logger::info("progress: {}'s critical hit on the player: x{:.2f}", a_attacker->GetDisplayFullName(), crit);
+				}
 				if (g_dev.god) {
 					logger::info("god: {} would have hit the player for {:.1f} (MORDHAU damage {:.0f})", a_attacker->GetDisplayFullName(), hit->totalDamage, a_mordhauDamage);
 					hit->totalDamage = 0.0f;

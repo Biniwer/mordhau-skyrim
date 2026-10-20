@@ -339,6 +339,7 @@ namespace dm::Combat
 		bool SuperKick(RE::Actor* a_player, RE::Actor* a_target);
 
 		float SneakMult(RE::Actor* a_attacker, RE::Actor* a_target, RE::HitData& a_hit, bool* a_inDamage);
+		float CritMult(RE::Actor* a_attacker, RE::Actor* a_target, const RE::HitData& a_hit, float* a_critDamage);
 		float HitFraction(RE::Actor* a_attacker, RE::Actor* a_target, float a_mordhauDamage, float a_skyrimDamage);
 
 		void ApplyHit(RE::Actor* a_attacker, RE::Actor* a_target, const ActiveSwing& a_swing, float a_scale = 1.0f, float a_mordhauDamage = -1.0f);

@@ -36,6 +36,8 @@ Store, a few gameplay additions, and a CI build. Everything else - and how to pl
 
 - Sneak attacks: Skyrim's sneak multiplier (Backstab, Assassin's Blade, Deadly Aim, any perk's) multiplies the hit's
   share of health; it was capped with the rest of Skyrim's damage before.
+- Critical hits: Skyrim's crit (rolled by the game; the weapon's critical damage, raised by Bladesman, Bone Breaker, Deep
+  Wounds) multiplies the hit's share of health the same way - yours and the enemies'. (`skyrim_crits`)
 - Stamina drains: whatever Skyrim takes off a fought enemy's stamina - a frost spell, a stamina poison, any mod's
   effect - its MORDHAU stand-in loses too, and its MORDHAU stamina does not regenerate while it is drained. A drained
   enemy's parries break and cost it its weapon, by MORDHAU's rules. (`standin_stamina` in sheets/builds.json)

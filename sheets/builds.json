@@ -160,6 +160,14 @@
    "verified": false
   },
   {
+   "id": "skyrim_crits",
+   "value": 1.0,
+   "unit": "1 = on",
+   "meaning": "Skyrim's critical hits count in MORDHAU-judged hits: when the game rolled a critical (its chance from the weapon and perks), the weapon's critical damage raised by the attacker's perks (Bladesman, Bone Breaker, Deep Wounds) multiplies the hit's share of health as it would Skyrim's damage, like the sneak multiplier. Before, it was only in Skyrim's damage, which moves the capped offence: a crit did almost nothing",
+   "source": "the user, 2026-10-20 ('since backstabs work doesnt that mean crits also work?')",
+   "verified": false
+  },
+  {
    "id": "player_slow",
    "value": 1.0,
    "unit": "1 = on",
