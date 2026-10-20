@@ -531,10 +531,26 @@ namespace dm::Combat
 			static std::unordered_map<std::uint32_t, Clock::time_point> castAt;
 			static std::unordered_map<std::uint32_t, int>               castState;
 			for (const auto source : { RE::MagicSystem::CastingSource::kLeftHand, RE::MagicSystem::CastingSource::kRightHand }) {
-				const auto* caster = actor->GetMagicCaster(source);
+				auto* caster = actor->GetMagicCaster(source);
 				using State = RE::MagicCaster::State;
 				const State state = caster ? caster->state.get() : State::kNone;
-				if (state == State::kUnk01 || state == State::kUnk02 || state == State::kUnk04 || state == State::kCharging || state == State::kCasting || state == State::kUnk07) {
+				// (a cast that stays in one of its starting states is stuck: seen 2026-10-20, a Vigilant's Oakflesh in state 1
+				// for the rest of the fight - its attack, which this plugin breaks off, began just after the cast did. Its
+				// body stayed Skyrim's, its stand-in passive and Skyrim's AI waited: it did nothing. Interrupted, the AI goes on.)
+				static std::unordered_map<std::uint64_t, std::pair<int, Clock::time_point>> since;
+				const std::uint64_t key = (static_cast<std::uint64_t>(m.id) << 1) | (source == RE::MagicSystem::CastingSource::kLeftHand ? 1 : 0);
+				auto&               held = since[key];
+				if (held.first != static_cast<int>(state)) {
+					held = { static_cast<int>(state), Clock::now() };
+				}
+				const bool starting = state == State::kUnk01 || state == State::kUnk02 || state == State::kUnk04;
+				if (starting && caster && Seconds(held.second) > BuildValue("spellsword_cast_stuck")) {
+					logger::info("fought: {}'s cast hung in state {} for {:.1f} s: interrupted", actor->GetDisplayFullName(), static_cast<int>(state), Seconds(held.second));
+					caster->InterruptCast(false);
+					held = { -1, Clock::now() };
+					continue;
+				}
+				if (starting || state == State::kCharging || state == State::kCasting || state == State::kUnk07) {
 					castAt[m.id] = Clock::now();
 					castState[m.id] = static_cast<int>(state);
 				}
@@ -870,6 +886,16 @@ namespace dm::Combat
 				std::string name = inHandWeapon->GetName() ? inHandWeapon->GetName() : "";
 				std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 				g.weapon = inHandWeapon->IsCrossbow() ? "Ranged/BP_Crossbow" : name.find("long") != std::string::npos ? "Ranged/BP_Longbow" : "Ranged/BP_RecurveBow";
+			}
+			{
+				// (what the stand-in is given, each change: an archer switching between its bow and its sword shot the
+				// player while its stand-in held the sword, 2026-10-20)
+				static std::unordered_map<std::uint32_t, std::string> given;
+				if (auto& was = given[m.id]; was != g.weapon) {
+					logger::info("stand-ins: {} is given {} ({} in its hand in Skyrim{})", actor->GetDisplayFullName(), *g.weapon ? g.weapon : "nothing",
+						inHand && inHand->GetName() ? inHand->GetName() : "nothing", shoots ? ", a bow" : "");
+					was = g.weapon;
+				}
 			}
 			if (auto foe = actor->GetActorRuntimeData().currentCombatTarget.get(); foe && foe.get() != a_player && !foe->IsDead()) {
 				g.target = foe->GetFormID();  // (it fights someone else: its stand-in aims there, not at the player)

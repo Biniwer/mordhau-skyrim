@@ -48,7 +48,10 @@ Store, a few gameplay additions, and a CI build. Everything else - and how to pl
   hit. (`limp_hits_skyrim`, `limp_speed_limit`)
 - Enemies with a blade and a spell (a Vigilant of Stendarr): the blade fights by MORDHAU's rules (as upstream's since
   0.1.21), the spells stay Skyrim's - while one casts, its whole body is Skyrim's, so it really casts. Pure mages and
-  staff users stay Skyrim's. (`spellsword_standin`; 0 = Skyrim's altogether)
+  staff users stay Skyrim's. A cast that hangs in its start (its attack broken off just after) is interrupted, so it
+  does not stand there doing nothing. (`spellsword_standin`, `spellsword_cast_stuck`; 0 = Skyrim's altogether)
+- Archers switching between bow and sword: the stand-in only ever carries the weapon its Skyrim character holds (a bow
+  left in a holster slot made MORDHAU's brain switch back and forth, and shoot with it).
 - A parried or blocked Skyrim arrow no longer plays the player's being hit; it sounds your MORDHAU weapon's (or
   shield's) block, with Skyrim's block and bounce.
 - MORDHAU's music, its arena's ambience and its footsteps are silent in the mod's session; its fighting and voices are

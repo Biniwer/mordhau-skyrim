@@ -318,6 +318,7 @@ namespace dm::sheets
 		{ "undead_fight", 1.0f },
 		{ "stamina_restore_step", 15.0f },
 		{ "spellsword_standin", 1.0f },
+		{ "spellsword_cast_stuck", 1.5f },
 		{ "spellsword_cast_linger", 0.6f },
 		{ "standin_stamina", 1.0f },
 		{ "player_stamina_drain", 1.0f },

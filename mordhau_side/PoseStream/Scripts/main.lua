@@ -1550,6 +1550,17 @@ local function arm(b)
                     end
                 end)
             end
+            -- (...and in its slots: a stand-in given a sword while it was switching away from its bow kept the bow in a
+            -- slot, and MORDHAU's brain went on switching between the two - and shot the player with it while Skyrim's
+            -- character held its sword, 2026-10-20. Arming a bow, its melee weapons go likewise: it took its sword out
+            -- again right after the bow came.)
+            if want:lower():find("bow", 1, true) then b.armClear = true end
+            pcall(function()
+                local e = c.Equipment
+                for i = 1, #e do
+                    if there(e[i]) and class_name(e[i]):lower():find("bow", 1, true) then b.armClear = true end
+                end
+            end)
         end
         -- (its three slots emptied - all but a shield - when a hand-over failed once, or after a bow: the weapon made for
         -- it had no free slot to go into, and the stand-in was left with its fists, 2026-10-16.

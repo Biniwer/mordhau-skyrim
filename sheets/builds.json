@@ -115,6 +115,13 @@
    "verified": false
   },
   {
+   "id": "spellsword_cast_stuck",
+   "value": 1.5,
+   "meaning": "spellsword_standin: seconds a cast may stay in one of its starting states (1, 2, 4) before it counts as hung and is interrupted - a Vigilant's Oakflesh stayed in state 1 for good after its attack was broken off, its body stayed Skyrim's and it did nothing",
+   "source": "play-test note, 2026-10-20 ('the vigilant tried to cast, changed their mind and just did nothing'); 1.5 a first guess",
+   "verified": false
+  },
+  {
    "id": "spellsword_cast_linger",
    "value": 0.6,
    "meaning": "spellsword_standin: seconds its body stays Skyrim's after a cast ends (Skyrim's animation lowers the hand), then its stand-in has it again",
