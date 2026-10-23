@@ -42,6 +42,8 @@ Store, a few gameplay additions, and a CI build. Everything else - and how to pl
   less often than in Skyrim), kept between 3% and 100% of full health; Skyrim's difficulty applies on top as usual.
   `fDamageModel = 0` in Data/MCM/Settings/MordhauWeapons.ini brings back the earlier model, `fStabByWeapon = 0` counts
   stabs as strikes.
+- Arrows and bolts (Skyrim's own, anybody's): Skyrim's damage by the zone they struck (head x1.5, body,
+  legs x0.8: where on the body, against its head and pelvis), not raised as melee is - an arrow is no harder to land. (`skyrim_arrow_factor`)
 - Sneak attacks: Skyrim's sneak multiplier (Backstab, Assassin's Blade, Deadly Aim, any perk's) multiplies the hit's
   share of health; it was capped with the rest of Skyrim's damage before.
 - Critical hits: Skyrim's crit (rolled by the game; the weapon's critical damage, raised by Bladesman, Bone Breaker, Deep

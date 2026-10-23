@@ -134,6 +134,12 @@
    "verified": false
   },
   {
+   "id": "skyrim_arrow_factor",
+   "value": 1.0,
+   "meaning": "damage_model 1: Skyrim's own arrows and bolts (anybody's, the player's too) - their Skyrim damage times this, by the zone they struck. 1: only melee is raised (skyrim_damage_dealt/_taken), for a melee hit is harder to land here; an arrow is not",
+   "verified": false
+  },
+  {
    "id": "zone_head",
    "value": 1.5,
    "meaning": "damage_model 1: a hit on the head (MORDHAU's zones: the bone its hit record names)",

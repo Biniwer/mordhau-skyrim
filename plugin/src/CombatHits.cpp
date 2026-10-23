@@ -386,6 +386,48 @@ namespace dm::Combat
 			return fraction;
 		}
 
+		// Skyrim's own arrows and bolts (Skyrim flies and lands them; this mod judged them not at all, they took Skyrim's
+		// damage unchanged): damage_model 1 as for a MORDHAU-judged hit - Skyrim's damage x the zone it struck (by where on
+		// the body, against the head and pelvis bones) x skyrim_arrow_factor, kept between fraction_min and fraction_max.
+		void ScaleArrowHit(RE::Actor* a_victim, RE::HitData& a_hit)
+		{
+			const auto* weapon = a_hit.weapon;
+			if (!a_victim || Progress("damage_model") < 0.5f || a_hit.totalDamage <= 0.0f || !weapon || !(weapon->IsBow() || weapon->IsCrossbow())) {
+				return;
+			}
+			auto source = a_hit.sourceRef.get();
+			if (!source || !source->As<RE::Projectile>()) {
+				return;
+			}
+			const auto* head = a_victim->GetNodeByName("NPC Head [Head]");
+			const auto* pelvis = a_victim->GetNodeByName("NPC Pelvis [Pelv]");
+			const float z = a_hit.hitPosition.z;
+			const char* zone = "body";
+			if (head && z >= head->world.translate.z - 8.0f) {
+				zone = "head";
+			} else if (pelvis && z < pelvis->world.translate.z - 4.0f) {
+				zone = "legs";
+			}
+			const float quality = Progress(zone[0] == 'h' ? "zone_head" : zone[0] == 'l' ? "zone_legs" : "zone_body");
+			auto*       player = RE::PlayerCharacter::GetSingleton();
+			const float full = std::max(a_victim->AsActorValueOwner()->GetPermanentActorValue(RE::ActorValue::kHealth), 1.0f);
+			float       fraction = std::clamp(a_hit.totalDamage * quality * std::max(Progress("skyrim_arrow_factor"), 0.0f) / full, Progress("fraction_min"), Progress("fraction_max"));
+			auto        attacker = a_hit.aggressor.get();
+			if (attacker && attacker.get() == player) {
+				fraction *= std::max(Settings::Value("damage_dealt", 1.0f), 0.0f);
+			}
+			if (a_victim == player) {
+				fraction *= std::max(Settings::Value("damage_taken", 1.0f), 0.0f);
+			}
+			const float before = a_hit.totalDamage;
+			const float scale = std::min(fraction, 1.0f) * full / before;
+			a_hit.totalDamage *= scale;
+			a_hit.physicalDamage *= scale;
+			logger::info("damage: {}'s {} on {} ({}, {:.0f} above its feet; full health {:.0f}): Skyrim's {:.1f} x quality {:.2f} x {:.1f} -> {:.0f}% of full health = {:.0f}",
+				attacker ? attacker->GetDisplayFullName() : "?", weapon->IsBow() ? "arrow" : "bolt", a_victim->GetDisplayFullName(), zone, z - a_victim->GetPositionZ(), full, before, quality,
+				Progress("skyrim_arrow_factor"), fraction * 100.0f, a_hit.totalDamage);
+		}
+
 		// a_mordhauDamage >= 0: a MORDHAU-judged hit (its damage of 100); what it takes follows Skyrim's progression
 		void ApplyHit(RE::Actor* a_attacker, RE::Actor* a_target, const ActiveSwing& a_swing, float a_scale, float a_mordhauDamage)
 		{

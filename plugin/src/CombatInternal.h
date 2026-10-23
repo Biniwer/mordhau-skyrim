@@ -341,6 +341,7 @@ namespace dm::Combat
 		float SneakMult(RE::Actor* a_attacker, RE::Actor* a_target, RE::HitData& a_hit, bool* a_inDamage);
 		float CritMult(RE::Actor* a_attacker, RE::Actor* a_target, const RE::HitData& a_hit, float* a_critDamage);
 		float HitFraction(RE::Actor* a_attacker, RE::Actor* a_target, float a_mordhauDamage, float a_skyrimDamage);
+		void  ScaleArrowHit(RE::Actor* a_victim, RE::HitData& a_hit);  // damage_model 1 for Skyrim's own arrows and bolts
 
 		void ApplyHit(RE::Actor* a_attacker, RE::Actor* a_target, const ActiveSwing& a_swing, float a_scale = 1.0f, float a_mordhauDamage = -1.0f);
 
@@ -496,6 +497,7 @@ namespace dm::Combat
 						return;
 					}
 				}
+				ScaleArrowHit(a_victim, a_hit);
 				func(a_victim, a_hit);
 			}
 			static inline REL::Relocation<void(RE::Actor*, RE::HitData&)> func;

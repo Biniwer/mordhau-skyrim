@@ -301,6 +301,7 @@ namespace dm::sheets
 		{ "damage_model", 1.0f },
 		{ "skyrim_damage_dealt", 2.5f },
 		{ "skyrim_damage_taken", 2.5f },
+		{ "skyrim_arrow_factor", 1.0f },
 		{ "zone_head", 1.5f },
 		{ "zone_body", 1.0f },
 		{ "zone_legs", 0.8f },

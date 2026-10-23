@@ -4,9 +4,8 @@ Open points found in play (as of 2026-10-23). Nothing here is built yet; pick be
 
 ## Mismatches between Skyrim and MORDHAU
 
-1. Arrow damage: Skyrim's arrows do Skyrim's damage, not MORDHAU's; the player's arrows still go by the earlier damage
-   model (`HitFraction`), not `damage_model` 1 (the old `enemy_arrows_mordhau` was removed upstream
-   in 0.1.21 with the mod-flown arrows; would need doing anew).
+1. Thrown MORDHAU weapons (axes, spears) still go by the earlier damage model (`HitFraction` in CombatArchery.cpp), not
+   `damage_model` 1.
 2. Skyrim staggers (shield bash, Unrelenting Force) could knock the stand-in back (MORDHAU's `Knockback()`).
 3. The camera sits 10-14 cm higher than MORDHAU's.
 4. Fear is cancelled while an enemy fights by MORDHAU's rules.
