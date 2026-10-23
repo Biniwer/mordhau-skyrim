@@ -298,6 +298,13 @@ namespace dm::sheets
 		{ "fraction_min", 0.03f },
 		{ "fraction_max", 1.0f },
 		{ "lethal_blow", 100.0f },
+		{ "damage_model", 1.0f },
+		{ "skyrim_damage_dealt", 2.5f },
+		{ "skyrim_damage_taken", 2.5f },
+		{ "zone_head", 1.5f },
+		{ "zone_body", 1.0f },
+		{ "zone_legs", 0.8f },
+		{ "stab_by_weapon", 1.0f },
 	};
 
 	// What MORDHAU's character sets down or throws, once in Skyrim's world (sheets/builds.json).

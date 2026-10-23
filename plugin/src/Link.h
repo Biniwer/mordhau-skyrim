@@ -93,6 +93,7 @@ namespace dm::Link
 	void SetPlayerPlace(float a_xCm, float a_yCm, float a_facingDegrees);  // where the player is in Skyrim's world (for free stand-ins)  // sheets/builds.json hybrid_*
 	void SetShield(const char* a_mordhauShield);  // the MORDHAU shield for the one on the player's arm ("" = none)     // the player carries a shield in Skyrim
 	void AddStamina(float a_percent);  // Skyrim restored stamina (a potion): MORDHAU's character gains it too
+	void SetDamageModel(bool a_on, float a_head, float a_body, float a_legs, bool a_stabByWeapon);  // sheets/progression.json damage_model: MORDHAU's side sends hit quality
 	void SetPlayerSlow(float a_move);    // Skyrim's slows on the player, as a share of its normal speed: MORDHAU's character moves as slowly
 	void DrainStamina(float a_percent);  // Skyrim took stamina (a frost spell, a poison, any mod's effect): MORDHAU's character loses it too
 	// Distances (cm) to something solid in Skyrim 45 degrees left, ahead and 45 degrees right of the player; 0 = nothing near.

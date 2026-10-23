@@ -1176,6 +1176,9 @@ namespace dm::Combat
 				Link::SetDown(a_player->IsInRagdollState(), down);
 			}
 
+			// the damage model on Skyrim's own damage: MORDHAU's side then sends how good each hit was (sheets/progression.json damage_model)
+			Link::SetDamageModel(Progress("damage_model") > 0.5f, Progress("zone_head"), Progress("zone_body"), Progress("zone_legs"), Progress("stab_by_weapon") > 0.5f);
+
 			// what MORDHAU decided about attacks on the player
 			if (!g_playerHitsKnown) {
 				g_playerHitsKnown = true;

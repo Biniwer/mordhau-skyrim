@@ -657,6 +657,12 @@ local function read_input()
         end
         input.playerDrained = tonumber(rest:match(" pd:([%d%.]+)"))   -- (Skyrim's drains of the player's stamina so far, percent of full)
         input.playerSlow = tonumber(rest:match(" ps:([%d%.]+)"))   -- (Skyrim's slows on the player: its speed against normal)
+        do   -- (the damage model on Skyrim's damage: zone qualities head, body, legs, and whether stabs go by the weapon)
+            local h, bo, l, s = rest:match(" dm:([%d%.]+),([%d%.]+),([%d%.]+),(%d)")
+            input.damageModel = h ~= nil
+            input.zones = h and { head = tonumber(h), body = tonumber(bo), legs = tonumber(l) } or nil
+            input.stabByWeapon = tonumber(s)
+        end
         local level = tonumber(rest:match(" ai:(%d)"))
         if level and PS_ai_levels[level] and level ~= PS_ai_level then
             PS_ai_level = level
@@ -1266,6 +1272,60 @@ end
 -- Skyrim's slows on a stand-in (sheets/builds.json standin_slow): its movement through MovementSpeedScale (else its
 -- CharacterMovement's MaxWalkSpeed, the original kept), its whole pace through CustomTimeDilation; normal again when
 -- Skyrim's slow is over. Which way its movement is slowed is looked up once and logged.
+-- (measurement, 2026-10-20: the MORDHAU armour a character wears - MORDHAU's damage depends on it - by bone, tiers 0-3,
+-- and its DamageArmorTierOverride; once per character)
+PS_armourLogged = PS_armourLogged or {}
+function PS_log_armour(who, c)
+    local key = ""
+    pcall(function() key = c:GetFullName() end)
+    if PS_armourLogged[key] then return end
+    PS_armourLogged[key] = true
+    local parts = {}
+    for _, bone in ipairs({ "Head", "Neck", "Spine1", "Hips", "LeftArm", "LeftUpLeg", "LeftLeg" }) do
+        local ok, tier = pcall(function() return c:GetArmorTierForBone(FName(bone)) end)
+        parts[#parts + 1] = bone .. " " .. (ok and tostring(tier) or "?")
+    end
+    local ok, over = pcall(function() return c.DamageArmorTierOverride end)
+    log(string.format("armour: %s wears %s; DamageArmorTierOverride %s", who, table.concat(parts, ", "), ok and tostring(over) or "?"))
+end
+-- The damage model on Skyrim's own damage (sheets/progression.json damage_model 1, asked for by the plugin's " dm:" token):
+-- MORDHAU only says how good a hit was - where it landed (head, body, legs: MORDHAU's own three zones, from the bone
+-- its hit record names) and, with stab_by_weapon, a stab or a kick by the weapon's own damage for it against its strike.
+-- Its weapon type and its armour do not count (the stand-ins' MORDHAU armour is not their Skyrim armour). Sent on as
+-- a MORDHAU damage of 40 x quality, so the plugin reads it as before (40 = an ordinary hit).
+local function PS_attack_damage(w, field, tier)
+    local v
+    pcall(function()
+        local list = w[field].Damage
+        v = list[math.min(tier + 1, #list)]
+    end)
+    return type(v) == "number" and v or nil
+end
+function PS_hit_quality(victim, weapon, motion, geomHead, lost)
+    local zones = input.zones or {}
+    local bone, zone, how = "?", nil, "bone"
+    pcall(function()
+        local nd = victim.NetDamage
+        bone = victim.Mesh:GetBoneName(nd.Bone):ToString()
+    end)
+    local low = bone:lower()
+    if low:find("head") or low:find("neck") or low:find("jaw") then zone = "head"
+    elseif low:find("leg") or low:find("thigh") or low:find("calf") or low:find("foot") or low:find("knee") or low:find("toe") then zone = "legs"
+    elseif low ~= "?" and low ~= "none" and low ~= "" then zone = "body" end
+    if not zone then
+        zone, how = geomHead and "head" or "body", "blade line"
+    end
+    local kind = (motion or ""):find("Stab") and "StabAttack" or ((motion or ""):find("Kick") and "KickAttack" or "StrikeAttack")
+    local attack = 1
+    local strike, this = PS_attack_damage(weapon, "StrikeAttack", 0), PS_attack_damage(weapon, kind, 0)
+    if (input.stabByWeapon or 1) == 1 and kind ~= "StrikeAttack" and strike and this and strike > 0 then
+        attack = math.max(0.2, math.min(2.0, this / strike))
+    end
+    local q = (zones[zone] or 1) * attack
+    log(string.format("quality: %s hit on %s (bone %s, by its %s), %s x%.2f (%s %s against strike %s) -> %.2f; MORDHAU's own damage was %.0f",
+        kind:gsub("Attack", ""):lower(), zone, bone, how, zone, zones[zone] or 1, kind, tostring(this), tostring(strike), q, lost))
+    return 40 * q
+end
 function PS_apply_slow(b, move, time)
     if b.slowMove == move and b.slowTime == time then return end
     b.slowMove, b.slowTime = move, time
@@ -1504,10 +1564,17 @@ local function arm(b)
     if inHand == want or (want == "BP_FistsWeapon_C" and inHand == "" and (b.armStep or 0) >= 1) then
         b.armed = true; b.armedFor = path
         log(string.format("stand-in %s holds %s (armed in %.1f s)", tostring(b.look), want, os.clock() - (b.armBegan or os.clock())))
+        PS_log_armour("stand-in " .. tostring(b.look), c)
         return
     end
     -- (the time a step needs before the next may look at its result: a drop little, a pick-up or a slot change more)
     if os.clock() - (b.armTry or -10) < (b.armGap or 0.3) or os.clock() - (b.since or 0) < 0.25 then return end
+    -- (not while it reels from a hit: a flinch breaks off a slot change, and the player hitting it every second or so
+    -- used up all its tries - a Whiterun guard fought on without its sword for 9 s, its Skyrim body flinching, dropping
+    -- things and yielding, 2026-10-23)
+    local doing = ""
+    pcall(function() doing = class_name(c:GetMotion()) end)
+    if doing:find("Flinch") or doing:find("Stagger") or doing:find("Stun") then return end
     b.armTry = os.clock()
     b.armStep = (b.armStep or 0) + 1
     b.armGap = 0.3
@@ -1618,6 +1685,14 @@ local function arm(b)
         end
     elseif b.armStep <= 8 then
         local slot = ({ 1, 2, 3, 1, 2, 3 })[b.armStep - 2]   -- the picked-up weapon is in one of the three slots
+        -- (first the slot its equipment list shows it in, then each in turn)
+        local listed
+        pcall(function()
+            local e = c.Equipment
+            for i = 1, math.min(#e, 3) do if class_name(e[i]) == want then listed = i end end
+        end)
+        if listed and b.armStep <= 4 then slot = listed end
+        log(string.format("arming stand-in %s: slot %d (%s)", tostring(b.look), slot, listed and ("its list shows it in " .. listed) or "not in its list"))
         c["EquipSlot" .. slot](c)
         b.armGap = 1.0
     elseif not b.armClear then
@@ -1822,7 +1897,10 @@ local function update_ghosts(pawn, pc)
     lastPlayerStage = stage
     -- a stand-in's lost health counts as the player's hit only around the player's own release (stand-ins with their
     -- own brains can also clip each other)
-    if stage == 1 then playerReleaseUntil = os.clock() + 0.3 end
+    if stage == 1 then
+        playerReleaseUntil = os.clock() + 0.3
+        pcall(function() local m = pawn:GetMotion(); if there(m) then PS_playerAttack = class_name(m) end end)
+    end
     local playerStriking = os.clock() <= (playerReleaseUntil or 0)
     local parked = 0
     for i = #bots, 1, -1 do if bots[i].dead then table.remove(bots, i) end end
@@ -2243,6 +2321,7 @@ local function update_ghosts(pawn, pc)
                     end
                     if not b.demon then
                         local mine = class_name(c:GetMotion())
+                        if mine:find("Strike") or mine:find("Stab") or mine:find("Kick") then b.lastAttack = mine end   -- (the damage model: what its hit was)
                         -- (dev, for test fights and recordings: a file cache/autoparry.txt makes the PLAYER parry every
                         -- attack of a stand-in the moment its release begins, by MORDHAU's own parry key)
                         if PS_autoparry == nil then local f = io.open(CACHE .. "autoparry.txt", "r"); PS_autoparry = f ~= nil; if f then f:close() end end
@@ -2518,6 +2597,7 @@ local function update_ghosts(pawn, pc)
                                 end)
                             end)
                             -- (1000 added to the damage = on the head, through the neck or skull; 2000 = a headshot beside that)
+                            if input.damageModel then lost = PS_hit_quality(c, pawn.RightHandEquipment, PS_playerAttack, onHead, lost) end
                             b.hits = b.hits + 1; b.damage = lost + (onHead and 1000 or (anyHead and 2000 or 0))
                         else
                             -- not the player's doing: another stand-in's blade (two Skyrim characters fighting each other).
@@ -2559,11 +2639,27 @@ local function update_ghosts(pawn, pc)
             playerHits = playerHits + 1
             playerDamage = ((playerHealth or 100) - h) / DAMAGE_FACTOR
             playerAttacker = 0
+            local by, motion
             for _, b in ipairs(bots) do
                 if b.ghost and b.obj:IsValid() then
                     local name = class_name(b.obj:GetMotion())
-                    if name:find("Strike") or name:find("Stab") or name:find("AbilityMotion") then playerAttacker = b.ghost end
+                    if name:find("Strike") or name:find("Stab") or name:find("AbilityMotion") then playerAttacker = b.ghost; by = b.obj; motion = name end
                 end
+            end
+            if input.damageModel then
+                if not by then   -- (its attack already over: the nearest stand-in; its last attack's kind is not known then)
+                    local best, me = 1e18, pawn:K2_GetActorLocation()
+                    for _, b in ipairs(bots) do
+                        if b.ghost and not b.dead and b.obj:IsValid() then
+                            local l = b.obj:K2_GetActorLocation()
+                            local d = (l.X - me.X) ^ 2 + (l.Y - me.Y) ^ 2
+                            if d < best then best = d; by = b.obj; motion = b.lastAttack end
+                        end
+                    end
+                end
+                local weapon
+                pcall(function() weapon = by.RightHandEquipment end)
+                playerDamage = PS_hit_quality(pawn, weapon, motion, false, playerDamage)
             end
         end
         if type(h) == "number" then
@@ -2709,6 +2805,7 @@ function PS_player_arm(pawn)
     if have == want then
         PS_armedFor = path; PS_playerArm = nil
         log("the player holds " .. want .. " (for the Skyrim weapon)")
+        PS_log_armour("the player", pawn)
         return
     end
     A.step = A.step + 1

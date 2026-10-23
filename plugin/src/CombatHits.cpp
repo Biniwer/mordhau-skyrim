@@ -265,6 +265,21 @@ namespace dm::Combat
 			return mult;
 		}
 
+		// (measurement for a damage model built on Skyrim's own damage, 2026-10-20: what the game worked out for a hit
+		// before this plugin changes it - is the target's armour, the difficulty, already in it?)
+		void LogSkyrimHit(RE::Actor* a_attacker, RE::Actor* a_target, const RE::HitData& a_hit)
+		{
+			auto*       player = RE::PlayerCharacter::GetSingleton();
+			const auto* weapon = a_hit.weapon;
+			logger::info("measure: Skyrim's own hit, {} on {}: total {:.1f}, physical {:.1f}, resisted physical {:.1f}, typed {:.1f}, blocked {:.0f}%, crit {}, sneak {} (x{:.1f}), "
+						 "power {}; weapon {} (base {}); target armour rating {:.0f}, health {:.0f} of {:.0f}; difficulty {}",
+				a_attacker->GetDisplayFullName(), a_target->GetDisplayFullName(), a_hit.totalDamage, a_hit.physicalDamage, a_hit.resistedPhysicalDamage,
+				a_hit.resistedTypedDamage, a_hit.percentBlocked * 100.0f, a_hit.flags.any(RE::HitData::Flag::kCritical), a_hit.flags.any(RE::HitData::Flag::kSneakAttack),
+				a_hit.sneakAttackBonus, a_hit.flags.any(RE::HitData::Flag::kPowerAttack), weapon && weapon->GetName() ? weapon->GetName() : "none", weapon ? weapon->GetAttackDamage() : 0,
+				a_target->AsActorValueOwner()->GetActorValue(RE::ActorValue::kDamageResist), a_target->AsActorValueOwner()->GetActorValue(RE::ActorValue::kHealth),
+				a_target->AsActorValueOwner()->GetPermanentActorValue(RE::ActorValue::kHealth), player ? player->GetGameStatsData().difficulty : -1);
+		}
+
 		float CritMult(RE::Actor* a_attacker, RE::Actor* a_target, const RE::HitData& a_hit, float* a_critDamage)
 		{
 			// Skyrim's critical hit (rolled by the game when the hit was made: the weapon's critical damage, raised by perks
@@ -347,6 +362,30 @@ namespace dm::Combat
 			return fraction;
 		}
 
+		// sheets/progression.json damage_model 1: Skyrim's own damage for the hit - the weapon, skill and perks, the target's
+		// armour, a crit, a sneak attack, all already in it (measured 2026-10-21/23) - times how good MORDHAU says the hit was
+		// (where it landed; MORDHAU's side sends it as a damage of clean_hit x quality) times skyrim_damage_dealt or
+		// skyrim_damage_taken, for a hit lands less often here than in Skyrim. Skyrim's difficulty applies after, by itself.
+		float SkyrimHitFraction(RE::Actor* a_attacker, RE::Actor* a_target, float a_skyrimDamage, float a_mordhauDamage)
+		{
+			auto*       player = RE::PlayerCharacter::GetSingleton();
+			const bool  onPlayer = a_target == player;
+			const float quality = std::max(a_mordhauDamage, 0.0f) / std::max(Progress("clean_hit"), 1.0f);
+			const float factor = std::max(Progress(onPlayer ? "skyrim_damage_taken" : "skyrim_damage_dealt"), 0.0f);
+			const float fullHealth = std::max(a_target->AsActorValueOwner()->GetPermanentActorValue(RE::ActorValue::kHealth), 1.0f);
+			float       fraction = std::clamp(std::max(a_skyrimDamage, 0.0f) * quality * factor / fullHealth, Progress("fraction_min"), Progress("fraction_max"));
+			// the settings menu's "Damage you deal" / "Damage you take", on top
+			if (a_attacker == player) {
+				fraction *= std::max(Settings::Value("damage_dealt", 1.0f), 0.0f);
+			}
+			if (onPlayer) {
+				fraction *= std::max(Settings::Value("damage_taken", 1.0f), 0.0f);
+			}
+			logger::info("damage: {} on {} (full health {:.0f}): Skyrim's {:.1f} x quality {:.2f} x {:.1f} -> {:.0f}% of full health = {:.0f}, about {:.1f} such hits to kill",
+				a_attacker->GetDisplayFullName(), a_target->GetDisplayFullName(), fullHealth, a_skyrimDamage, quality, factor, fraction * 100.0f, fraction * fullHealth, 1.0f / fraction);
+			return fraction;
+		}
+
 		// a_mordhauDamage >= 0: a MORDHAU-judged hit (its damage of 100); what it takes follows Skyrim's progression
 		void ApplyHit(RE::Actor* a_attacker, RE::Actor* a_target, const ActiveSwing& a_swing, float a_scale, float a_mordhauDamage)
 		{
@@ -365,6 +404,7 @@ namespace dm::Combat
 			bool        blocked = false, processed = false;
 			auto        skill = RE::ActorValue::kNone;
 			if (auto* hit = RE::HitData::Create(a_attacker, a_target, a_attacker->GetEquippedEntryData(false), false)) {
+				LogSkyrimHit(a_attacker, a_target, *hit);
 				if (a_mordhauDamage >= 0.0f) {
 					const float full = std::max(a_target->AsActorValueOwner()->GetPermanentActorValue(RE::ActorValue::kHealth), 1.0f);
 					bool        inDamage = false;
@@ -372,7 +412,12 @@ namespace dm::Combat
 					float       critPart = 0.0f;
 					const float crit = CritMult(a_attacker, a_target, *hit, &critPart);
 					const float plain = hit->totalDamage - critPart;
-					hit->totalDamage = full * std::min(HitFraction(a_attacker, a_target, a_mordhauDamage, inDamage ? plain / sneak : plain) * sneak * crit, 1.0f);
+					if (Progress("damage_model") > 0.5f) {
+						// (the crit is in Skyrim's damage already, and the sneak attack when the game made it one)
+						hit->totalDamage = full * std::min(SkyrimHitFraction(a_attacker, a_target, hit->totalDamage, a_mordhauDamage) * (inDamage ? 1.0f : sneak), 1.0f);
+					} else {
+						hit->totalDamage = full * std::min(HitFraction(a_attacker, a_target, a_mordhauDamage, inDamage ? plain / sneak : plain) * sneak * crit, 1.0f);
+					}
 					if (sneak > 1.0f) {
 						logger::info("progress: sneak attack on {}: x{:.1f} ({})", a_target->GetDisplayFullName(), sneak, inDamage ? "Skyrim's" : "worked out here");
 					}
@@ -441,9 +486,12 @@ namespace dm::Combat
 			float       damage = 0.0f;
 			if (auto* hit = RE::HitData::Create(a_attacker, a_player, a_attacker->GetEquippedEntryData(false), false)) {
 				// one health pool, Skyrim's progression: MORDHAU judges the hit, sheets/progression.json says what share of full health it takes
+				LogSkyrimHit(a_attacker, a_player, *hit);
 				float       critPart = 0.0f;
 				const float crit = CritMult(a_attacker, a_player, *hit, &critPart);
-				hit->totalDamage = std::max(values->GetPermanentActorValue(RE::ActorValue::kHealth), 1.0f) * std::min(HitFraction(a_attacker, a_player, a_mordhauDamage, 0.0f) * crit, 1.0f);
+				const float full = std::max(values->GetPermanentActorValue(RE::ActorValue::kHealth), 1.0f);
+				hit->totalDamage = Progress("damage_model") > 0.5f ? full * std::min(SkyrimHitFraction(a_attacker, a_player, hit->totalDamage, a_mordhauDamage), 1.0f)
+				                                                   : full * std::min(HitFraction(a_attacker, a_player, a_mordhauDamage, 0.0f) * crit, 1.0f);
 				if (crit > 1.0f) {
 					logger::info("progress: {}'s critical hit on the player: x{:.2f}", a_attacker->GetDisplayFullName(), crit);
 				}

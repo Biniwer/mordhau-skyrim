@@ -34,6 +34,14 @@ Store, a few gameplay additions, and a CI build. Everything else - and how to pl
 
 ## Gameplay
 
+- Damage (`damage_model` 1 in sheets/progression.json, the default): a hit takes Skyrim's own damage for it - the weapon,
+  skill and perks, the target's armour, crits and sneak attacks, so better gear and other mods' weapons and perks count,
+  for the player as for everyone - times how good MORDHAU says the hit was: where it landed by MORDHAU's hit record
+  (head x1.5, body and arms x1, legs x0.8) and, for a stab or kick, that weapon's own MORDHAU damage for it against its
+  strike. MORDHAU's weapon type and armour count no further, and no blow kills outright. Times 2.5 both ways (hits land
+  less often than in Skyrim), kept between 3% and 100% of full health; Skyrim's difficulty applies on top as usual.
+  `fDamageModel = 0` in Data/MCM/Settings/MordhauWeapons.ini brings back the earlier model, `fStabByWeapon = 0` counts
+  stabs as strikes.
 - Sneak attacks: Skyrim's sneak multiplier (Backstab, Assassin's Blade, Deadly Aim, any perk's) multiplies the hit's
   share of health; it was capped with the rest of Skyrim's damage before.
 - Critical hits: Skyrim's crit (rolled by the game; the weapon's critical damage, raised by Bladesman, Bone Breaker, Deep
@@ -54,6 +62,8 @@ Store, a few gameplay additions, and a CI build. Everything else - and how to pl
   0.1.21), the spells stay Skyrim's - while one casts, its whole body is Skyrim's, so it really casts. Pure mages and
   staff users stay Skyrim's. A cast that hangs in its start (its attack broken off just after) is interrupted, so it
   does not stand there doing nothing. (`spellsword_standin`, `spellsword_cast_stuck`; 0 = Skyrim's altogether)
+- A stand-in being handed its weapon is not held up by being hit: each flinch had cost a try, and a Whiterun guard
+  struck again and again fought on without its sword for 9 s.
 - Archers switching between bow and sword: the stand-in only ever carries the weapon its Skyrim character holds (a bow
   left in a holster slot made MORDHAU's brain switch back and forth, and shoot with it).
 - A parried or blocked Skyrim arrow no longer plays the player's being hit; it sounds your MORDHAU weapon's (or

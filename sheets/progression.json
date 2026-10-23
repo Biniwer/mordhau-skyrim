@@ -114,6 +114,48 @@
    "value": 100.0,
    "meaning": "a blow MORDHAU itself rates at this much or more (of 100 health: a maul to the head through any armour) takes ALL of the target's health, as it kills outright in MORDHAU - against a target of a higher level only that level factor's share. For the player's blows and for blows on the player alike.",
    "verified": false
+  },
+  {
+   "id": "damage_model",
+   "value": 1.0,
+   "meaning": "1 = a hit takes Skyrim's own damage for it (weapon, skill, perks, the target's armour, crits, sneak attacks) x the hit's quality (zone_head/body/legs, stab_by_weapon) x skyrim_damage_dealt or skyrim_damage_taken, kept between fraction_min and fraction_max of full health; 0 = the formula above (MORDHAU's damage x level x offence / defence)",
+   "verified": false
+  },
+  {
+   "id": "skyrim_damage_dealt",
+   "value": 2.5,
+   "meaning": "damage_model 1: Skyrim's damage times this for hits on others - a hit lands less often here than in Skyrim",
+   "verified": false
+  },
+  {
+   "id": "skyrim_damage_taken",
+   "value": 2.5,
+   "meaning": "damage_model 1: the same for hits on the player",
+   "verified": false
+  },
+  {
+   "id": "zone_head",
+   "value": 1.5,
+   "meaning": "damage_model 1: a hit on the head (MORDHAU's zones: the bone its hit record names)",
+   "verified": false
+  },
+  {
+   "id": "zone_body",
+   "value": 1.0,
+   "meaning": "damage_model 1: a hit on the body or the arms",
+   "verified": false
+  },
+  {
+   "id": "zone_legs",
+   "value": 0.8,
+   "meaning": "damage_model 1: a hit on the legs",
+   "verified": false
+  },
+  {
+   "id": "stab_by_weapon",
+   "value": 1.0,
+   "meaning": "damage_model 1: 1 = a stab (or a kick) counts the weapon's own MORDHAU damage for it against its strike (a sword stabs well, a mace badly); 0 = a stab counts as a strike",
+   "verified": false
   }
  ]
 }

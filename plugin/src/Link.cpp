@@ -487,6 +487,12 @@ namespace dm::Link
 		std::scoped_lock lock(g_lock);
 		g_playerSlow = a_move;
 	}
+	std::string g_damageModel;  // (" dm:head,body,legs,stab" when on)
+	void        SetDamageModel(bool a_on, float a_head, float a_body, float a_legs, bool a_stabByWeapon)
+	{
+		std::scoped_lock lock(g_lock);
+		g_damageModel = a_on ? std::format(" dm:{:.2f},{:.2f},{:.2f},{}", a_head, a_body, a_legs, a_stabByWeapon ? 1 : 0) : "";
+	}
 	void  DrainStamina(float a_percent)
 	{
 		std::scoped_lock lock(g_lock);
@@ -586,6 +592,7 @@ namespace dm::Link
 			if (std::abs(g_playerSlow - 1.0f) > 0.01f) {
 				line += std::format(" ps:{:.2f}", g_playerSlow);
 			}
+			line += g_damageModel;
 			if (g_staminaGains > 0) {
 				line += std::format(" sg:{},{:.1f}", g_staminaGains, g_staminaGain);
 			}
