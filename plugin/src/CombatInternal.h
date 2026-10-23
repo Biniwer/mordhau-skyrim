@@ -149,6 +149,18 @@ namespace dm::Combat
 
 		inline Clock::time_point          g_riposteUntil;    // an attack started before this is a riposte
 
+		inline std::atomic<bool>          g_staminaFromSave{ false };  // a save was loaded: MORDHAU's character takes the stamina it has
+
+		// heavy attacks (sheets/builds.json heavy_attacks): the attack key held for Skyrim's power-attack delay
+		struct HeldAttack
+		{
+			bool              down = false;   // pressed, not yet sent to MORDHAU
+			Clock::time_point at{};
+			float             degrees = 0.0f;
+		};
+		inline HeldAttack        g_heldAttack;
+		inline Clock::time_point g_heavyUntil{};  // the player's hits before this are its heavy strike's
+
 		inline std::uintptr_t             g_hitSite = 0;     // the game's own call to its hit processing
 
 		inline std::unordered_map<std::string, std::shared_ptr<Clip>> g_clips;  // null = looked for and missing
@@ -342,6 +354,8 @@ namespace dm::Combat
 		float CritMult(RE::Actor* a_attacker, RE::Actor* a_target, const RE::HitData& a_hit, float* a_critDamage);
 		float HitFraction(RE::Actor* a_attacker, RE::Actor* a_target, float a_mordhauDamage, float a_skyrimDamage);
 		void  ScaleArrowHit(RE::Actor* a_victim, RE::HitData& a_hit);  // damage_model 1 for Skyrim's own arrows and bolts
+		float PowerAttackMult(RE::Actor* a_attacker, RE::Actor* a_target, float a_base);  // Skyrim's power-attack damage with its perks
+		bool  SendHeldAttack(bool a_heavy);  // the held attack key: a normal strike, or a heavy one
 
 		void ApplyHit(RE::Actor* a_attacker, RE::Actor* a_target, const ActiveSwing& a_swing, float a_scale = 1.0f, float a_mordhauDamage = -1.0f);
 
@@ -564,6 +578,9 @@ namespace dm::Combat
 			int             swingStage = -1;  // its stand-in's attack stage last frame (Skyrim's swing sound at each release)
 			std::uint32_t   playerHitsSeen = 0;  // MORDHAU's count of hits on the player, last frame (a parry: the swing ended without one)
 			Clock::time_point lastAttack{};  // (a draugr whose attack is thrown back starts the next one a frame later: counted at most every 0.4 s)
+			std::uint32_t   powerAttack = 0;   // its attack counter at the last power attack Skyrim's AI began (sheets/builds.json heavy_attacks)
+			float           powerMult = 0.0f;  // ...that power attack's own damage multiplier, as Skyrim gives it (0: none given)
+			Clock::time_point powerUntil{};    // its hits on the player before this are that power attack's
 			std::uint32_t   seenHits = 0;    // hits on it already applied
 			bool            hitsKnown = false;
 			std::uint32_t   seenOther = 0;   // hits on it by other stand-ins already applied
@@ -1020,6 +1037,24 @@ namespace dm::Combat
 							return;  // parry still open or recovering: no attack
 						}
 						g_parry.reset();  // a hit was stopped: the attack is the riposte
+					}
+					// heavy attacks: in MORDHAU's live fight the press is held back - let go before Skyrim's power-attack delay, a
+					// normal strike; held that long, a heavy one (sheets/builds.json heavy_attacks)
+					if (auto* holder = RE::PlayerCharacter::GetSingleton(); BuildValue("heavy_attacks") > 0.5f && holder && Link::Current().live && holder->AsActorState()->IsWeaponDrawn() &&
+																			 LiveMelee(holder)) {
+						if (a_event->IsDown()) {
+							const bool moving = std::abs(g_flick.x) + std::abs(g_flick.y) > 2.0f;
+							g_heldAttack = { true, Clock::now(), moving ? std::atan2(-g_flick.y, g_flick.x) * 57.29578f : 0.0f };
+						} else if (g_heldAttack.down) {
+							auto*       setting = RE::GameSettingCollection::GetSingleton()->GetSetting("fInitialPowerAttackDelay");
+							const float delay = setting ? setting->GetFloat() : 0.3f;
+							if (a_event->IsUp()) {
+								SendHeldAttack(false);
+							} else if (a_event->HeldDuration() >= delay) {
+								SendHeldAttack(true);
+							}
+						}
+						return;
 					}
 					if (a_event->IsDown()) {
 						// screen y grows downward; the sheet's angles have up = 90

@@ -487,6 +487,12 @@ namespace dm::Link
 		std::scoped_lock lock(g_lock);
 		g_playerSlow = a_move;
 	}
+	std::string g_heavy;  // (" hv:windup,drain,miss cost" when on)
+	void        SetHeavy(bool a_on, float a_windup, float a_drain, float a_missCost)
+	{
+		std::scoped_lock lock(g_lock);
+		g_heavy = a_on ? std::format(" hv:{:.2f},{:.2f},{:.0f}", a_windup, a_drain, a_missCost) : "";
+	}
 	std::string g_damageModel;  // (" dm:head,body,legs,stab" when on)
 	void        SetDamageModel(bool a_on, float a_head, float a_body, float a_legs, bool a_stabByWeapon)
 	{
@@ -546,6 +552,9 @@ namespace dm::Link
 				line += std::format(" g:{},{:.1f},{:.1f},{:.1f},{:.1f},{},{},{:.0f},{:.0f},{}", g.id, g.right, g.forward, g.up, g.yaw, g.attacks, g.blocking ? 1 : 0, g.velRight,
 					g.velForward, g.weapon && *g.weapon ? g.weapon : "-");
 				line += std::format(",{:.0f}", g.health);
+				if (g.powerAttack != 0) {
+					line += std::format(" pa:{},{}", g.id, g.powerAttack);
+				}
 				if (g.refused) {
 					line += std::format(" hr:{}", g.id);
 				}
@@ -593,6 +602,7 @@ namespace dm::Link
 				line += std::format(" ps:{:.2f}", g_playerSlow);
 			}
 			line += g_damageModel;
+			line += g_heavy;
 			if (g_staminaGains > 0) {
 				line += std::format(" sg:{},{:.1f}", g_staminaGains, g_staminaGain);
 			}

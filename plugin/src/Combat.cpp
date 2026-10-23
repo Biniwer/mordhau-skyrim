@@ -509,5 +509,6 @@ namespace dm::Combat
 		g_parry.reset();
 		g_parryLockUntil = {};
 		g_riposteUntil = {};
+		g_staminaFromSave.store(true);
 	}
 }

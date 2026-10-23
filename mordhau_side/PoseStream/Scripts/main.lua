@@ -576,6 +576,28 @@ local ACTIONS = {
     end,
 }
 -- "Voice7", "Emote12": a line of MORDHAU's voice menu / an emote of its emote menu, by MORDHAU's own number
+-- MORDHAU's own way to change a character's stamina (AMordhauCharacter::OffsetStamina): written straight into Stamina,
+-- the value changed but its regeneration never started - it went on only after MORDHAU's own next spending, and the
+-- player's stamina stood at 80 for 15 s after a heavy strike, 2026-10-23
+function PS_offset_stamina(c, amount)
+    amount = math.floor(amount + (amount < 0 and -0.5 or 0.5))
+    if amount == 0 then return end
+    local ok = pcall(function() c:OffsetStamina(amount, true) end)
+    if not ok then pcall(function() c.Stamina = math.max(0, math.min(100, math.floor(c.Stamina) + amount)) end) end
+end
+-- MORDHAU's own health regeneration off (health is Skyrim's, kept equal every frame): each point MORDHAU healed was
+-- taken back with OffsetHealth - a negative offset, damage to MORDHAU, which stops its stamina regeneration. While the
+-- player was hurt, its stamina hardly came back (stood at 86 for 10 s, at full health it did), 2026-10-23.
+PS_noHealthRegen = PS_noHealthRegen or {}
+function PS_no_health_regen(c, who)
+    local key
+    pcall(function() key = c:GetFullName() end)   -- (by name: a new character can take a gone one's address)
+    if not key or PS_noHealthRegen[key] then return end
+    PS_noHealthRegen[key] = true
+    local was = "?"
+    local ok = pcall(function() was = tostring(c.HealthRegenPerTick); c.HealthRegenPerTick = 0 end)
+    log(string.format("health: %s's own MORDHAU health regeneration %s (was %s a tick)", who, ok and "off" or "could not be switched off", was))
+end
 local function numbered_action(p, name)
     local kind, n = name:match("^(%a+)(%d+)$")
     n = tonumber(n)
@@ -591,6 +613,16 @@ local function numbered_action(p, name)
             end
         end
         return false
+    elseif kind == "StaminaTo" then
+        -- a save was loaded in Skyrim: the character takes the stamina the save has (n of 100)
+        local before = math.floor(p.Stamina)
+        PS_offset_stamina(p, n - before)
+        log(string.format("stamina: a save was loaded - %d -> %d", before, math.floor(p.Stamina)))
+        return true
+    elseif kind == "Heavy" then
+        -- the attack key held in Skyrim: the strike asked for next is a heavy one, costing n stamina if it misses
+        if not input.heavy then return false end
+        return PS_heavy_arm("player", p, "the attack key held", n)
     elseif kind == "Choose" then
         -- a number key while MORDHAU's own voice / emote menu is open: its own Choose
         for _, m in ipairs({ PS_voiceMenu, PS_emoteMenu }) do
@@ -657,6 +689,12 @@ local function read_input()
         end
         input.playerDrained = tonumber(rest:match(" pd:([%d%.]+)"))   -- (Skyrim's drains of the player's stamina so far, percent of full)
         input.playerSlow = tonumber(rest:match(" ps:([%d%.]+)"))   -- (Skyrim's slows on the player: its speed against normal)
+        do   -- (heavy attacks: how much longer a heavy strike winds up, how much more its parry costs)
+            local w, d, mc = rest:match(" hv:([%d%.]+),([%d%.]+),([%d%.]+)")
+            input.heavy = w and { tonumber(w), tonumber(d), tonumber(mc) } or nil
+            input.power = {}
+            for id, n in rest:gmatch(" pa:(%d+),(%d+)") do input.power[tonumber(id)] = tonumber(n) end
+        end
         do   -- (the damage model on Skyrim's damage: zone qualities head, body, legs, and whether stabs go by the weapon)
             local h, bo, l, s = rest:match(" dm:([%d%.]+),([%d%.]+),([%d%.]+),(%d)")
             input.damageModel = h ~= nil
@@ -764,7 +802,7 @@ local function apply_input(pawn, pc)
         input.staminaGain = nil
         pcall(function()
             local before = pawn.Stamina
-            pawn.Stamina = math.min(100, math.floor(before + gain + 0.5))   -- (whole points: a fraction is written as 0)
+            PS_offset_stamina(pawn, math.min(gain, 100 - before))   -- (whole points: a fraction is written as 0)
             log(string.format("stamina: Skyrim gave %.0f%%: %.0f -> %.0f", gain, before, pawn.Stamina))
         end)
     end
@@ -778,7 +816,7 @@ local function apply_input(pawn, pc)
         if take >= 1 then
             pcall(function()
                 local before = pawn.Stamina
-                pawn.Stamina = math.max(0, math.floor(before) - take)
+                PS_offset_stamina(pawn, -math.min(take, math.floor(before)))
                 if os.clock() - (PS_meLogged or -10) > 1.0 then
                     PS_meLogged = os.clock()
                     log(string.format("stamina: Skyrim drained the player by %d%%: %.0f -> %.0f", take, before, pawn.Stamina))
@@ -791,6 +829,19 @@ local function apply_input(pawn, pc)
         PS_me.drainTotal = total
     end
     if PS_me.regenHeld or PS_me.drainUntil then PS_hold_regen(PS_me, PS_me.drainUntil ~= nil and os.clock() < PS_me.drainUntil) end
+    -- (the player's stamina standing still below full for 2 s: is MORDHAU's regeneration running? Play-test 2026-10-23: "I
+    -- couldnt regen stamina" after four heavy strikes - the log only had its stamina at each release)
+    pcall(function()
+        local now = math.floor(pawn.Stamina)
+        if now >= 100 or now ~= PS_meStam then PS_meStam, PS_meStamAt = now, os.clock()
+        elseif os.clock() - PS_meStamAt > 2.0 then
+            PS_meStamAt = os.clock() + 3.0   -- (then at most every 5 s)
+            local owner, per, delay = PS_regen_owner(PS_me), "?", "?"
+            if owner then per = tostring(owner.StaminaRegenPerTick); delay = tostring(owner.StaminaRegenDelay) end
+            log(string.format("stamina: the player's has stood at %d for 2 s (regeneration per tick %s, delay %s, held by a drain %s; motion %s)",
+                now, per, delay, tostring(PS_me.regenHeld or false), class_name(pawn:GetMotion())))
+        end
+    end)
     -- Skyrim's slows on the player (sheets/builds.json player_slow): its MORDHAU character moves as slowly, so the pace
     -- MORDHAU sets for the Skyrim body is the slowed one
     if (input.playerSlow or 1) ~= 1 or PS_me.slowed then PS_apply_slow(PS_me, input.playerSlow or 1, 1) end
@@ -809,7 +860,7 @@ local function apply_input(pawn, pc)
             if take >= 1 and not b.dead then
                 pcall(function()
                     local before = b.obj.Stamina
-                    b.obj.Stamina = math.max(0, math.floor(before) - take)
+                    PS_offset_stamina(b.obj, -math.min(take, math.floor(before)))
                     if os.clock() - (b.drainLogged or -10) > 1.0 then
                         b.drainLogged = os.clock()
                         log(string.format("stamina: Skyrim drained stand-in %d by %d%%: %.0f -> %.0f", b.ghost, take, before, b.obj.Stamina))
@@ -1262,6 +1313,9 @@ function PS_hold_regen(b, hold)
             owner.StaminaRegenPerTick = 0
         elseif b.regenWas then
             owner.StaminaRegenPerTick = b.regenWas
+            -- (MORDHAU's regeneration had stopped while it gave 0 a tick: started again, after its own delay - it stood
+            -- still for 7 s after a drain, 2026-10-23)
+            pcall(function() owner:StopStaminaRegen(0) end)
         end
     end)
     if os.clock() - (b.regenLogged or -10) > 5.0 or not ok then
@@ -1325,6 +1379,64 @@ function PS_hit_quality(victim, weapon, motion, geomHead, lost)
     log(string.format("quality: %s hit on %s (bone %s, by its %s), %s x%.2f (%s %s against strike %s) -> %.2f; MORDHAU's own damage was %.0f",
         kind:gsub("Attack", ""):lower(), zone, bone, how, zone, zones[zone] or 1, kind, tostring(this), tostring(strike), q, lost))
     return 40 * q
+end
+-- Heavy attacks (sheets/builds.json heavy_attacks; the plugin's " hv:windup,drain"): a power attack in Skyrim - the
+-- player's attack key held, or an enemy's as Skyrim's AI chose it - is a heavy strike here: its weapon's attack table
+-- (Windup, StaminaDrain) raised for that one attack, set before it begins and put back after it. (Tested 2026-10-23:
+-- MORDHAU takes a table changed just before the attack - windup 0.60 -> 0.85 s, a parry of it cost 28 stamina
+-- instead of 9; slowing the character's time does not change its attack's timing.)
+PS_heavyT = PS_heavyT or {}
+local function PS_heavy_table(w, heavy, missCost)
+    local out = {}
+    local windup, drain = (input.heavy or {})[1] or 1.4, (input.heavy or {})[2] or 2.0
+    missCost = missCost or (input.heavy or {})[3] or 20
+    for _, field in ipairs({ "StrikeAttack", "StabAttack" }) do
+        pcall(function()
+            local a = w[field]
+            local key = w:GetFullName() .. field
+            local o = PS_heavyT[key]
+            if not o then o = { windup = a.Windup, drain = a.StaminaDrain, miss = a.MissStaminaCost }; PS_heavyT[key] = o end
+            a.Windup = heavy and o.windup * windup or o.windup
+            a.StaminaDrain = heavy and o.drain * drain or o.drain
+            -- (its cost: MORDHAU charges an attack only when it misses - a heavy one more, never less than the weapon's own)
+            a.MissStaminaCost = heavy and math.max(o.miss, missCost) or o.miss
+            out[#out + 1] = string.format("%s windup %.2f s, drain %.0f, miss %.0f", field:gsub("Attack", ""):lower(), w[field].Windup, w[field].StaminaDrain, w[field].MissStaminaCost)
+        end)
+    end
+    return #out > 0 and table.concat(out, ", ") or "its attack table could not be read"
+end
+-- arm: its next attack (within 2.5 s) is heavy
+function PS_heavy_arm(key, c, why, missCost)
+    local t = PS_heavyT[key]
+    if not t then t = {}; PS_heavyT[key] = t end
+    local w
+    pcall(function() w = c.RightHandEquipment end)
+    if not there(w) then return false end
+    if t.weapon then pcall(PS_heavy_table, t.weapon, false) end   -- (one still armed: put back first; a handle is never equal to another)
+    t.weapon, t.armedAt, t.inAttack = w, os.clock(), false
+    log(string.format("heavy: %s's next strike is heavy (%s): %s", key == "player" and "the player" or PS_who(key), why, PS_heavy_table(w, true, missCost)))
+    return true
+end
+-- every frame: the armed attack begins, ends; then the table is put back
+function PS_heavy_tick(key, c)
+    local t = PS_heavyT[key]
+    if not t or not t.weapon then return end
+    local m, name, st = nil, "", nil
+    pcall(function() local o = c:GetMotion(); name = class_name(o); st = motion_stage(o); m = o:GetAddress() end)
+    local attack = st ~= nil and (name:find("Strike") or name:find("Stab")) and true or false
+    if not t.inAttack then
+        if attack and st == 0 then t.inAttack, t.motion, t.released = true, m, false; return end
+        if os.clock() - t.armedAt < 2.5 then return end
+    elseif attack and st <= 1 and (t.motion == m or not t.released) then
+        -- (still in its windup or release: the parry drain is taken in the release. A windup that becomes another strike
+        -- before its release - a bandit's brain did, 34 ms after the heavy began - is still the heavy one)
+        t.motion = m
+        t.released = t.released or st == 1
+        return
+    end
+    pcall(PS_heavy_table, t.weapon, false)
+    log(string.format("heavy: %s's heavy strike is over%s: its table is back", key == "player" and "the player" or PS_who(key), t.inAttack and "" or " (none came)"))
+    t.weapon, t.inAttack = nil, false
 end
 function PS_apply_slow(b, move, time)
     if b.slowMove == move and b.slowTime == time then return end
@@ -1879,6 +1991,7 @@ local function update_ghosts(pawn, pc)
     local r = pawn:GetActorRightVector()
     local yaw = pawn:K2_GetActorRotation().Yaw
     local stage = player_attack_stage(pawn)
+    PS_heavy_tick("player", pawn)
     local releaseBegan = stage == 1 and lastPlayerStage ~= 1
     if releaseBegan then
         -- what each stand-in is doing as the player's blade is let go (for the log: parried? out of reach?)
@@ -2239,6 +2352,12 @@ local function update_ghosts(pawn, pc)
                         b.moving = speed > 20
                         if there(c.CharacterMovement) then c.CharacterMovement.Velocity = { X = f.X * g.vf + r.X * g.vr, Y = f.Y * g.vf + r.Y * g.vr, Z = 0 } end
                     end
+                    -- a power attack Skyrim's AI began: the stand-in's strike for it is a heavy one (before it is asked for)
+                    local pa = input.heavy and (input.power or {})[g.id]
+                    if pa and pa ~= b.powerSeen then
+                        b.powerSeen = pa
+                        PS_heavy_arm(b, c, "Skyrim's power attack")
+                    end
                     -- the Skyrim character began an attack: its stand-in attacks, by MORDHAU's rules
                     if g.attacks ~= b.attacks and free then b.attacks = g.attacks end   -- (free: its brain decides when to strike)
                     if g.attacks ~= b.attacks then
@@ -2322,6 +2441,7 @@ local function update_ghosts(pawn, pc)
                     if not b.demon then
                         local mine = class_name(c:GetMotion())
                         if mine:find("Strike") or mine:find("Stab") or mine:find("Kick") then b.lastAttack = mine end   -- (the damage model: what its hit was)
+                        PS_heavy_tick(b, c)
                         -- (dev, for test fights and recordings: a file cache/autoparry.txt makes the PLAYER parry every
                         -- attack of a stand-in the moment its release begins, by MORDHAU's own parry key)
                         if PS_autoparry == nil then local f = io.open(CACHE .. "autoparry.txt", "r"); PS_autoparry = f ~= nil; if f then f:close() end end
@@ -2476,6 +2596,7 @@ local function update_ghosts(pawn, pc)
                             if not PS_emoteClass or not PS_emoteClass:IsValid() then PS_emoteClass = StaticFindObject("/Script/Mordhau.EmoteMotion") end
                             emoting = PS_emoteClass ~= nil and PS_emoteClass:IsValid() and c:GetMotion():IsA(PS_emoteClass)
                         end)
+                        if mine:find("Disarmed", 1, true) then b.disarmedAt = os.clock() end
                         if emoting or mine:find("Yield", 1, true) or mine:find("Emote", 1, true) then
                             pcall(function() c:GetMotion():OnEnded() end)
                             b.yields = (b.yields or 0) + 1
@@ -2484,7 +2605,9 @@ local function update_ghosts(pawn, pc)
                             -- cowered and lost their weapon. A stop-gap until bots
                             -- cannot yield at all: the stand-in is armed again at once - still holding it, it counts as armed
                             -- in the next frame; without it, a new one is made and picked up.)
-                            if mine:find("Yield", 1, true) and b.armed then
+                            -- (not after a real disarm: MORDHAU's bot yields right after it, and the weapon it had just lost was
+                            -- handed back within 0.2 s - its disarm was heard, but its Skyrim character never dropped anything, 2026-10-23)
+                            if mine:find("Yield", 1, true) and b.armed and os.clock() - (b.disarmedAt or -10) > 3 then
                                 b.armed, b.armStep, b.armTry, b.armGap, b.armDrops, b.armBegan = false, 1, os.clock(), 0.15, 0, os.clock()
                                 log("stand-in " .. tostring(b.look) .. " yielded by itself: it is armed again")
                             end
@@ -2621,6 +2744,7 @@ local function update_ghosts(pawn, pc)
                         log(string.format("stand-in %d took a hit of %.0f (%s)", b.look or 0, lost, playerStriking and ("the player's, " .. tostring(b.headNote)) or ((b.otherBy or 0) ~= 0 and "another stand-in's" or "nobody's: ignored")))
                     end
                     local want = g and math.max(HEALTH_FLOOR, math.min(100, math.floor(g.hp + 0.5))) or 100
+                    PS_no_health_regen(c, "stand-in " .. tostring(b.look))
                     if h ~= want then c:OffsetHealth(want - h, false) end
                     -- (what it really has now: a Demon Horde creature did not take the health given back, and the
                     -- difference counted again as a fresh hit every frame: one swing at its feet hit it a hundred times)
@@ -2664,6 +2788,7 @@ local function update_ghosts(pawn, pc)
         end
         if type(h) == "number" then
             local want = os.clock() - input.stamp < 0.5 and math.max(HEALTH_FLOOR, math.min(100, math.floor((input.health or 100) + 0.5))) or 100
+            PS_no_health_regen(pawn, "the player")
             if h ~= want then pawn:OffsetHealth(want - h, false) end
             playerHealth = want
         end

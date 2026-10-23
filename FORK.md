@@ -44,6 +44,12 @@ Store, a few gameplay additions, and a CI build. Everything else - and how to pl
   stabs as strikes.
 - Arrows and bolts (Skyrim's own, anybody's): Skyrim's damage by the zone they struck (head x1.5, body,
   legs x0.8: where on the body, against its head and pelvis), not raised as melee is - an arrow is no harder to land. (`skyrim_arrow_factor`)
+- Power attacks (`heavy_attacks` in sheets/builds.json): holding the attack key for Skyrim's own power-attack delay makes
+  the MORDHAU strike a heavy one - its windup 1.4x longer (the telegraph), a parry of it costing twice the stamina, and
+  Skyrim's power-attack damage (x2, raised by power-attack perks). As in MORDHAU it costs stamina only when it misses:
+  20 instead of the weapon's own miss cost, lowered by Skyrim's power-attack stamina perks. A tap is a normal strike.
+  An enemy's power attack, as Skyrim's AI chooses it, makes its stand-in's strike heavy the same way, with that power
+  attack's own Skyrim damage. (Done through the weapon's MORDHAU attack table, changed for that one strike.)
 - Sneak attacks: Skyrim's sneak multiplier (Backstab, Assassin's Blade, Deadly Aim, any perk's) multiplies the hit's
   share of health; it was capped with the rest of Skyrim's damage before.
 - Critical hits: Skyrim's crit (rolled by the game; the weapon's critical damage, raised by Bladesman, Bone Breaker, Deep
@@ -66,6 +72,12 @@ Store, a few gameplay additions, and a CI build. Everything else - and how to pl
   does not stand there doing nothing. (`spellsword_standin`, `spellsword_cast_stuck`; 0 = Skyrim's altogether)
 - A stand-in being handed its weapon is not held up by being hit: each flinch had cost a try, and a Whiterun guard
   struck again and again fought on without its sword for 9 s.
+- Stamina: MORDHAU's regeneration runs as it should - it had stopped after a heavy strike or a Skyrim drain (the
+  stamina was written without MORDHAU's own OffsetStamina), and while a character was hurt (MORDHAU healed it, the
+  script took the health back, and MORDHAU counted that as damage: its own health regeneration is off now, Skyrim's
+  health rules). After a save is loaded - after a death too - the player has the save's stamina, not the old one.
+- A disarm MORDHAU makes is a disarm: the stand-in's yield right after it no longer hands the weapon straight back
+  (only the disarm sound was heard).
 - Archers switching between bow and sword: the stand-in only ever carries the weapon its Skyrim character holds (a bow
   left in a holster slot made MORDHAU's brain switch back and forth, and shoot with it).
 - A parried or blocked Skyrim arrow no longer plays the player's being hit; it sounds your MORDHAU weapon's (or

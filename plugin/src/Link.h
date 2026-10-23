@@ -93,6 +93,7 @@ namespace dm::Link
 	void SetPlayerPlace(float a_xCm, float a_yCm, float a_facingDegrees);  // where the player is in Skyrim's world (for free stand-ins)  // sheets/builds.json hybrid_*
 	void SetShield(const char* a_mordhauShield);  // the MORDHAU shield for the one on the player's arm ("" = none)     // the player carries a shield in Skyrim
 	void AddStamina(float a_percent);  // Skyrim restored stamina (a potion): MORDHAU's character gains it too
+	void SetHeavy(bool a_on, float a_windup, float a_drain, float a_missCost);  // sheets/builds.json heavy_attacks: how heavy a heavy attack is, for MORDHAU's side
 	void SetDamageModel(bool a_on, float a_head, float a_body, float a_legs, bool a_stabByWeapon);  // sheets/progression.json damage_model: MORDHAU's side sends hit quality
 	void SetPlayerSlow(float a_move);    // Skyrim's slows on the player, as a share of its normal speed: MORDHAU's character moves as slowly
 	void DrainStamina(float a_percent);  // Skyrim took stamina (a frost spell, a poison, any mod's effect): MORDHAU's character loses it too
@@ -122,6 +123,7 @@ namespace dm::Link
 		std::uint32_t target = 0;   // whom it fights in Skyrim, when that is not the player (0: the player)
 		const char*   shield = "";  // MORDHAU shield class for the shield it wears in Skyrim ("" = none)
 		const char*   weapon = "";  // MORDHAU weapon for its moves and reach (sheets/weapon_families.json: mordhau_weapon), by what it holds in Skyrim
+		std::uint32_t powerAttack = 0;  // its attack counter at a power attack Skyrim's AI began (0: none yet): that attack is a heavy one
 		float         staminaDrained = 0.0f;  // percent of its full stamina Skyrim has taken so far (a frost spell, a poison, any mod's effect): its stand-in loses the same
 		float         moveScale = 1.0f;       // how fast it may move against its normal speed in Skyrim (a frost spell's slow): its stand-in's movement too
 		float         timeScale = 1.0f;       // Skyrim's world time (Slow Time): its stand-in's whole pace, attacks included

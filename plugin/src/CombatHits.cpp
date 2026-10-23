@@ -428,6 +428,17 @@ namespace dm::Combat
 				Progress("skyrim_arrow_factor"), fraction * 100.0f, a_hit.totalDamage);
 		}
 
+		// Skyrim's power attack on top of its hit damage: a_base (the attack's own multiplier, else power_attack_damage) times the
+		// attacker's power-attack damage perks (Mod Power Attack Damage)
+		float PowerAttackMult(RE::Actor* a_attacker, RE::Actor* a_target, float a_base)
+		{
+			float       mult = a_base > 1.0f ? a_base : std::max(BuildValue("power_attack_damage"), 1.0f);
+			const auto* form = a_attacker->GetEquippedObject(false);
+			auto*       weapon = form ? form->As<RE::TESObjectWEAP>() : nullptr;
+			RE::BGSEntryPoint::HandleEntryPoint(RE::BGSEntryPoint::ENTRY_POINT::kModPowerAttackDamage, a_attacker, weapon, a_target, std::addressof(mult));
+			return std::max(mult, 1.0f);
+		}
+
 		// a_mordhauDamage >= 0: a MORDHAU-judged hit (its damage of 100); what it takes follows Skyrim's progression
 		void ApplyHit(RE::Actor* a_attacker, RE::Actor* a_target, const ActiveSwing& a_swing, float a_scale, float a_mordhauDamage)
 		{
@@ -456,7 +467,14 @@ namespace dm::Combat
 					const float plain = hit->totalDamage - critPart;
 					if (Progress("damage_model") > 0.5f) {
 						// (the crit is in Skyrim's damage already, and the sneak attack when the game made it one)
-						hit->totalDamage = full * std::min(SkyrimHitFraction(a_attacker, a_target, hit->totalDamage, a_mordhauDamage) * (inDamage ? 1.0f : sneak), 1.0f);
+						// (the player's heavy strike: Skyrim's power-attack damage, with its perks)
+						const bool  heavy = a_attacker == RE::PlayerCharacter::GetSingleton() && Clock::now() < g_heavyUntil;
+						const float power = heavy ? PowerAttackMult(a_attacker, a_target, 0.0f) : 1.0f;
+						if (heavy) {
+							hit->flags.set(RE::HitData::Flag::kPowerAttack);
+							logger::info("heavy: the player's heavy strike on {}: Skyrim's power attack x{:.2f}", a_target->GetDisplayFullName(), power);
+						}
+						hit->totalDamage = full * std::min(SkyrimHitFraction(a_attacker, a_target, hit->totalDamage * power, a_mordhauDamage) * (inDamage ? 1.0f : sneak), 1.0f);
 					} else {
 						hit->totalDamage = full * std::min(HitFraction(a_attacker, a_target, a_mordhauDamage, inDamage ? plain / sneak : plain) * sneak * crit, 1.0f);
 					}
@@ -532,7 +550,16 @@ namespace dm::Combat
 				float       critPart = 0.0f;
 				const float crit = CritMult(a_attacker, a_player, *hit, &critPart);
 				const float full = std::max(values->GetPermanentActorValue(RE::ActorValue::kHealth), 1.0f);
-				hit->totalDamage = Progress("damage_model") > 0.5f ? full * std::min(SkyrimHitFraction(a_attacker, a_player, hit->totalDamage, a_mordhauDamage), 1.0f)
+				// (its power attack, as Skyrim's AI chose it: Skyrim's power-attack damage, with its perks)
+				float power = 1.0f;
+				for (const auto& m : g_mirrored) {
+					if (m.handle.get().get() == a_attacker && Clock::now() < m.powerUntil && m.attacks == m.powerAttack) {
+						power = PowerAttackMult(a_attacker, a_player, m.powerMult);
+						hit->flags.set(RE::HitData::Flag::kPowerAttack);
+						logger::info("heavy: {}'s power attack on the player: Skyrim's power attack x{:.2f}", a_attacker->GetDisplayFullName(), power);
+					}
+				}
+				hit->totalDamage = Progress("damage_model") > 0.5f ? full * std::min(SkyrimHitFraction(a_attacker, a_player, hit->totalDamage * power, a_mordhauDamage), 1.0f)
 				                                                   : full * std::min(HitFraction(a_attacker, a_player, a_mordhauDamage, 0.0f) * crit, 1.0f);
 				if (crit > 1.0f) {
 					logger::info("progress: {}'s critical hit on the player: x{:.2f}", a_attacker->GetDisplayFullName(), crit);

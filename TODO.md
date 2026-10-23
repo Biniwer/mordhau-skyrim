@@ -12,6 +12,9 @@ Open points found in play (as of 2026-10-23). Nothing here is built yet; pick be
 5. Power attacks do not exist (Skyrim's enemies hit much harder with them: low-level enemies feel soft without).
 6. Skyrim's maximum stamina and stamina regeneration do not affect MORDHAU: its stamina is always 0-100, Skyrim's bar
     only shows it as a share. Could scale MORDHAU's `StaminaCostModifier` / `StaminaRegenPerTick`.
+7. A shield knocked away in MORDHAU (a shield parry with too little stamina) is not mirrored: the Skyrim character keeps
+   its shield, only MORDHAU's disarm sound is heard, and the script tries to hand the shield back. To mirror: drop the
+   Skyrim shield on the ground as for a weapon.
 
 Done by `damage_model` 1 (2026-10-23): enemy weapon quality, enemy armour and the level gap all come with Skyrim's own
 damage now.

@@ -168,6 +168,46 @@
    "verified": false
   },
   {
+   "id": "heavy_attacks",
+   "value": 1.0,
+   "unit": "1 = on",
+   "meaning": "Power attacks: holding the attack key for Skyrim's own power-attack delay (fInitialPowerAttackDelay) makes the MORDHAU strike a heavy one - a longer windup (heavy_windup), more stamina off whoever parries it (heavy_parry_drain), a larger cost when it misses (heavy_stamina) and Skyrim's power-attack damage (power_attack_damage). An enemy's power attack, as Skyrim's AI chooses it, makes its stand-in's next strike heavy the same way. A tap is a normal strike, sent when the key comes up",
+   "source": "the user, 2026-10-23 (power attacks, option 1: hold to charge)",
+   "verified": false
+  },
+  {
+   "id": "heavy_windup",
+   "value": 1.4,
+   "unit": "x the weapon's windup",
+   "meaning": "heavy attacks: how much longer the windup is - the telegraph (measured 2026-10-23: MORDHAU takes the weapon's attack table changed just before the attack)",
+   "source": "the user, 2026-10-23 (power attacks, option 1: hold to charge)",
+   "verified": false
+  },
+  {
+   "id": "heavy_parry_drain",
+   "value": 2.0,
+   "unit": "x the weapon's stamina drain",
+   "meaning": "heavy attacks: the stamina a parry of it costs (MORDHAU's StaminaDrain; less what the parrying weapon absorbs), so two parried heavies can break a parry and disarm",
+   "source": "the user, 2026-10-23 (power attacks, option 1: hold to charge)",
+   "verified": false
+  },
+  {
+   "id": "heavy_stamina",
+   "value": 20.0,
+   "unit": "MORDHAU stamina (of 100), on a miss",
+   "meaning": "heavy attacks: what a heavy strike costs its attacker when it misses - MORDHAU charges an attack only then, not when it hits or is blocked (the user, 2026-10-23) - in place of the weapon's own miss cost (never less than it); the player's times Skyrim's power-attack stamina perks (Mod Power Attack Stamina), and with less stamina left the strike stays a normal one. Skyrim's own power-attack spending is not passed on to a stand-in",
+   "source": "the user, 2026-10-23 (power attacks, option 1: hold to charge)",
+   "verified": false
+  },
+  {
+   "id": "power_attack_damage",
+   "value": 2.0,
+   "unit": "x Skyrim's hit damage",
+   "meaning": "heavy attacks: Skyrim's power-attack damage on top of its hit damage, times its power-attack damage perks (Mod Power Attack Damage). An enemy's uses its own power attack's damage multiplier when Skyrim gives one",
+   "source": "the user, 2026-10-23 (power attacks, option 1: hold to charge)",
+   "verified": false
+  },
+  {
    "id": "player_slow",
    "value": 1.0,
    "unit": "1 = on",

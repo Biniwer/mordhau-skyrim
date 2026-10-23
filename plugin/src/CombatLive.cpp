@@ -1076,6 +1076,17 @@ namespace dm::Combat
 				// (what Skyrim itself gave since the last frame - a potion, food - goes to MORDHAU's stamina: sheets/builds.json stamina_restore_step)
 				static float lastSet = -1.0f;
 				const float  full = std::max(values->GetPermanentActorValue(RE::ActorValue::kStamina), 1.0f);
+				// a save loaded (after a death too): MORDHAU's character takes the stamina the save has. MORDHAU runs on through a
+				// load, and the bar was set back to its stamina from before - after a death the player came back as tired as he
+				// died, 2026-10-23. The bar keeps the save's value for a moment, while MORDHAU takes it over.
+				static Clock::time_point barHeld{};
+				if (g_staminaFromSave.exchange(false)) {
+					const int share = static_cast<int>(std::round(std::clamp(have / full * 100.0f, 0.0f, 100.0f)));
+					Link::Request(std::format("StaminaTo{}", share).c_str());
+					lastSet = have;
+					barHeld = Clock::now() + std::chrono::milliseconds(1000);
+					logger::info("stamina: a save was loaded - MORDHAU's character takes its stamina, {}% (it had {:.0f})", share, link.stamina);
+				}
 				if (lastSet >= 0.0f && have - lastSet > BuildValue("stamina_restore_step") && !RE::UI::GetSingleton()->GameIsPaused()) {
 					Link::AddStamina((have - lastSet) / full * 100.0f);
 					logger::info("stamina: Skyrim restored {:.0f} ({:.0f}% of full): passed on to MORDHAU", have - lastSet, (have - lastSet) / full * 100.0f);
@@ -1097,7 +1108,7 @@ namespace dm::Combat
 					}
 					g_ownStaminaSpent = 0.0f;
 				}
-				if (std::abs(want - have) > 0.5f) {
+				if (std::abs(want - have) > 0.5f && Clock::now() >= barHeld) {
 					values->ModActorValue(RE::ACTOR_VALUE_MODIFIER::kDamage, RE::ActorValue::kStamina, want - have);
 				}
 				lastSet = values->GetActorValue(RE::ActorValue::kStamina);

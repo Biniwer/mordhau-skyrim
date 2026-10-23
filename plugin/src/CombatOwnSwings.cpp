@@ -112,6 +112,33 @@ namespace dm::Combat
 			return true;
 		}
 
+		bool SendHeldAttack(bool a_heavy)
+		{
+			if (!g_heldAttack.down) {
+				return false;
+			}
+			g_heldAttack.down = false;
+			auto* player = RE::PlayerCharacter::GetSingleton();
+			g_heavyUntil = {};
+			if (a_heavy && player) {
+				// what it costs if it misses (MORDHAU charges an attack only then): heavy_stamina times Skyrim's power-attack
+				// stamina perks; with less stamina left, a normal strike
+				float       cost = std::max(BuildValue("heavy_stamina"), 0.0f);
+				const auto* form = player->GetEquippedObject(false);
+				auto*       weapon = form ? form->As<RE::TESObjectWEAP>() : nullptr;
+				RE::BGSEntryPoint::HandleEntryPoint(RE::BGSEntryPoint::ENTRY_POINT::kModPowerAttackStamina, player, weapon, std::addressof(cost));
+				const float have = Link::Current().stamina;
+				if (have >= cost) {
+					Link::Request(std::format("Heavy{}", static_cast<int>(std::round(cost))).c_str());
+					g_heavyUntil = Clock::now() + std::chrono::milliseconds(2500);
+					logger::info("heavy: the player's strike is a heavy one (stamina {:.0f}; {:.0f} if it misses)", have, cost);
+				} else {
+					logger::info("heavy: too little stamina for a heavy strike ({:.0f} of {:.0f}): a normal one", have, cost);
+				}
+			}
+			return StartPlayerSwing(g_heldAttack.degrees);
+		}
+
 		void ApplyActiveSwing()
 		{
 			if (!g_swing) {

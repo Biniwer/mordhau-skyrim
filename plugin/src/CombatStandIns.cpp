@@ -744,7 +744,8 @@ namespace dm::Combat
 			auto*       values = a_actor->AsActorValueOwner();
 			const float full = std::max(values->GetPermanentActorValue(RE::ActorValue::kStamina), 1.0f);
 			const float have = values->GetActorValue(RE::ActorValue::kStamina);
-			const bool  skyrims = g_skyrimHasBody.contains(m.id) || a_actor->IsDead() || a_actor->AsActorState()->IsSprinting() ||
+			// (...and a power attack's own cost, its first second: its stand-in's heavy strike costs by MORDHAU's rule instead, on a miss)
+			const bool  skyrims = g_skyrimHasBody.contains(m.id) || a_actor->IsDead() || a_actor->AsActorState()->IsSprinting() || Clock::now() < m.powerUntil - std::chrono::milliseconds(2000) ||
 			                     (RE::UI::GetSingleton() && RE::UI::GetSingleton()->GameIsPaused());
 			if (!skyrims && m.staminaSet >= 0.0f && m.staminaSet - have > BuildValue("standin_stamina_drain_step")) {
 				const float share = (m.staminaSet - have) / full * 100.0f;
@@ -868,6 +869,16 @@ namespace dm::Combat
 					m.lastAttack = Clock::now();
 					++m.attacks;
 					logger::info("live: {} starts an attack: its MORDHAU stand-in attacks", actor->GetDisplayFullName());
+					// a power attack, as Skyrim's AI chose it: its stand-in's strike is a heavy one (sheets/builds.json heavy_attacks)
+					auto*       process = actor->GetActorRuntimeData().currentProcess;
+					const auto* data = process && process->high ? process->high->attackData.get() : nullptr;
+					if (BuildValue("heavy_attacks") > 0.5f && data && data->data.flags.any(RE::AttackData::AttackFlag::kPowerAttack)) {
+						m.powerAttack = m.attacks;
+						m.powerMult = data->data.damageMult;
+						m.powerUntil = Clock::now() + std::chrono::milliseconds(3000);
+						logger::info("heavy: {} begins a power attack (Skyrim's damage x{:.2f}, stamina x{:.2f}): its stand-in's strike is a heavy one", actor->GetDisplayFullName(),
+							data->data.damageMult, data->data.staminaMult);
+					}
 				}
 				// (the Skyrim character itself is not seen; its own swing would only be heard: the whoosh is a sound event
 				// inside its attack animation, so the animation is thrown back to standing before it gets there -
@@ -877,6 +888,7 @@ namespace dm::Combat
 			}
 			m.wasAttacking = attacking;
 			g.attacks = m.attacks;
+			g.powerAttack = m.powerAttack;
 			g.blocking = actor->IsBlocking();
 			g.weapon = MordhauWeaponFor(actor.get());
 			if (shoots) {
@@ -894,6 +906,18 @@ namespace dm::Combat
 				if (auto& was = given[m.id]; was != g.weapon) {
 					logger::info("stand-ins: {} is given {} ({} in its hand in Skyrim{})", actor->GetDisplayFullName(), *g.weapon ? g.weapon : "nothing",
 						inHand && inHand->GetName() ? inHand->GetName() : "nothing", shoots ? ", a bow" : "");
+					if (!inHand && !was.empty() && actor->Is3DLoaded() && !actor->IsDead()) {
+						// (why a fighter's hand went empty: a bandit with a warhammer let go of it mid-fight and ran about for 5 s,
+						// its stand-in given fists - nothing in either log said why, 2026-10-23. Its inventory is not listed: read
+						// right after a save was loaded, Skyrim crashed - its hands are empty for a moment then)
+						auto*       process = actor->GetActorRuntimeData().currentProcess;
+						const auto* pkg = process ? process->GetRunningPackage() : nullptr;
+						const auto* left = actor->GetEquippedObject(true);
+						logger::info("stand-ins: {}'s hand went empty in Skyrim (it had {}): weapon drawn {}, attack state {}, in combat {}, ragdoll {}, health {:.0f}, package {:08X}, left hand {}",
+							actor->GetDisplayFullName(), was, actor->AsActorState()->IsWeaponDrawn(), static_cast<int>(actor->AsActorState()->GetAttackState()), actor->IsInCombat(),
+							actor->IsInRagdollState(), actor->AsActorValueOwner()->GetActorValue(RE::ActorValue::kHealth), pkg ? pkg->GetFormID() : 0,
+							left && left->GetName() ? left->GetName() : "nothing");
+					}
 					was = g.weapon;
 				}
 			}
@@ -1177,6 +1201,7 @@ namespace dm::Combat
 			}
 
 			// the damage model on Skyrim's own damage: MORDHAU's side then sends how good each hit was (sheets/progression.json damage_model)
+			Link::SetHeavy(BuildValue("heavy_attacks") > 0.5f, BuildValue("heavy_windup"), BuildValue("heavy_parry_drain"), BuildValue("heavy_stamina"));
 			Link::SetDamageModel(Progress("damage_model") > 0.5f, Progress("zone_head"), Progress("zone_body"), Progress("zone_legs"), Progress("stab_by_weapon") > 0.5f);
 
 			// what MORDHAU decided about attacks on the player
