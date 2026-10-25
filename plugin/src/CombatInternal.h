@@ -356,6 +356,7 @@ namespace dm::Combat
 		void  ScaleArrowHit(RE::Actor* a_victim, RE::HitData& a_hit);  // damage_model 1 for Skyrim's own arrows and bolts
 		float PowerAttackMult(RE::Actor* a_attacker, RE::Actor* a_target, float a_base);  // Skyrim's power-attack damage with its perks
 		bool  SendHeldAttack(bool a_heavy);  // the held attack key: a normal strike, or a heavy one
+		bool  DropSkyrimShield(RE::Actor* a_actor);  // MORDHAU knocked its shield away: the Skyrim shield goes to the ground too
 
 		void ApplyHit(RE::Actor* a_attacker, RE::Actor* a_target, const ActiveSwing& a_swing, float a_scale = 1.0f, float a_mordhauDamage = -1.0f);
 
@@ -578,6 +579,8 @@ namespace dm::Combat
 			int             swingStage = -1;  // its stand-in's attack stage last frame (Skyrim's swing sound at each release)
 			std::uint32_t   playerHitsSeen = 0;  // MORDHAU's count of hits on the player, last frame (a parry: the swing ended without one)
 			Clock::time_point lastAttack{};  // (a draugr whose attack is thrown back starts the next one a frame later: counted at most every 0.4 s)
+			std::uint32_t   shieldLossesSeen = 0;  // MORDHAU's count of its shield knocked away, already mirrored
+			bool            shieldLossesKnown = false;
 			std::uint32_t   powerAttack = 0;   // its attack counter at the last power attack Skyrim's AI began (sheets/builds.json heavy_attacks)
 			float           powerMult = 0.0f;  // ...that power attack's own damage multiplier, as Skyrim gives it (0: none given)
 			Clock::time_point powerUntil{};    // its hits on the player before this are that power attack's

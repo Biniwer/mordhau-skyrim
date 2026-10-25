@@ -794,6 +794,7 @@ local function apply_input(pawn, pc)
         local w = PS_pickLater.w
         if PS_pickLater.class then w = PS_spawn_weapon(pawn, PS_pickLater.class) end
         PS_pickLater = nil
+        PS_pickedAt = os.clock()
         if there(w) then pawn:PickUp(w, false); log("picked up " .. class_name(w)) end
     end
     if os.clock() - (PS_sweptAt or 0) > 5 then PS_sweptAt = os.clock(); pcall(PS_sweep_refs) end
@@ -1184,11 +1185,37 @@ function PS_finish_weapon(w)
     if not ok and not PS_finishWarned then PS_finishWarned = true; log("a spawned weapon could not be given its parts (its swings will not reach)") end
 end
 
+-- A shield knocked away in MORDHAU (parried with on too little stamina: its Disarmed motion, the shield off the arm) is
+-- counted; the count goes to the plugin (the player's with its shield number, a stand-in's with its stage), which drops
+-- the Skyrim character's shield on the ground too (sheets/builds.json shield_disarm_skyrim). Before, the Skyrim
+-- character kept it, only MORDHAU's disarm sound was heard, and the script handed the shield back. For a few seconds
+-- after, it is not handed a shield again (the Skyrim one is on its way to the ground).
+function PS_shield_watch(t, c, who)
+    local lh, motion = "", ""
+    pcall(function() lh = class_name(c.LeftHandEquipment); motion = class_name(c:GetMotion()) end)
+    if motion:find("Disarmed", 1, true) then t.disarmAt = os.clock() end
+    local now = lh:find("Shield", 1, true) ~= nil
+    if t.hadShield and not now and os.clock() - (t.disarmAt or -10) < 1.5 then
+        t.shieldLosses = (t.shieldLosses or 0) + 1
+        t.shieldLostAt = os.clock()
+        t.shieldGiven, t.shieldStep, t.shieldTold = nil, 0, nil
+        log(string.format("shield: MORDHAU knocked %s's shield away (%s): the Skyrim one goes too", who, tostring(t.hadShieldName)))
+    end
+    t.hadShield, t.hadShieldName = now, now and lh or t.hadShieldName
+end
+function PS_shield_lost_lately(t) return t and os.clock() - (t.shieldLostAt or -10) < 5 end
 -- A fought character with a shield in Skyrim (sheets/live_link.json standin_shield): its stand-in is handed MORDHAU's
 -- shield for it once its weapon is in the hand, and brings it onto the arm - so it blocks with the shield.
 function PS_standin_shield(b, c)
     local want = b.ghost and PS_ghostShield and PS_ghostShield[b.ghost] or nil
-    if not want or not b.armed then return end
+    -- (each change of what holds the hand-over up, for looking into it: a stand-in went without its shield for good
+    -- after one was knocked away - play test 2026-10-24)
+    local why = not want and "no shield from Skyrim" or not b.armed and "its weapon not yet in the hand" or PS_shield_lost_lately(b) and "its shield knocked away just now" or nil
+    if why ~= b.shieldWhy then
+        b.shieldWhy = why
+        log("stand-in " .. tostring(b.look) .. "'s shield: " .. (why and ("waits - " .. why) or ("goes on, " .. tostring(want))))
+    end
+    if why then return end
     if os.clock() - (b.shieldTry or -10) < 1.2 then return end
     local l = c.LeftHandEquipment
     local have = there(l) and class_name(l) or ""
@@ -1640,9 +1667,67 @@ function PS_place_walls(pawn)
     end
 end
 
+-- What a behaviour profile does beyond the skill set below, for the log: an archer's profile against a fighter's.
+local PROFILE_LOOKS = { "BrawlProbability", "ComboProbability", "GambleProbability", "DragProbability", "AccelProbability", "RangedEngageDistanceFactor", "MaxTurnRate", "bPrefersAltMode" }
+local function profile_look(prof)
+    local parts = {}
+    for _, k in ipairs(PROFILE_LOOKS) do
+        local ok, v = pcall(function() return prof[k] end)
+        parts[#parts + 1] = k .. " " .. (ok and type(v) == "number" and string.format("%.2f", v) or tostring(ok and v))
+    end
+    return table.concat(parts, ", ")
+end
+
+-- A stand-in fights with a fighter's behaviour profile. MORDHAU hands some bots its archers' one (BOTBEHAVIOR_Ranged):
+-- with a sword it switched between the sword and its fists over and over, and hardly parried - the player's close swings
+-- hit 59% of the time against about 40% with the fighters' profiles (play test 2026-10-23, a Whiterun guard). Such a
+-- stand-in is given a new profile of a fighter's kind: one seen on another bot, or one loaded beside the archers' one.
+local PS_fighterProfile = nil   -- (the class)
+local function fighter_profile(c)
+    local ctrl = c.Controller
+    local prof = ctrl.BehaviorProfile
+    if not there(prof) then return end
+    local cls = prof:GetClass()
+    local name = cls:GetFName():ToString()
+    if not name:find("Ranged", 1, true) then
+        if not there(PS_fighterProfile) then PS_fighterProfile = cls end
+        return
+    end
+    if not there(PS_fighterProfile) then
+        for _, other in ipairs(FindAllOf("BotBehaviorProfile") or {}) do
+            if there(other) and not other:GetClass():GetFName():ToString():find("Ranged", 1, true) then PS_fighterProfile = other:GetClass(); break end
+        end
+    end
+    if not there(PS_fighterProfile) then
+        -- ("BlueprintGeneratedClass /Game/.../BOTBEHAVIOR_Ranged.BOTBEHAVIOR_Ranged_C": its folder)
+        local folder = cls:GetFullName():match("^%S+ (.*/)[^/]+$")
+        for _, kind in ipairs({ "Boloncd", "Worthless2", "Worthless" }) do
+            if folder then
+                local path = folder .. "BOTBEHAVIOR_" .. kind
+                local full = path .. ".BOTBEHAVIOR_" .. kind .. "_C"
+                local found = StaticFindObject(full)
+                if not there(found) then pcall(LoadAsset, path); found = StaticFindObject(full) end
+                if there(found) then PS_fighterProfile = found; break end
+            end
+        end
+    end
+    if not there(PS_fighterProfile) then
+        if not PS_fighterProfileMissed then PS_fighterProfileMissed = true; log("stand-in profile: " .. name .. " kept - no fighter's profile found to take its place") end
+        return
+    end
+    local ok, made = pcall(StaticConstructObject, PS_fighterProfile, ctrl)
+    if not ok or not there(made) then
+        log("stand-in profile: " .. name .. " kept - a " .. PS_fighterProfile:GetFName():ToString() .. " could not be made (" .. tostring(made) .. ")")
+        return
+    end
+    log("stand-in profile: " .. name .. " (" .. profile_look(prof) .. ") -> " .. PS_fighterProfile:GetFName():ToString() .. " (" .. profile_look(made) .. ")")
+    ctrl.BehaviorProfile = made
+end
+
 -- A stand-in fights with a set skill, not with whichever behaviour profile MORDHAU gave the bot (sheets/enemy_ai.json
 -- standin_skill): it parries in time more often than not.
 function PS_standin_skill(c, level)
+    pcall(fighter_profile, c)
     pcall(function()
         local prof = c.Controller.BehaviorProfile
         if not there(prof) then return end
@@ -1655,6 +1740,8 @@ function PS_standin_skill(c, level)
         set("FallForFeintProbability", 1 - L[2] * 0.8); set("FootworkInsteadOfParryProbability", 0.05)
         set("RiposteProbability", 0.4 + 0.6 * L[2]); set("FeintProbability", L[3]); set("MorphProbability", L[4]); set("ChamberProbability", L[2] * 0.5)
         set("BaseAttackHesitanceTime", L[5])
+        -- (a Skyrim character with a weapon in its hand never puts it away to fight with its fists)
+        set("BrawlProbability", 0.0); set("bWillBrawl", false)
         log("stand-in skill set on " .. tostring(name) .. string.format(" (skill %.1f: well-timed parry %.2f, timing error now %.2f s)", level or PS_ai_level, prof.PerfectParryProbability, prof.ParryTimingRandom))
     end)
 end
@@ -1992,6 +2079,7 @@ local function update_ghosts(pawn, pc)
     local yaw = pawn:K2_GetActorRotation().Yaw
     local stage = player_attack_stage(pawn)
     PS_heavy_tick("player", pawn)
+    if PS_me then PS_shield_watch(PS_me, pawn, "the player") end
     local releaseBegan = stage == 1 and lastPlayerStage ~= 1
     if releaseBegan then
         -- what each stand-in is doing as the player's blade is let go (for the log: parried? out of reach?)
@@ -2442,6 +2530,7 @@ local function update_ghosts(pawn, pc)
                         local mine = class_name(c:GetMotion())
                         if mine:find("Strike") or mine:find("Stab") or mine:find("Kick") then b.lastAttack = mine end   -- (the damage model: what its hit was)
                         PS_heavy_tick(b, c)
+                        PS_shield_watch(b, c, "stand-in " .. tostring(b.look))
                         -- (dev, for test fights and recordings: a file cache/autoparry.txt makes the PLAYER parry every
                         -- attack of a stand-in the moment its release begins, by MORDHAU's own parry key)
                         if PS_autoparry == nil then local f = io.open(CACHE .. "autoparry.txt", "r"); PS_autoparry = f ~= nil; if f then f:close() end end
@@ -2719,6 +2808,16 @@ local function update_ghosts(pawn, pc)
                                         at - feet.Z, best, h.Z - feet.Z, chest.Z - feet.Z, feet.Z - mine.Z, b.lift or 0, eye.Z - mine.Z, PS_pc:GetControlRotation().Pitch)
                                 end)
                             end)
+                            -- MORDHAU's own hit bone outranks the blade line: a blow it put on the head or neck is on the head
+                            -- (play test 2026-10-25: an axe's killing blow on bone "head", head damage, but its blade line read
+                            -- 27 cm off the head's upright - the line is read a frame or two late - and the head stayed on)
+                            pcall(function()
+                                local bone = c.Mesh:GetBoneName(c.NetDamage.Bone):ToString():lower()
+                                if not onHead and (bone:find("head") or bone:find("neck")) then
+                                    onHead = true
+                                    b.headNote = (b.headNote or "") .. "; ON THE HEAD by MORDHAU's hit bone " .. bone
+                                end
+                            end)
                             -- (1000 added to the damage = on the head, through the neck or skull; 2000 = a headshot beside that)
                             if input.damageModel then lost = PS_hit_quality(c, pawn.RightHandEquipment, PS_playerAttack, onHead, lost) end
                             b.hits = b.hits + 1; b.damage = lost + (onHead and 1000 or (anyHead and 2000 or 0))
@@ -2808,7 +2907,8 @@ local function ghost_block()
                 stage = motion_stage(b.obj:GetMotion()) or -1
                 if fallen(b.obj) then stage = FALLEN end
             end)
-            parts[#parts + 1] = string.pack("<I4I4fi4I4fI4", b.ghost, b.hits, b.damage, stage, b.otherHits or 0, b.otherDamage or 0, b.otherBy or 0)
+            -- (+4096 on its stage for each time MORDHAU knocked its shield away)
+            parts[#parts + 1] = string.pack("<I4I4fi4I4fI4", b.ghost, b.hits, b.damage, stage + 4096 * ((b.shieldLosses or 0) % 1000), b.otherHits or 0, b.otherDamage or 0, b.otherBy or 0)
             local stamina = -1
             pcall(function() if there(b.obj) then stamina = b.obj.Stamina end end)
             stamina_parts[#stamina_parts + 1] = string.pack("<I4f", b.ghost, stamina)
@@ -2905,6 +3005,32 @@ function PS_player_arm(pawn)
     local base = WEAPONS
     local life = pawn:GetFullName()
     if PS_armLife ~= life then PS_armLife = life; PS_armedFor = nil; PS_playerArm = nil end
+    -- A weapon in MORDHAU's hand that is not the Skyrim one's counterpart, with Skyrim's unchanged, is handed over again:
+    -- an enemy's sword taken up (both games had it), then a save from before loaded - Skyrim had the mace again, and
+    -- MORDHAU's character drew the sword from its slots and fought, and cut heads off, with it (play test 2026-10-24).
+    -- (held so for a second, at rest, and not just after a pick-up, whose Skyrim item is still being equipped)
+    if path and path ~= "" and path ~= "Fists" and path == PS_armedFor and not path:find("Ranged/", 1, true) then
+        local have = class_name(pawn.RightHandEquipment)
+        local want = path:match("([%w_]+)$") .. "_C"
+        local wrong = have ~= "" and have ~= want and not have:find("Fists", 1, true) and PS_playerWeapon and PS_playerWeapon.has == 1
+            and not PS_pickLater and os.clock() - (PS_pickedAt or -100) > 3 and class_name(pawn:GetMotion()) == "IdleMotion"
+        if not wrong then
+            PS_wrongSince = nil
+        elseif not PS_wrongSince then
+            PS_wrongSince = os.clock()
+        elseif os.clock() - PS_wrongSince > 1.0 then
+            PS_wrongSince = nil
+            -- (at most three times for one Skyrim weapon in a row: a hand-over that cannot be done is not tried forever)
+            PS_rehand = PS_rehand and PS_rehand.path == path and PS_rehand or { path = path, n = 0 }
+            PS_rehand.n = PS_rehand.n + 1
+            if PS_rehand.n <= 3 then
+                PS_armedFor = nil
+                log("the player holds " .. have .. " in MORDHAU but " .. want .. " is Skyrim's: handed over again")
+            elseif PS_rehand.n == 4 then
+                log("the player holds " .. have .. " in MORDHAU but " .. want .. " is Skyrim's: left so after three hand-overs")
+            end
+        end
+    end
     if not path or path == "" or path == PS_armedFor then return end
     if path == "Fists" then
         -- bare hands in Skyrim: MORDHAU's own switch to fists (asked again every second until it has happened)
@@ -2999,6 +3125,7 @@ function PS_shield_block(pawn, mesh)
     end)
     -- (+256: the weapon in the right hand is in its alternate mode - its other grip)
     pcall(function() if pawn.RightHandEquipment.bIsUsingAlternateMode == true then has = has + 256 end end)
+    has = has + 1024 * ((PS_me and PS_me.shieldLosses or 0) % 100000)   -- (+1024: each time MORDHAU knocked its shield away)
     return string.pack("<i4fffffff", has, q[1], q[2], q[3], q[4], t[1], t[2], t[3])
 end
 function PS_wall_is_up(p)
@@ -3040,6 +3167,7 @@ end
 function PS_player_shield(pawn)
     -- (PickUp leaves a spawned shield on the ground, and PickUp(w, true) crashed MORDHAU; PickUpToSlot(w, 2) puts it in
     -- the third slot and onto the arm - found)
+    if PS_shield_lost_lately(PS_me) then PS_shieldStep = 0; return end
     local fresh = os.clock() - input.stamp < 0.5
     local want = fresh and input.shield or nil
     if want == "1" then want = "BP_KiteShield" end

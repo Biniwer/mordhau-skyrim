@@ -338,6 +338,7 @@ namespace dm::sheets
 		{ "heavy_parry_drain", 2.0f },
 		{ "heavy_stamina", 20.0f },
 		{ "power_attack_damage", 2.0f },
+		{ "shield_disarm_skyrim", 1.0f },
 		{ "player_slow", 1.0f },
 		{ "standin_slow_least", 0.2f },
 		{ "mordhau_shield", 1.0f },

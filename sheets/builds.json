@@ -208,6 +208,14 @@
    "verified": false
   },
   {
+   "id": "shield_disarm_skyrim",
+   "value": 1.0,
+   "unit": "1 = on",
+   "meaning": "A shield MORDHAU knocks away (a shield parry on too little stamina) goes to the ground in Skyrim too, as the Skyrim character's own shield - the player's and a fought enemy's; picked up again the Skyrim way. Before, the Skyrim character kept it and only MORDHAU's disarm sound was heard",
+   "source": "the user, 2026-10-23 ('Add mirroring shield disarm', 'continue with proper shield disarms')",
+   "verified": false
+  },
+  {
    "id": "player_slow",
    "value": 1.0,
    "unit": "1 = on",

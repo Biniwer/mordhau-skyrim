@@ -600,6 +600,16 @@ namespace dm::Combat
 			}
 			m.playerHitsSeen = a_link.playerHits;
 			m.swingStage = gs.stage;
+			// its shield knocked away in MORDHAU (a shield parry on too little stamina): the Skyrim shield goes to the ground too
+			if (!m.shieldLossesKnown || gs.shieldLosses < m.shieldLossesSeen) {
+				m.shieldLossesKnown = true;
+				m.shieldLossesSeen = gs.shieldLosses;
+			} else if (gs.shieldLosses != m.shieldLossesSeen) {
+				m.shieldLossesSeen = gs.shieldLosses;
+				if (actor && BuildValue("shield_disarm_skyrim") > 0.5f) {
+					DropSkyrimShield(actor.get());
+				}
+			}
 			if (!m.hitsKnown) {
 				m.seenOther = gs.otherHits;
 			} else if (gs.otherHits < m.seenOther) {
@@ -696,12 +706,30 @@ namespace dm::Combat
 							// the head that comes off is the Skyrim character's own (Skyrim's decapitation makes it: its face, hair
 							// and helmet, as an object in the world); MORDHAU's own head model is not shown. MORDHAU's neck piece
 							// still goes on the body. (sheets/builds.json gore_skyrim_head)
-							const bool own = BuildValue("gore_skyrim_head") > 0.5f && actor->Decapitate();
+							// (Skyrim cuts off only a head made beforehand - the face's own FaceGeom mesh. A character Skyrim makes
+							// up at runtime, from a template - the Whiterun guards - has none: its head was "just gone", no head
+							// flew, the same with Skyrim's own kill move and with its helmet taken off (play test 2026-10-24).
+							// Such a one loses its head the MORDHAU way: folded into the neck, MORDHAU's head model flies.)
+							const auto* base = actor->GetActorBase();
+							const auto* face = base ? base->GetRootFaceNPC() : nullptr;
+							const auto* faceFile = face ? face->GetFile(0) : nullptr;
+							const bool  madeUp = !face || face->IsDynamicForm() || !faceFile;
+							bool        faceMesh = false;
+							if (!madeUp) {
+								const auto path = std::format("Meshes\\Actors\\Character\\FaceGenData\\FaceGeom\\{}\\{:08X}.nif", faceFile->GetFilename(), face->GetLocalFormID());
+								RE::BSResourceNiBinaryStream stream(path);
+								faceMesh = stream.good();
+							}
+							const bool skyrimHead = !madeUp && faceMesh;
+							const bool own = BuildValue("gore_skyrim_head") > 0.5f && skyrimHead && actor->Decapitate();
 							if (own) {
 								g_thrownHeads.push_back({ actor->GetHandle(), away, Clock::now(), 0 });  // (thrown on MORDHAU's arc: see ThrowHeads)
 							}
-							if (own || BuildValue("gore_skyrim_head") < 0.5f) {
-								logger::info("gore: {}", own ? "Skyrim's own head came off" : "gore_skyrim_head is 0: MORDHAU's head model flies");
+							if (own || BuildValue("gore_skyrim_head") < 0.5f || !skyrimHead) {
+								logger::info("gore: {}", own ? "Skyrim's own head came off"
+								                         : !skyrimHead ? std::format("{} has no head made beforehand (face {:08X}, {}): MORDHAU's head model flies", actor->GetDisplayFullName(),
+								                                             face ? face->GetFormID() : 0, madeUp ? "made up at runtime" : "no FaceGeom mesh")
+								                                       : std::string("gore_skyrim_head is 0: MORDHAU's head model flies"));
 								CharacterRender::SeverHead(actor->GetFormID(), away, !own);
 							} else {
 								logger::info("gore: Skyrim did not take this head off at the blow: asked again while the body falls");
@@ -952,6 +980,25 @@ namespace dm::Combat
 				}
 			}
 			g.shield = BuildValue("mordhau_shield") > 0.5f ? MordhauShieldOf(actor->GetWornArmor(RE::BGSBipedObjectForm::BipedObjectSlot::kShield)) : "";
+			{
+				// (each change, for looking into it: after MORDHAU knocked a guard's shield away its stand-in never had one
+				// again, the reload after included, and lost its sword instead - play test 2026-10-24)
+				static std::unordered_map<std::uint32_t, std::string> shieldWas;
+				auto [it, fresh] = shieldWas.try_emplace(m.id, g.shield);
+				if (fresh || it->second != g.shield) {
+					it->second = g.shield;
+					const auto* worn = actor->GetWornArmor(RE::BGSBipedObjectForm::BipedObjectSlot::kShield);
+					int         carried = -1;  // (-1: not looked: its inventory is only read with its body loaded and alive - reading it after a death crashed, 2026-10-23)
+					if (actor->Is3DLoaded() && !actor->IsDead()) {
+						carried = 0;
+						for (const auto& [form, entry] : actor->GetInventory([](RE::TESBoundObject& a_obj) { return a_obj.IsArmor() && static_cast<RE::TESObjectARMO&>(a_obj).IsShield(); })) {
+							carried += entry.first;
+						}
+					}
+					logger::info("stand-ins: {}'s shield for MORDHAU: {} (worn in Skyrim: {}; shields carried: {})", actor->GetDisplayFullName(), *g.shield ? g.shield : "none",
+						worn ? worn->GetName() : "none", carried);
+				}
+			}
 			if (m.id == g_demonId) {
 				g.weapon = "Demon/Troll";  // not a weapon: its stand-in is MORDHAU's Troll itself
 			}
@@ -1203,6 +1250,21 @@ namespace dm::Combat
 			// the damage model on Skyrim's own damage: MORDHAU's side then sends how good each hit was (sheets/progression.json damage_model)
 			Link::SetHeavy(BuildValue("heavy_attacks") > 0.5f, BuildValue("heavy_windup"), BuildValue("heavy_parry_drain"), BuildValue("heavy_stamina"));
 			Link::SetDamageModel(Progress("damage_model") > 0.5f, Progress("zone_head"), Progress("zone_body"), Progress("zone_legs"), Progress("stab_by_weapon") > 0.5f);
+
+			// the player's shield knocked away in MORDHAU: Skyrim's goes to the ground too
+			{
+				static std::uint32_t seen = 0;
+				static bool          known = false;
+				if (!known || a_link.shieldLosses < seen) {
+					known = true;
+					seen = a_link.shieldLosses;
+				} else if (a_link.shieldLosses != seen) {
+					seen = a_link.shieldLosses;
+					if (BuildValue("shield_disarm_skyrim") > 0.5f) {
+						DropSkyrimShield(a_player);
+					}
+				}
+			}
 
 			// what MORDHAU decided about attacks on the player
 			if (!g_playerHitsKnown) {

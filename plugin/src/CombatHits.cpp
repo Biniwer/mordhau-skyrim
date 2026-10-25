@@ -32,8 +32,26 @@ namespace dm::Combat
 			for (auto it = g_thrownHeads.begin(); it != g_thrownHeads.end();) {
 				const float t = Seconds(it->when);
 				auto        actor = it->who.get();
-				if (!actor || t > 1.5f || it->pushes >= 2) {
+				if (!actor || t > 1.5f) {
+					// (where the head is by then, for looking into it: a Whiterun guard's head was "just gone" while another
+					// character's fell as it should - play test 2026-10-24)
+					auto* root = actor ? actor->Get3D(false) : nullptr;
+					auto* head = root ? root->GetObjectByName("NPC Head [Head]") : nullptr;
+					if (head) {
+						const RE::NiPoint3 at = head->world.translate - actor->GetPosition();
+						int                shown = 0, hidden = 0;
+						RE::BSVisit::TraverseScenegraphGeometries(root, [&](RE::BSGeometry* a_geometry) {
+							(a_geometry->GetAppCulled() ? hidden : shown)++;
+							return RE::BSVisit::BSVisitControl::kContinue;
+						});
+						logger::info("gore: {}'s head 1.5 s on: {:.0f} units from the body ({:.0f} across, {:.0f} up), scale {:.3f}, {}; the body's pieces {} shown, {} hidden", actor->GetDisplayFullName(),
+							at.Length(), std::sqrt(at.x * at.x + at.y * at.y), at.z, head->world.scale, head->GetAppCulled() ? "culled" : "not culled", shown, hidden);
+					}
 					it = g_thrownHeads.erase(it);
+					continue;
+				}
+				if (it->pushes >= 2) {
+					++it;  // (thrown: kept until 1.5 s to be looked at)
 					continue;
 				}
 				// (the body goes limp a moment after the blow: the head is pushed once it is, and once more shortly after
@@ -437,6 +455,24 @@ namespace dm::Combat
 			auto*       weapon = form ? form->As<RE::TESObjectWEAP>() : nullptr;
 			RE::BGSEntryPoint::HandleEntryPoint(RE::BGSEntryPoint::ENTRY_POINT::kModPowerAttackDamage, a_attacker, weapon, a_target, std::addressof(mult));
 			return std::max(mult, 1.0f);
+		}
+
+		// MORDHAU knocked a character's shield away (it parried with it on too little stamina): the Skyrim character's shield
+		// goes to the ground too, as Skyrim's own object - it kept it before, and only MORDHAU's disarm sound was heard
+		// (2026-10-23). Picked up again the Skyrim way.
+		bool DropSkyrimShield(RE::Actor* a_actor)
+		{
+			auto* shield = a_actor->GetWornArmor(RE::BGSBipedObjectForm::BipedObjectSlot::kShield);
+			if (!shield) {
+				logger::info("shield: MORDHAU knocked {}'s shield away, but it wears none in Skyrim", a_actor->GetDisplayFullName());
+				return false;
+			}
+			// (beside it, a little ahead of its shield arm, where MORDHAU's fell)
+			const float  heading = a_actor->GetAngleZ();
+			RE::NiPoint3 at = a_actor->GetPosition() + RE::NiPoint3{ std::sin(heading) * 40.0f - std::cos(heading) * 30.0f, std::cos(heading) * 40.0f + std::sin(heading) * 30.0f, 50.0f };
+			const auto   ref = a_actor->DropObject(shield, nullptr, 1, std::addressof(at), nullptr);
+			logger::info("shield: MORDHAU knocked {}'s {} away: it lies on the ground in Skyrim too{}", a_actor->GetDisplayFullName(), shield->GetName(), ref ? "" : " (Skyrim did not drop it)");
+			return static_cast<bool>(ref);
 		}
 
 		// a_mordhauDamage >= 0: a MORDHAU-judged hit (its damage of 100); what it takes follows Skyrim's progression

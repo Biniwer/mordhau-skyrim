@@ -176,6 +176,13 @@ namespace dm::Link
 							std::memcpy(&g_state.ghosts[i].hits, g + 4, 4);
 							std::memcpy(&g_state.ghosts[i].damage, g + 8, 4);
 							std::memcpy(&g_state.ghosts[i].stage, g + 12, 4);
+							{
+								// (its shield knocked away in MORDHAU: a count, + 4096 each, on its stage of -1..99)
+								const int raw = g_state.ghosts[i].stage;
+								const int n = raw >= -1 ? (raw + 1) >> 12 : 0;
+								g_state.ghosts[i].shieldLosses = static_cast<std::uint32_t>(n);
+								g_state.ghosts[i].stage = raw - n * 4096;
+							}
 							std::memcpy(&g_state.ghosts[i].otherHits, g + 16, 4);
 							std::memcpy(&g_state.ghosts[i].otherDamage, g + 20, 4);
 							std::memcpy(&g_state.ghosts[i].otherBy, g + 24, 4);
@@ -184,6 +191,7 @@ namespace dm::Link
 						std::memcpy(&g_state.shots, s + 260, 4);
 						std::memcpy(&g_state.shieldHas, s + 408 + (kGhosts - 3) * 28, 4);
 						g_state.altMode = (g_state.shieldHas & 256) != 0;  // (carried in the same number: +256)
+						g_state.shieldLosses = static_cast<std::uint32_t>(g_state.shieldHas) >> 10;  // (...and the shield knocked away: +1024 each)
 						g_state.shieldHas &= 255;
 						std::memcpy(g_state.shield, s + 408 + (kGhosts - 3) * 28 + 4, 28);
 						for (int k = 0; k < kGhosts; ++k) {

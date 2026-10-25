@@ -78,6 +78,15 @@ Store, a few gameplay additions, and a CI build. Everything else - and how to pl
   health rules). After a save is loaded - after a death too - the player has the save's stamina, not the old one.
 - A disarm MORDHAU makes is a disarm: the stand-in's yield right after it no longer hands the weapon straight back
   (only the disarm sound was heard).
+- A shield MORDHAU knocks away (a shield parry on too little stamina) goes to the ground in Skyrim too - the player's
+  and an enemy's - as the Skyrim character's own shield, picked up again the Skyrim way. (`shield_disarm_skyrim`)
+- Enemies block and parry again: MORDHAU gave stand-ins the archer bot's behaviour (which hardly parries and keeps
+  switching weapons); a stand-in now gets one of MORDHAU's melee bot behaviours.
+- A weapon picked up in MORDHAU that stayed in the player's slots after a reload is handed over again when it is not
+  the Skyrim weapon (gore and sounds went by the wrong weapon).
+- A killing blow MORDHAU itself put on the head or neck bone takes the head, even when the blade line - read a frame
+  late - passed a little wide.
+- A character Skyrim cannot behead (no pre-made FaceGen head) loses its head the MORDHAU way: MORDHAU's head model flies.
 - Archers switching between bow and sword: the stand-in only ever carries the weapon its Skyrim character holds (a bow
   left in a holster slot made MORDHAU's brain switch back and forth, and shoot with it).
 - A parried or blocked Skyrim arrow no longer plays the player's being hit; it sounds your MORDHAU weapon's (or

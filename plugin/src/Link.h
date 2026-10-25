@@ -42,6 +42,7 @@ namespace dm::Link
 		GhostStamina  standinStamina[kGhosts];
 		bool          altMode = false;            // the weapon in MORDHAU's hand is in its alternate mode (its other grip)
 		int           shieldHas = 0;              // MORDHAU's character carries a shield
+		std::uint32_t shieldLosses = 0;           // times MORDHAU knocked its shield away (riding in the shield number: + 1024 each)
 		float         shield[7]{};                // ...there, in character space (rotation xyzw, position cm)
 		char          weaponClass[32]{};          // MORDHAU class of the weapon the character holds or last held
 		bool          menuOpen = false;           // MORDHAU's own voice / emote menu is open
@@ -59,6 +60,7 @@ namespace dm::Link
 			std::uint32_t otherHits = 0;      // times another stand-in hit it (two Skyrim characters fighting each other)
 			float         otherDamage = 0.0f;
 			std::uint32_t otherBy = 0;        // id of that stand-in
+			std::uint32_t shieldLosses = 0;   // times MORDHAU knocked its shield away (riding in its stage number: + 4096 each)
 		};
 		GhostState ghosts[kGhosts];
 		// MORDHAU loosed an arrow (see sheets/live_link.json 'shot'): counter, direction in its character space (right, forward,
