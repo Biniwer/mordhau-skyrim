@@ -449,7 +449,8 @@ namespace dm::Combat
 					++it;
 				}
 			}
-			if (link.live) {
+			// (only the old way, disarm_mode -1: now the Skyrim item itself drops or stays in the inventory - see HandleDisarms)
+			if (link.live && BuildValue("disarm_mode") < -0.5f) {
 				for (const auto& d : dropped) {
 					if (laid.contains(d.owner)) {
 						continue;
@@ -479,6 +480,158 @@ namespace dm::Combat
 				}
 			}
 		}
+		}
+
+		// A weapon knocked away or dropped in MORDHAU, the Skyrim way (sheets/builds.json disarm_mode; play-test note
+		// 2026-10-25). MORDHAU's side takes its own weapon out of its world half a second on; here the Skyrim item:
+		// 0 = it drops to Skyrim's ground, out of the inventory - the one who lost it takes it up again when it stands
+		//     within a metre of it for 3 s, anyone else with the Skyrim E; otherwise it fights on with what else it has.
+		//     (Before, a copy was laid on the ground while the weapon stayed in the inventory: a guard's sword picked up
+		//     and the body looted gave two swords.)
+		// 1 = it stays in the inventory, put away: it cannot be taken up again for disarm_lockout_seconds (upstream's 8 s
+		//     before a disarmed MORDHAU bot draws anew), then it is back in the hand.
+		struct RealDrop
+		{
+			std::uint32_t       owner;  // (0 = the player)
+			RE::ObjectRefHandle ref;
+			RE::TESObjectWEAP*  weapon;
+			int                 playerHad, ownerHad;  // (how many the player and the owner had when it dropped: who took it)
+			Clock::time_point   nearSince{};
+			bool                close = false;
+		};
+		struct DisarmLock
+		{
+			std::uint32_t      owner;
+			RE::TESObjectWEAP* weapon;
+			Clock::time_point  until;
+			bool               told = false;
+		};
+		std::vector<RealDrop>                        g_realDrops;
+		std::vector<DisarmLock>                      g_disarmLocks;
+		std::unordered_map<std::uint32_t, int>       g_weaponStates;  // (owner -> MORDHAU's weapon state last frame)
+
+		void ForgetDisarms()
+		{
+			g_realDrops.clear();
+			g_disarmLocks.clear();
+			g_weaponStates.clear();
+		}
+
+		int CountOf(RE::Actor* a_actor, RE::TESObjectWEAP* a_weapon)
+		{
+			int n = 0;
+			for (const auto& [form, entry] : a_actor->GetInventory([&](RE::TESBoundObject& a_obj) { return &a_obj == a_weapon; })) {
+				n += entry.first;
+			}
+			return n;
+		}
+
+		void HandleDisarms(RE::PlayerCharacter* a_player, const Link::State& link)
+		{
+			const int mode = static_cast<int>(std::lround(BuildValue("disarm_mode")));
+			if (mode < 0) {
+				return;  // (the old way: PlaceDroppedWeapons)
+			}
+			// what MORDHAU knocked away or dropped this frame: its weapon state from 1 (in the hand) to 2 (on the ground)
+			const auto lost = [&](std::uint32_t a_owner, int a_state) {
+				int&       was = g_weaponStates[a_owner];
+				const bool fresh = was == 1 && a_state == 2;
+				was = a_state;
+				RE::Actor* actor = a_owner == 0 ? a_player : RE::TESForm::LookupByID<RE::Actor>(a_owner);
+				if (!fresh || !actor || actor->IsDead() || !actor->Is3DLoaded()) {
+					return;
+				}
+				auto* form = actor->GetEquippedObject(false);
+				auto* weapon = form ? form->As<RE::TESObjectWEAP>() : nullptr;
+				if (!weapon || weapon->IsHandToHandMelee()) {
+					return;
+				}
+				if (mode == 1) {
+					RE::ActorEquipManager::GetSingleton()->UnequipObject(actor, weapon);
+					g_disarmLocks.push_back({ a_owner, weapon, Clock::now() + std::chrono::milliseconds(static_cast<int>(BuildValue("disarm_lockout_seconds") * 1000.0f)) });
+					logger::info("disarm: {}'s {} stays in the inventory, put away for {:.0f} s", actor->GetDisplayFullName(), weapon->GetName(), BuildValue("disarm_lockout_seconds"));
+					return;
+				}
+				const auto*        hand = actor->GetNodeByName("NPC R Hand [RHnd]");
+				const RE::NiPoint3 at = hand ? hand->world.translate : actor->GetPosition() + RE::NiPoint3{ 0.0f, 0.0f, 80.0f };
+				const int          playerHad = CountOf(a_player, weapon), ownerHad = CountOf(actor, weapon);
+				auto               ref = actor->DropObject(weapon, nullptr, 1, std::addressof(at), nullptr);
+				if (ref) {
+					g_realDrops.push_back({ a_owner, ref, weapon, playerHad - (a_owner == 0 ? 1 : 0), ownerHad - 1 });
+				}
+				logger::info("disarm: {}'s {} {}", actor->GetDisplayFullName(), weapon->GetName(), ref ? "drops to the ground as the Skyrim item, out of its inventory" : "could not be dropped");
+			};
+			if (link.live) {
+				lost(0, link.weaponState);
+				for (int k = 0; k < Link::kGhosts; ++k) {
+					Link::GhostPose pose;
+					if (link.ghosts[k].id && Link::GhostPoseAtNewest(k, pose)) {
+						lost(link.ghosts[k].id, pose.weaponState);
+					}
+				}
+			}
+			// dropped ones: taken up again by whoever lost it, standing on it - or gone (someone took it)
+			for (auto it = g_realDrops.begin(); it != g_realDrops.end();) {
+				auto       ref = it->ref.get();
+				RE::Actor* owner = it->owner == 0 ? a_player : RE::TESForm::LookupByID<RE::Actor>(it->owner);
+				if (!ref || ref->IsDisabled() || ref->IsDeleted() || !ref->GetParentCell()) {
+					const bool byPlayer = CountOf(a_player, it->weapon) > it->playerHad;
+					if (byPlayer && !a_player->GetEquippedObject(false)) {
+						RE::ActorEquipManager::GetSingleton()->EquipObject(a_player, it->weapon);
+					}
+					logger::info("disarm: the dropped {} was taken up{}", it->weapon->GetName(), byPlayer ? " by the player" : owner && it->owner != 0 && CountOf(owner, it->weapon) > it->ownerHad ? std::format(" by {}", owner->GetDisplayFullName()) : std::string());
+					it = g_realDrops.erase(it);
+					continue;
+				}
+				if (it->owner != 0 && owner && !owner->IsDead() && owner->Is3DLoaded()) {
+					const bool close = owner->GetPosition().GetDistance(ref->GetPosition()) < 70.0f;  // (a metre)
+					if (close && !it->close) {
+						it->nearSince = Clock::now();
+					}
+					it->close = close;
+					if (close && Seconds(it->nearSince) > 3.0f) {
+						owner->PickUpObject(ref.get(), 1, false, true);
+						RE::ActorEquipManager::GetSingleton()->EquipObject(owner, it->weapon);
+						logger::info("disarm: {} takes its {} up again from beside it", owner->GetDisplayFullName(), it->weapon->GetName());
+						it = g_realDrops.erase(it);
+						continue;
+					}
+				} else if (it->owner != 0 && (!owner || owner->IsDead())) {
+					it = g_realDrops.erase(it);  // (it just lies there now, a Skyrim item like any)
+					continue;
+				}
+				++it;
+			}
+			// kept ones: put away for the lockout, then back in the hand
+			for (auto it = g_disarmLocks.begin(); it != g_disarmLocks.end();) {
+				RE::Actor* actor = it->owner == 0 ? a_player : RE::TESForm::LookupByID<RE::Actor>(it->owner);
+				if (!actor || actor->IsDead()) {
+					it = g_disarmLocks.erase(it);
+					continue;
+				}
+				auto*      form = actor->GetEquippedObject(false);
+				const bool inHand = form == it->weapon;
+				if (Clock::now() < it->until) {
+					if (inHand) {
+						RE::ActorEquipManager::GetSingleton()->UnequipObject(actor, it->weapon);
+						if (!it->told) {
+							it->told = true;
+							const float left = std::chrono::duration<float>(it->until - Clock::now()).count();
+							logger::info("disarm: {} took its {} out again too soon: put away, {:.1f} s left", actor->GetDisplayFullName(), it->weapon->GetName(), left);
+							if (it->owner == 0) {
+								RE::SendHUDMessage::ShowHUDMessage(std::format("Your {} was knocked away: back in {:.0f} s", it->weapon->GetName(), std::ceil(left)).c_str());
+							}
+						}
+					}
+					++it;
+					continue;
+				}
+				if (!form && CountOf(actor, it->weapon) > 0) {
+					RE::ActorEquipManager::GetSingleton()->EquipObject(actor, it->weapon);
+					logger::info("disarm: {}'s {} is back in its hand", actor->GetDisplayFullName(), it->weapon->GetName());
+				}
+				it = g_disarmLocks.erase(it);
+			}
 		}
 
 		// With an ENB, what this plugin draws is handed over darker to match.
@@ -976,6 +1129,7 @@ namespace dm::Combat
 			KeepSkyrimBlock(a_player, link);
 			ShowPickUpPrompt(a_player, link);
 			PlaceDroppedWeapons(a_player, link);
+			HandleDisarms(a_player, link);
 			LoadAiLevel();
 			MatchEnbBrightness(a_player);
 			CalmBodies();

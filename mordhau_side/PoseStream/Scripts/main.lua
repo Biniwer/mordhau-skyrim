@@ -695,6 +695,9 @@ local function read_input()
             input.power = {}
             for id, n in rest:gmatch(" pa:(%d+),(%d+)") do input.power[tonumber(id)] = tonumber(n) end
         end
+        -- (what a weapon knocked away or dropped becomes - sheets/builds.json disarm_mode: 0 = the Skyrim item drops to
+        -- Skyrim's ground, 1 = it stays in the inventory; either way MORDHAU's own one is taken out of its world)
+        input.disarmMode = tonumber(rest:match(" wd:(%d)"))
         do   -- (the damage model on Skyrim's damage: zone qualities head, body, legs, and whether stabs go by the weapon)
             local h, bo, l, s = rest:match(" dm:([%d%.]+),([%d%.]+),([%d%.]+),(%d)")
             input.damageModel = h ~= nil
@@ -2061,6 +2064,13 @@ local function update_ghosts(pawn, pc)
                 if not b.ghost and not b.dead and b.obj:IsValid() and b.demon == demon then
                     b.ghost = g.id; b.attacks = g.attacks; b.hits = 0; b.damage = 0; have = true; b.idleSince = nil
                     b.awake = false; b.busyAt = os.clock()   -- (a new character to stand in for: its brain is started afresh)
+                    -- (and it is armed afresh: the last one's weapon may lie on the ground. Idolaf, standing in after a
+                    -- guard disarmed of the same kind of sword, counted as armed and fought with fists - play test 2026-10-25)
+                    b.armed = false; b.armedFor = nil; b.armingFor = nil; b.dropAt = nil
+                    pcall(function()
+                        if b.weapon and b.weapon.has == 2 and there(b.weapon.held) and not there(b.weapon.held:GetAttachParentActor()) then b.weapon.held:K2_DestroyActor() end
+                    end)
+                    if b.weapon then b.weapon.held = nil; b.weapon.has = 0 end
                     break
                 end
             end
@@ -2146,8 +2156,8 @@ local function update_ghosts(pawn, pc)
                     PS_standin_skill(c, PS_skill_of(b))
                 end
             end
-            -- A stand-in that has lost its weapon (disarmed, dropped) takes it up again: after 3 s when it lies within
-            -- reach, and after 8 s it draws another like it. (Held in place at its Skyrim character's spot, its brain
+            -- A stand-in that has lost its weapon (disarmed, dropped) takes it up again: after 3 s when it lies at its
+            -- feet (1 m), and after 8 s it draws another like it. (Held in place at its Skyrim character's spot, its brain
             -- never walked over to it: a disarmed opponent did not pick her sword up again.)
             if g and not b.demon and b.armed and b.weapon and b.weapon.has == 2 then
                 b.dropAt = b.dropAt or os.clock()
@@ -2158,7 +2168,7 @@ local function update_ghosts(pawn, pc)
                     local near = false
                     pcall(function()
                         local a, e = w:K2_GetActorLocation(), c:K2_GetActorLocation()
-                        near = (a.X - e.X) ^ 2 + (a.Y - e.Y) ^ 2 < 220 * 220
+                        near = (a.X - e.X) ^ 2 + (a.Y - e.Y) ^ 2 < 100 * 100   -- (220 before: the sword jumped into its hand from 2 m off, play test 2026-10-25)
                     end)
                     if there(w) and near then
                         pcall(function() c:PickUp(w, false) end)
@@ -3299,6 +3309,15 @@ function PS_ghost_poses()
                 PS_prof_add("ghostweapon", os.clock() - tw)
                 -- (what a bot lets go of while it is being handed its Skyrim character's weapon is not a disarm)
                 if hasWeapon == 2 and not b.armed and not b.armGaveUp then hasWeapon = 0 end
+                -- (a disarm the Skyrim side takes over - sheets/builds.json disarm_mode: dropped as the Skyrim item, or kept in
+                -- the inventory for a while. Half a second on, for the plugin to have seen it, MORDHAU's own one goes, and
+                -- the stand-in is armed again with whatever its Skyrim character holds then)
+                if input.disarmMode and hasWeapon == 2 and b.weapon.has == 2 and os.clock() - (b.weapon.since or 0) > 0.5 then
+                    pcall(function() if there(b.weapon.held) and not there(b.weapon.held:GetAttachParentActor()) then b.weapon.held:K2_DestroyActor() end end)
+                    b.weapon.held = nil; b.weapon.has = 0; hasWeapon = 0
+                    b.armed = false; b.armedFor = nil; b.armingFor = nil; b.dropAt = nil
+                    log("stand-in " .. tostring(b.look) .. "'s weapon left MORDHAU's world: Skyrim " .. (input.disarmMode == 1 and "keeps it in the inventory for now" or "dropped it as its own item"))
+                end
                 if hasWeapon ~= b.hasLogged then   -- (each change, for looking into disarms: 0 none, 1 hand, 2 ground, 3 put away)
                     log(string.format("stand-in %s's weapon: %s -> %s%s", tostring(b.look), tostring(b.hasLogged), tostring(hasWeapon), b.armed and "" or " (being armed)"))
                     b.hasLogged = hasWeapon
@@ -3371,6 +3390,13 @@ local function state_block(pawn, mesh)
     if hasWeapon == 2 and PS_playerArm then hasWeapon = 3 end
     -- (nor is a thrown weapon: it is in the air, then lies in Skyrim as the Skyrim item - no MORDHAU weapon to take up)
     if hasWeapon == 2 and (name:find("Ranged", 1, true) or os.clock() - (PS_thrownAt or -100) < 8 or os.clock() - (PS_unhandAt or -100) < 3) then hasWeapon = 0 end
+    -- (the same for the player's: sheets/builds.json disarm_mode)
+    if input.disarmMode and hasWeapon == 2 and PS_playerWeapon.has == 2 and os.clock() - (PS_playerWeapon.since or 0) > 0.5 then
+        pcall(function() if there(PS_playerWeapon.held) and not there(PS_playerWeapon.held:GetAttachParentActor()) then PS_playerWeapon.held:K2_DestroyActor() end end)
+        PS_playerWeapon.held = nil; PS_playerWeapon.has = 0; PS_playerHeld = nil; hasWeapon = 0
+        PS_armedFor = nil
+        log("the player's weapon left MORDHAU's world: Skyrim " .. (input.disarmMode == 1 and "keeps it in the inventory for now" or "dropped it as its own item"))
+    end
     if hasWeapon ~= PS_playerHasLogged then
         PS_playerHasLogged = hasWeapon
         log("the player's weapon is " .. (({ [0] = "gone", "in the hand", "on the ground (dropped or disarmed)", "put away" })[hasWeapon] or "?"))

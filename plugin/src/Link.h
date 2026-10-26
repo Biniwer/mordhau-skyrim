@@ -96,6 +96,7 @@ namespace dm::Link
 	void SetShield(const char* a_mordhauShield);  // the MORDHAU shield for the one on the player's arm ("" = none)     // the player carries a shield in Skyrim
 	void AddStamina(float a_percent);  // Skyrim restored stamina (a potion): MORDHAU's character gains it too
 	void SetHeavy(bool a_on, float a_windup, float a_drain, float a_missCost);  // sheets/builds.json heavy_attacks: how heavy a heavy attack is, for MORDHAU's side
+	void SetDisarmMode(int a_mode);  // sheets/builds.json disarm_mode: what a weapon knocked away or dropped becomes (MORDHAU's side takes its own out of the world)
 	void SetDamageModel(bool a_on, float a_head, float a_body, float a_legs, bool a_stabByWeapon);  // sheets/progression.json damage_model: MORDHAU's side sends hit quality
 	void SetPlayerSlow(float a_move);    // Skyrim's slows on the player, as a share of its normal speed: MORDHAU's character moves as slowly
 	void DrainStamina(float a_percent);  // Skyrim took stamina (a frost spell, a poison, any mod's effect): MORDHAU's character loses it too

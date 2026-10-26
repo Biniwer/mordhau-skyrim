@@ -329,6 +329,41 @@
    "verified": false
   },
   {
+   "id": "bow_hit_stagger",
+   "value": 0.25,
+   "meaning": "A hit MORDHAU judges on a fought character drawing a bow or crossbow breaks off the draw: Skyrim's own stagger of this magnitude (0..1) after 'attackStop'. 0 = off (Skyrim's hit reaction alone does not stop the draw).",
+   "source": "play-test note, 2026-10-25: with no weapons left they pull out the bow and just shoot you, hitting them does not intercept their shooting",
+   "verified": false
+  },
+  {
+   "id": "disarm_mode",
+   "value": 0.0,
+   "meaning": "What a weapon knocked away or dropped in MORDHAU becomes, for the player and the enemies fought: 0 = the Skyrim item drops to the ground, out of the inventory (the one who lost it takes it up again standing within a metre of it for 3 s; anyone can take it with E); 1 = it stays in the inventory, put away, and cannot be taken up again for disarm_lockout_seconds, then it is back in the hand; -1 = the old way (a copy on the ground, the weapon stays in the inventory). MORDHAU's own dropped weapon is taken out of its world (0 and 1). Settings menu: Gameplay.",
+   "source": "play-test note, 2026-10-25: remove the sword from the Skyrim character's inventory as soon as it is dropped; or an option to keep it in the inventory and not equip it for 8 seconds; configurable in SkyUI",
+   "verified": false
+  },
+  {
+   "id": "disarm_lockout_seconds",
+   "value": 8.0,
+   "meaning": "disarm_mode 1: seconds a weapon knocked away stays put away before it is back in the hand (8 = upstream's wait before a disarmed MORDHAU bot draws anew). Settings menu: Gameplay.",
+   "source": "play-test note, 2026-10-25",
+   "verified": false
+  },
+  {
+   "id": "standin_bow_melee_range",
+   "value": 280.0,
+   "meaning": "Skyrim units (about 4 m): a fought character that takes out its bow or crossbow with the player nearer than this has its best melee weapon put back in its hand; with none left, the bow is put away and it fights with its fists (looked at every 0.3 s). Further off it may shoot. 0 = off.",
+   "source": "play-test note, 2026-10-25: a guard pulled out its bow mid-fight and took hit after hit before it finally pulled out its sword",
+   "verified": false
+  },
+  {
+   "id": "gore_helmet_on_head",
+   "value": 1.0,
+   "meaning": "1 = with Skyrim's own head cut off (gore_skyrim_head), what the character wears on its head - helmet, hood, circlet - goes with the flying head: its mesh's hidden parts are shown again, and it hangs on the head bone. 0 = as Skyrim leaves it.",
+   "source": "play-test note, 2026-10-25: a Whiterun guard's helmet did not come off with its head; put the helmet onto the flying head",
+   "verified": false
+  },
+  {
    "id": "head_throw_out",
    "value": 170.0,
    "meaning": "how fast (Skyrim units/s) a cut-off Skyrim head is thrown away from the blow - MORDHAU's own launch for a severed head",

@@ -203,9 +203,23 @@ namespace dm::Combat
 			RE::NiPoint3      away;
 			Clock::time_point when;
 			int               pushes;
+			bool              told = false;  // (its look 1.5 s on was logged)
+			std::string       state;         // (what the body had for its head when last logged: see HeadState)
 		};
 
 		inline std::vector<ThrownHead> g_thrownHeads;
+
+		// Headwear put onto a severed head (see HelmetOntoHead): the copy there is the severed head's own, so taking the
+		// helmet out of the body's inventory left it on the head (play test 2026-10-25); it is watched and hidden then.
+		struct HeadwearOnHead
+		{
+			RE::ActorHandle   who;
+			RE::FormID        armor;
+			std::string       piece;   // (the mesh's name, the same on the body and on the severed head)
+			Clock::time_point looked;
+		};
+
+		inline std::vector<HeadwearOnHead> g_headwearOnHeads;
 
 		// Heads Skyrim would not take off at the blow itself (a draugr's: it is not counted dead yet in that instant):
 		// asked again for a second; only a person's is then replaced by MORDHAU's head model - a draugr has no human head.
@@ -709,6 +723,8 @@ namespace dm::Combat
 		void ShowPickUpPrompt(RE::PlayerCharacter* a_player, const Link::State& link);
 
 		void PlaceDroppedWeapons(RE::PlayerCharacter* a_player, const Link::State& link);
+		void HandleDisarms(RE::PlayerCharacter* a_player, const Link::State& link);
+		void ForgetDisarms();
 
 		void MatchEnbBrightness(RE::PlayerCharacter* a_player);
 
@@ -883,7 +899,9 @@ namespace dm::Combat
 										// weight and value, and equipped (MORDHAU's character picks the real thing up below)
 										RE::Actor* holder = nullptr;
 										if (auto* item = GroundWeaponItem(owner, model, &holder)) {
-											if (holder && !holder->IsDead()) {
+											// (a dead one's too: its sword picked up from beside its body, then the body looted - two swords
+											// in the player's inventory, play test 2026-10-25)
+											if (holder) {
 												holder->RemoveItem(item, 1, RE::ITEM_REMOVE_REASON::kRemove, nullptr, nullptr);
 											}
 											player->AddObjectToContainer(item, nullptr, 1, nullptr);

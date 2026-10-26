@@ -87,6 +87,17 @@ Store, a few gameplay additions, and a CI build. Everything else - and how to pl
 - A killing blow MORDHAU itself put on the head or neck bone takes the head, even when the blade line - read a frame
   late - passed a little wide.
 - A character Skyrim cannot behead (no pre-made FaceGen head) loses its head the MORDHAU way: MORDHAU's head model flies.
+- A severed head flies on MORDHAU's arc - Skyrim's own severed head (its separate small skeleton), not the body's head
+  bone - and wears the character's helmet; looting the helmet off the body takes it off the head too.
+- A weapon knocked away or dropped is the real Skyrim item (`disarm_mode`, settings menu: Gameplay): 0 = it drops to the
+  ground and leaves the inventory (no more copy on the ground, no more two swords after looting); the one who lost it
+  takes it back standing within a metre of it for 3 s, anyone can take it with E. 1 = it stays in the inventory, put
+  away for `disarm_lockout_seconds` (8, upstream's wait), then back in the hand (not play-tested yet).
+- A disarmed enemy that grabs its weapon back does so only from within a metre (it jumped into its hand from 2 m).
+- An enemy that takes its bow out with the player at arm's length gets its melee weapon back in its hand, or - with none
+  left - puts the bow away and fights with its fists (`standin_bow_melee_range`). A hit breaks off a bow's draw
+  (`bow_hit_stagger`).
+- A MORDHAU bot handed to the next enemy is armed afresh (one fought with fists after taking over from a disarmed guard).
 - Archers switching between bow and sword: the stand-in only ever carries the weapon its Skyrim character holds (a bow
   left in a holster slot made MORDHAU's brain switch back and forth, and shoot with it).
 - A parried or blocked Skyrim arrow no longer plays the player's being hit; it sounds your MORDHAU weapon's (or

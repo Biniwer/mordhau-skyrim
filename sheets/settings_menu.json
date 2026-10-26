@@ -380,6 +380,29 @@
      "default": 1,
      "acts_on": "off = camera.json eye_head_hidden_looking_down taken as never",
      "help": "Hides your helmet while you look far down in first person, so it does not block the view."
+    },
+    {
+     "id": "disarm_mode",
+     "label": "Weapons knocked away",
+     "type": "choice",
+     "choices": [
+      "Drop to the ground",
+      "Stay in the inventory"
+     ],
+     "default": 0,
+     "acts_on": "builds.json disarm_mode (0 / 1; -1, the old copy on the ground, is not offered). play-test note, 2026-10-25",
+     "help": "Drop: a weapon knocked out of a hand falls to the ground and leaves the inventory - its owner takes it back standing on it, or anyone picks it up. Stay: it is put away in the inventory and comes back to the hand after the lockout below."
+    },
+    {
+     "id": "disarm_lockout_seconds",
+     "label": "Lockout after a disarm (seconds)",
+     "type": "slider",
+     "min": 1,
+     "max": 20,
+     "step": 1,
+     "default": 8,
+     "acts_on": "builds.json disarm_lockout_seconds",
+     "help": "With 'Stay in the inventory': how long a knocked-away weapon cannot be taken up again, yours and the enemies'."
     }
    ]
   },

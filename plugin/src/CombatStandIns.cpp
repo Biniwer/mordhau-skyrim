@@ -678,6 +678,20 @@ namespace dm::Combat
 				}
 				const bool wasAlive = !actor->IsDead();
 				ApplyHit(a_player, actor.get(), swing, scale, hitDamage);
+				// A hit breaks off a bow's or crossbow's draw, as in MORDHAU: Skyrim's own hit reaction does not, and a guard
+				// disarmed of all its blades drew its bow at arm's length and shot the player while hit after hit landed
+				// (play test 2026-10-25). A light stagger of Skyrim's own puts the arrow back. (sheets/builds.json bow_hit_stagger)
+				if (!actor->IsDead() && BuildValue("bow_hit_stagger") > 0.0f) {
+					const auto* held = actor->GetEquippedObject(false);
+					const auto* bow = held ? held->As<RE::TESObjectWEAP>() : nullptr;
+					const auto  state = actor->AsActorState()->GetAttackState();
+					if (bow && (bow->IsBow() || bow->IsCrossbow()) && state >= RE::ATTACK_STATE_ENUM::kBowDraw && state <= RE::ATTACK_STATE_ENUM::kBowReleasing) {
+						actor->NotifyAnimationGraph("attackStop");
+						const bool taken = StaggerFrom(actor.get(), a_player, BuildValue("bow_hit_stagger"));
+						logger::info("live: the player's hit broke off {}'s draw of its {} (attack state {}){}", actor->GetDisplayFullName(), bow->GetName(), static_cast<int>(state),
+							taken ? "" : " - Skyrim did not take the stagger");
+					}
+				}
 				// a kick MORDHAU judged on a stand-in: the settings menu's super kick throws the Skyrim character too
 				if (std::string_view(a_link.motion).find("Kick") != std::string_view::npos || g_lastRelease.find("Kick") != std::string::npos) {
 					SuperKick(a_player, actor.get());
@@ -850,7 +864,41 @@ namespace dm::Combat
 			const bool attacking = state == RE::ATTACK_STATE_ENUM::kDraw || state == RE::ATTACK_STATE_ENUM::kSwing;
 			const auto* inHand = actor->GetEquippedObject(false);
 			const auto* inHandWeapon = inHand ? inHand->As<RE::TESObjectWEAP>() : nullptr;
-			const bool  shoots = inHandWeapon && (inHandWeapon->IsBow() || inHandWeapon->IsCrossbow());
+			bool        shoots = inHandWeapon && (inHandWeapon->IsBow() || inHandWeapon->IsCrossbow());
+			bool        bowPutAway = false;  // (see below: its stand-in fights with its fists meanwhile)
+			// A fighter with the player at arm's length does not take its bow out: Skyrim's AI sometimes does (a guard drew
+			// its bow mid-fight, 170 units off), and with a bow MORDHAU's character cannot parry - it took hit after hit, each
+			// one breaking off Skyrim's own switch back to the sword, for 10 s (play test 2026-10-25). Its melee weapon is
+			// put back in its hand; with none left (disarmed of every blade) the bow is put away and it fights with its fists
+			// until it has a weapon again - "doesn't make a lot of sense to pull out a bow in melee range" (same day; before,
+			// it kept the bow and shot the player point-blank). (sheets/builds.json standin_bow_melee_range)
+			if (shoots && actor->Is3DLoaded() && !actor->IsDead() && actor->GetPosition().GetDistance(a_player->GetPosition()) < BuildValue("standin_bow_melee_range")) {
+				// (looked at every frame: Skyrim's AI took the bow out again about once a second, and with a look every 0.3 s
+				// the stand-in was handed the bow for that long each time - play test 2026-10-26)
+				{
+					RE::TESObjectWEAP* melee = nullptr;
+					for (const auto& [form, entry] : actor->GetInventory([](RE::TESBoundObject& a_obj) { return a_obj.IsWeapon(); })) {
+						auto* weapon = form->As<RE::TESObjectWEAP>();
+						if (entry.first > 0 && weapon && weapon->IsMelee() && !weapon->IsHandToHandMelee() && (!melee || weapon->GetAttackDamage() > melee->GetAttackDamage())) {
+							melee = weapon;
+						}
+					}
+					if (melee) {
+						RE::ActorEquipManager::GetSingleton()->EquipObject(actor.get(), melee);
+					} else {
+						RE::ActorEquipManager::GetSingleton()->UnequipObject(actor.get(), const_cast<RE::TESObjectWEAP*>(inHandWeapon));
+						bowPutAway = true;
+						shoots = false;  // (not an archer: its stand-in fights, with its fists)
+					}
+					// (said once per character and outcome: Skyrim's AI may take the bow out again and again)
+					static std::unordered_map<std::uint32_t, bool> told;
+					if (auto found = told.find(m.id); found == told.end() || found->second != (melee != nullptr)) {
+						told[m.id] = melee != nullptr;
+						logger::info("stand-ins: {} took out its {} with the player {:.0f} units off: {}", actor->GetDisplayFullName(), inHandWeapon->GetName(),
+							actor->GetPosition().GetDistance(a_player->GetPosition()), melee ? std::format("its {} is put back in its hand", melee->GetName()) : std::string("no melee weapon left - the bow is put away, it fights with its fists"));
+					}
+				}
+			}
 			// (an archer; or someone who is only being attacked and does not fight: its stand-in stands there to be hit
 			// - with its brain on it would go for the player's character)
 			g.passive = shoots || (!actor->IsInCombat() && !actor->IsHostileToActor(a_player));
@@ -926,6 +974,9 @@ namespace dm::Combat
 				std::string name = inHandWeapon->GetName() ? inHandWeapon->GetName() : "";
 				std::transform(name.begin(), name.end(), name.begin(), [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
 				g.weapon = inHandWeapon->IsCrossbow() ? "Ranged/BP_Crossbow" : name.find("long") != std::string::npos ? "Ranged/BP_Longbow" : "Ranged/BP_RecurveBow";
+			}
+			if (bowPutAway) {
+				g.weapon = "BP_FistsWeapon";  // (the bow is on its way back: the stand-in is not handed it in between)
 			}
 			{
 				// (what the stand-in is given, each change: an archer switching between its bow and its sword shot the
@@ -1248,6 +1299,7 @@ namespace dm::Combat
 			}
 
 			// the damage model on Skyrim's own damage: MORDHAU's side then sends how good each hit was (sheets/progression.json damage_model)
+			Link::SetDisarmMode(static_cast<int>(std::lround(BuildValue("disarm_mode"))));
 			Link::SetHeavy(BuildValue("heavy_attacks") > 0.5f, BuildValue("heavy_windup"), BuildValue("heavy_parry_drain"), BuildValue("heavy_stamina"));
 			Link::SetDamageModel(Progress("damage_model") > 0.5f, Progress("zone_head"), Progress("zone_body"), Progress("zone_legs"), Progress("stab_by_weapon") > 0.5f);
 

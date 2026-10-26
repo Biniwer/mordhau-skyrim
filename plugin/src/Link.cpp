@@ -501,6 +501,12 @@ namespace dm::Link
 		std::scoped_lock lock(g_lock);
 		g_heavy = a_on ? std::format(" hv:{:.2f},{:.2f},{:.0f}", a_windup, a_drain, a_missCost) : "";
 	}
+	int  g_disarmMode = -1;  // (" wd:mode"; -1 = not sent)
+	void SetDisarmMode(int a_mode)
+	{
+		std::scoped_lock lock(g_lock);
+		g_disarmMode = a_mode;
+	}
 	std::string g_damageModel;  // (" dm:head,body,legs,stab" when on)
 	void        SetDamageModel(bool a_on, float a_head, float a_body, float a_legs, bool a_stabByWeapon)
 	{
@@ -611,6 +617,9 @@ namespace dm::Link
 			}
 			line += g_damageModel;
 			line += g_heavy;
+			if (g_disarmMode >= 0) {
+				line += std::format(" wd:{}", g_disarmMode);
+			}
 			if (g_staminaGains > 0) {
 				line += std::format(" sg:{},{:.1f}", g_staminaGains, g_staminaGain);
 			}

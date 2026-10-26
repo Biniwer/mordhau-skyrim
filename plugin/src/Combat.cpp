@@ -510,5 +510,6 @@ namespace dm::Combat
 		g_parryLockUntil = {};
 		g_riposteUntil = {};
 		g_staminaFromSave.store(true);
+		ForgetDisarms();
 	}
 }

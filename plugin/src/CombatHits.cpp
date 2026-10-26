@@ -4,6 +4,149 @@ namespace dm::Combat
 {
 	inline namespace internal
 	{
+		// Skyrim's severed head: a small skeleton of its own ("DismemberedLimb1 Head1" and a head bone with physics) that
+		// Skyrim hangs under the body's 3D, with copies of the head's meshes skinned to it. It is there and falls from
+		// the blow on, for a Whiterun guard too; the body keeps its own head bone, with the helmet on it. (Play test
+		// 2026-10-25 - before, the body's own head bone was the one pushed, and the helmet looked for there.)
+		RE::NiAVObject* SeveredLimb(RE::Actor* a_actor, RE::NiAVObject** a_head = nullptr)
+		{
+			auto*           body = a_actor->Get3D(false);
+			RE::NiAVObject* limb = nullptr;
+			RE::NiAVObject* head = nullptr;
+			std::function<void(RE::NiAVObject*)> visit = [&](RE::NiAVObject* a_object) {
+				if (limb) {
+					return;
+				}
+				if (a_object->name == "NPC Head [Head]") {
+					bool severed = false;
+					for (auto* up = a_object->parent; up && up != body; up = up->parent) {
+						severed = severed || std::string_view(up->name.c_str()).starts_with("DismemberedLimb");
+					}
+					if (severed) {
+						head = a_object;
+						limb = a_object;
+						while (limb->parent && limb->parent != body) {
+							limb = limb->parent;
+						}
+						return;
+					}
+				}
+				if (auto* node = a_object->AsNode()) {
+					for (auto& child : node->GetChildren()) {
+						if (child) {
+							visit(child.get());
+						}
+					}
+				}
+			};
+			if (body) {
+				visit(body);
+			}
+			if (a_head) {
+				*a_head = head;
+			}
+			return limb;
+		}
+
+		std::string Partitions(RE::BSGeometry* a_geometry)
+		{
+			auto*       skin = a_geometry->GetGeometryRuntimeData().skinInstance.get();
+			auto*       dismember = skin ? netimmerse_cast<RE::BSDismemberSkinInstance*>(skin) : nullptr;
+			std::string parts;
+			if (dismember) {
+				auto& data = dismember->GetRuntimeData();
+				for (std::int32_t k = 0; k < data.numPartitions; ++k) {
+					parts += std::format("{}{}{}", k ? "," : "", data.partitions[k].slot, data.partitions[k].visible ? "" : " hidden");
+				}
+			}
+			return parts;
+		}
+
+		// What a beheaded character wears on its head (helmet, hood, circlet) onto its severed head (sheets/builds.json
+		// gore_helmet_on_head): a Whiterun guard's helmet stayed on the body (its mesh has no part marked for the severed
+		// head). If the severed head carries a copy of it with its parts hidden, they are shown there and the body's is
+		// hidden. Logs what it finds either way.
+		void HelmetOntoHead(RE::Actor* a_actor, bool a_apply, const char* a_when)
+		{
+			const auto& biped = a_actor->GetBiped(false);
+			auto*       limb = SeveredLimb(a_actor);
+			if (!biped) {
+				return;
+			}
+			std::vector<const RE::NiAVObject*> seen;
+			int found = 0;
+			for (const auto slot : { RE::BIPED_OBJECT::kHead, RE::BIPED_OBJECT::kHair, RE::BIPED_OBJECT::kLongHair, RE::BIPED_OBJECT::kCirclet, RE::BIPED_OBJECT::kEars }) {
+				const auto& object = biped->objects[slot];
+				auto*       armor = object.item ? object.item->As<RE::TESObjectARMO>() : nullptr;
+				auto*       part = object.partClone.get();
+				if (!armor || !part || std::find(seen.begin(), seen.end(), part) != seen.end()) {
+					continue;
+				}
+				seen.push_back(part);
+				RE::BSVisit::TraverseScenegraphGeometries(part, [&](RE::BSGeometry* a_geometry) {
+					++found;
+					RE::BSGeometry* copy = nullptr;
+					if (limb) {
+						RE::BSVisit::TraverseScenegraphGeometries(limb, [&](RE::BSGeometry* a_other) {
+							if (a_other->name == a_geometry->name) {
+								copy = a_other;
+								return RE::BSVisit::BSVisitControl::kStop;
+							}
+							return RE::BSVisit::BSVisitControl::kContinue;
+						});
+					}
+					std::string done;
+					if (a_apply && copy) {
+						auto* skin = copy->GetGeometryRuntimeData().skinInstance.get();
+						if (auto* dismember = skin ? netimmerse_cast<RE::BSDismemberSkinInstance*>(skin) : nullptr) {
+							auto& data = dismember->GetRuntimeData();
+							for (std::int32_t k = 0; k < data.numPartitions; ++k) {
+								if (!data.partitions[k].visible) {
+									dismember->UpdateDismemberPartion(data.partitions[k].slot, true);
+								}
+							}
+						}
+						copy->SetAppCulled(false);
+						a_geometry->SetAppCulled(true);
+						g_headwearOnHeads.push_back({ a_actor->GetHandle(), armor->GetFormID(), a_geometry->name.c_str(), Clock::now() });
+						done = std::format("; now shown on the severed head (parts {}), hidden on the body", Partitions(copy));
+					}
+					logger::info("gore: {}'s {} ({}), {}: on the body parts {}{}; the severed head {}{}", a_actor->GetDisplayFullName(), armor->GetName(), a_geometry->name.c_str(), a_when,
+						Partitions(a_geometry), a_geometry->GetAppCulled() ? " (hidden)" : "",
+						!limb ? "is not there" : copy ? std::format("has a copy, parts {}{}", Partitions(copy), copy->GetAppCulled() ? " (hidden)" : "") : "has no copy of it", done);
+					return RE::BSVisit::BSVisitControl::kContinue;
+				});
+			}
+			if (!found) {
+				logger::info("gore: {} wears nothing on its head ({})", a_actor->GetDisplayFullName(), a_when);
+			}
+		}
+
+		// What the body has for its head: Skyrim's own decapitation parts (biped slots DecapitateHead, Decapitate) and
+		// the severed head with what is drawn on it. (A guard's head seemed to appear only once its body was looted.)
+		std::string HeadState(RE::Actor* a_actor)
+		{
+			std::string out;
+			const auto& biped = a_actor->GetBiped(false);
+			for (const auto slot : { RE::BIPED_OBJECT::kDecapitateHead, RE::BIPED_OBJECT::kDecapitate }) {
+				const auto* object = biped ? &biped->objects[slot] : nullptr;
+				out += std::format("{}slot {}: {}{}", out.empty() ? "" : "; ", static_cast<int>(slot), object && object->addon ? std::format("{:08X}", object->addon->GetFormID()) : "-",
+					object && object->partClone ? (object->partClone->GetAppCulled() ? " (3D, hidden)" : " (3D)") : " (no 3D)");
+			}
+			auto* limb = SeveredLimb(a_actor);
+			if (!limb) {
+				return out + "; no severed head";
+			}
+			int         pieces = 0;
+			std::string drawn;
+			RE::BSVisit::TraverseScenegraphGeometries(limb, [&](RE::BSGeometry* a_geometry) {
+				++pieces;
+				drawn += std::format("{}{} [{}]{}", drawn.empty() ? "" : "; ", a_geometry->name.c_str(), Partitions(a_geometry), a_geometry->GetAppCulled() ? " hidden" : "");
+				return RE::BSVisit::BSVisitControl::kContinue;
+			});
+			return out + std::format("; severed head '{}'{}: {} pieces: {}", limb->name.c_str(), limb->GetAppCulled() ? " (hidden)" : "", pieces, drawn);
+		}
+
 		void ThrowHeads()
 		{
 			for (auto it = g_pendingHeads.begin(); it != g_pendingHeads.end();) {
@@ -29,36 +172,63 @@ namespace dm::Combat
 					++it;
 				}
 			}
+			for (auto it = g_headwearOnHeads.begin(); it != g_headwearOnHeads.end();) {
+				auto actor = it->who.get();
+				if (!actor || !actor->Is3DLoaded()) {
+					it = g_headwearOnHeads.erase(it);
+					continue;
+				}
+				if (Seconds(it->looked) < 0.25f) {
+					++it;
+					continue;
+				}
+				it->looked = Clock::now();
+				if (actor->GetWornArmor(it->armor)) {
+					++it;
+					continue;
+				}
+				// (taken off the body - looted: off the severed head too)
+				int hidden = 0;
+				if (auto* limb = SeveredLimb(actor.get())) {
+					RE::BSVisit::TraverseScenegraphGeometries(limb, [&](RE::BSGeometry* a_geometry) {
+						if (a_geometry->name == it->piece.c_str()) {
+							a_geometry->SetAppCulled(true);
+							++hidden;
+						}
+						return RE::BSVisit::BSVisitControl::kContinue;
+					});
+				}
+				auto* armor = RE::TESForm::LookupByID<RE::TESObjectARMO>(it->armor);
+				logger::info("gore: {}'s {} was taken off its body: {}", actor->GetDisplayFullName(), armor ? armor->GetName() : "headwear", hidden ? "gone from its severed head too" : "its severed head was not found");
+				it = g_headwearOnHeads.erase(it);
+			}
 			for (auto it = g_thrownHeads.begin(); it != g_thrownHeads.end();) {
 				const float t = Seconds(it->when);
 				auto        actor = it->who.get();
-				if (!actor || t > 1.5f) {
-					// (where the head is by then, for looking into it: a Whiterun guard's head was "just gone" while another
-					// character's fell as it should - play test 2026-10-24)
-					auto* root = actor ? actor->Get3D(false) : nullptr;
-					auto* head = root ? root->GetObjectByName("NPC Head [Head]") : nullptr;
-					if (head) {
-						const RE::NiPoint3 at = head->world.translate - actor->GetPosition();
-						int                shown = 0, hidden = 0;
-						RE::BSVisit::TraverseScenegraphGeometries(root, [&](RE::BSGeometry* a_geometry) {
-							(a_geometry->GetAppCulled() ? hidden : shown)++;
-							return RE::BSVisit::BSVisitControl::kContinue;
-						});
-						logger::info("gore: {}'s head 1.5 s on: {:.0f} units from the body ({:.0f} across, {:.0f} up), scale {:.3f}, {}; the body's pieces {} shown, {} hidden", actor->GetDisplayFullName(),
-							at.Length(), std::sqrt(at.x * at.x + at.y * at.y), at.z, head->world.scale, head->GetAppCulled() ? "culled" : "not culled", shown, hidden);
+				if (actor && t < 30.0f) {
+					// (for 30 s: what the body has for its head, logged whenever it changes - looting it among them)
+					if (auto now = HeadState(actor.get()); now != it->state) {
+						it->state = std::move(now);
+						logger::info("gore: {}'s head parts {:.1f} s after the blow: {}", actor->GetDisplayFullName(), t, it->state);
 					}
+				}
+				if (!actor || t > 30.0f) {
 					it = g_thrownHeads.erase(it);
 					continue;
 				}
+				if (!it->told && t > 1.5f) {
+					it->told = true;
+					HelmetOntoHead(actor.get(), false, "1.5 s on");
+				}
 				if (it->pushes >= 2) {
-					++it;  // (thrown: kept until 1.5 s to be looked at)
+					++it;  // (thrown: kept for 30 s to be looked at)
 					continue;
 				}
 				// (the body goes limp a moment after the blow: the head is pushed once it is, and once more shortly after
 				// in case the first came before its joint to the neck was cut)
 				if (t > (it->pushes == 0 ? 0.10f : 0.22f) && actor->IsInRagdollState()) {
-					auto* root = actor->Get3D(false);
-					auto* head = root ? root->GetObjectByName("NPC Head [Head]") : nullptr;
+					RE::NiAVObject* head = nullptr;
+					SeveredLimb(actor.get(), &head);
 					auto* collision = head ? head->GetCollisionObject() : nullptr;
 					auto* body = collision ? collision->GetRigidBody() : nullptr;
 					if (body) {
@@ -68,9 +238,10 @@ namespace dm::Combat
 						body->SetAngularVelocity(RE::hkVector4(it->away.y * 9.0f, -it->away.x * 9.0f, 2.0f, 0.0f));
 						if (it->pushes == 0) {
 							logger::info("gore: {}'s own head is thrown on MORDHAU's arc", actor->GetDisplayFullName());
+							HelmetOntoHead(actor.get(), BuildValue("gore_helmet_on_head") > 0.5f, "at the throw");
 						}
 					} else if (it->pushes == 0) {
-						logger::info("gore: {}'s head has no physics body to throw (it falls as Skyrim drops it)", actor->GetDisplayFullName());
+						logger::info("gore: {}'s severed head {} (it falls as Skyrim drops it)", actor->GetDisplayFullName(), head ? "has no physics body to throw" : "was not found");
 					}
 					++it->pushes;
 				}
